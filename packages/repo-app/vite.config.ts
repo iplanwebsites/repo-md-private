@@ -135,6 +135,9 @@ function getCurrentDir() {
 	return fileURLToPath(url);
 }
 
+// Get the monorepo root for resolving hoisted node_modules
+const repoRoot = resolve(getCurrentDir(), "../..");
+
 import packageJson from "./package.json";
 
 export default defineConfig(async ({ command, mode }) => {
@@ -295,6 +298,13 @@ export default defineConfig(async ({ command, mode }) => {
 			"@": resolve(getCurrentDir(), "./src"),
 			// Resolve workspace package for Vercel builds where symlinks don't work
 			"@repo-md/client": resolve(getCurrentDir(), "../repo-client/src/lib/index.js"),
+			// Explicitly resolve @repo-md/client dependencies from hoisted root node_modules
+			"envizion": resolve(repoRoot, "node_modules/envizion"),
+			"quick-lru": resolve(repoRoot, "node_modules/quick-lru"),
+			"compute-cosine-similarity": resolve(repoRoot, "node_modules/compute-cosine-similarity"),
+			"minisearch": resolve(repoRoot, "node_modules/minisearch"),
+			"zod-metadata": resolve(repoRoot, "node_modules/zod-metadata"),
+			"zod": resolve(repoRoot, "node_modules/zod"),
 		},
 	},
 
