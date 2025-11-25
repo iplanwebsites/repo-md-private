@@ -14,5 +14,7 @@
       ]
     }
   ],
-  "routes": [{ "src": "/[^.]+(?:\\.[^.]{5,})*$", "dest": "/", "status": 200 }]
+  "rewrites": [
+    { "source": "/((?!assets/).*)", "destination": "/" }
+  ]
 }
