@@ -1,7 +1,6 @@
-import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
-export default defineConfig({
+export default {
   build: {
     outDir: 'npm/cli',
     lib: {
@@ -19,4 +18,4 @@ export default defineConfig({
       ]
     }
   }
-});
+};

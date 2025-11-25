@@ -1,7 +1,6 @@
-import { defineConfig } from 'vite';
 import packageJson from './package.json';
 
-export default defineConfig({
+export default {
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
     'import.meta.env.VITE_APP_BUILD_DATE': JSON.stringify(new Date().toISOString()),
@@ -24,4 +23,4 @@ export default defineConfig({
     // Disable minification for standard builds - the minified version will be created separately
     minify: false
   }
-});
+};
