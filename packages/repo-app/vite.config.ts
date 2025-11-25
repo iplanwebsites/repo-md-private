@@ -4,12 +4,7 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
-
-import { viteRepoMdProxy } from "@repo-md/client";
 import AutoImport from "unplugin-auto-import/vite";
-
- 
-// console.log("ViteDevProxy", createViteProxy);
 
 
 
@@ -142,7 +137,23 @@ function getCurrentDir() {
 
 import packageJson from "./package.json";
 
-export default defineConfig({
+export default defineConfig(async ({ command, mode }) => {
+	// Only load proxy config in dev mode - not needed for production build
+	let proxyConfig = {};
+	if (command === 'serve') {
+		try {
+			const { viteRepoMdProxy } = await import("@repo-md/client");
+			proxyConfig = {
+				...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo' }),
+				...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo_docs' }),
+				...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo_blog' }),
+			};
+		} catch (e) {
+			console.warn('Could not load @repo-md/client proxy config:', e);
+		}
+	}
+
+	return {
 	define: {
 		"import.meta.env.VITE_APP_VERSION": JSON.stringify(packageJson.version),
 		"import.meta.env.VITE_APP_BUILD_DATE": JSON.stringify(
@@ -165,13 +176,8 @@ export default defineConfig({
 			'Cross-Origin-Embedder-Policy': 'require-corp',
 			'Cross-Origin-Opener-Policy': 'same-origin',
 		},
-		// proxy: ViteDevProxy,
 		proxy: {
-
-		//	...viteProxy1,
-			...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo' }),
-			...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo_docs' }),
-			...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo_blog' }),
+			...proxyConfig,
 /*
 			
 			"/_repo/medias": {
@@ -294,4 +300,5 @@ export default defineConfig({
 		sourcemap: true,
 		minify: "esbuild",
 	},
+};
 });
