@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm ci && npm run build:app",
+  "buildCommand": "turbo run build --filter=@repo-md/client && turbo run build --filter=@repo-md/app",
   "outputDirectory": "packages/repo-app/dist",
-  "installCommand": "echo 'Using build command for install'",
+  "installCommand": "npm install",
   "framework": null,
   "headers": [
     {
