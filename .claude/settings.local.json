@@ -33,7 +33,9 @@
       "Bash(packages/repo-app/package.json )",
       "Bash(packages/repo-build-worker/package.json )",
       "Bash(packages/repo-mcp-npm/package.json )",
-      "Bash(packages/repo-mcp-server/package.json)"
+      "Bash(packages/repo-mcp-server/package.json)",
+      "Bash(npm install)",
+      "Bash(npm run build:app:*)"
     ],
     "deny": []
   },
