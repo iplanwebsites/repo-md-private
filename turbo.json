@@ -6,11 +6,6 @@
       "outputs": ["dist/**", ".next/**", "build/**"],
       "cache": true
     },
-    "@repo-md/app#build": {
-      "dependsOn": ["@repo-md/client#build"],
-      "outputs": ["dist/**"],
-      "cache": true
-    },
     "dev": {
       "persistent": true,
       "cache": false

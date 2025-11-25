@@ -12,6 +12,6 @@
   ],
   "scripts": {},
   "dependencies": {
-    "@repo-md/client": "file:../repo-client"
+    "@repo-md/client": "*"
   }
 }
