@@ -32,7 +32,7 @@
     "vercel:pull": "vercel pull"
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
+    "turbo": "^2.6.1",
     "vercel": "^39.0.0"
   },
   "engines": {
