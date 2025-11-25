@@ -76,7 +76,7 @@
     "octokit": "^4.1.4",
     "openai": "^4.80.0",
     "path": "^0.12.7",
-    "@repo-md/client": "*",
+    "@repo-md/client": "file:../repo-client",
     "rrule": "^2.8.1",
     "sib-api-v3-typescript": "^2.2.2",
     "sqlite-vec": "^0.1.7-alpha.2",
