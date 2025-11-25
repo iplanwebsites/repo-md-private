@@ -11,7 +11,7 @@ This monorepo contains all packages for the repo.md platform:
 | `@repo-md/client` | JavaScript SDK for consuming repo.md content |
 | `@repo-md/processor` | Markdown processor (Obsidian vault to JSON) |
 | `@repo-md/api` | Express API server |
-| `@repo-md/app` | Vue.js frontend application |
+| `@repo-md/app` | Vue.js frontend application (`repo-app`) |
 | `@repo-md/worker` | Async build worker (GCP Cloud Run / Cloudflare) |
 | `@repo-md/cli` | Command-line interface |
 | `@repo-md/mcp-server` | MCP server (Cloudflare Worker) |

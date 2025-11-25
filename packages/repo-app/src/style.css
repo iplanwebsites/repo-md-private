@@ -1,0 +1,590 @@
+/* Force color-scheme to be light for the entire application */
+:root {
+	color-scheme: light;
+}
+
+/* Override color-scheme to consistently use light mode */
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: light;
+	}
+}
+
+/* Universal Mac-style scrollbar styling */
+* {
+	/* Firefox */
+	scrollbar-width: thin;
+	scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+/* WebKit-based browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent !important;
+	border-radius: 0;
+	margin: 0;
+	border: none;
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: rgba(0, 0, 0, 0.25);
+	border-radius: 8px;
+	border: 2px solid transparent;
+	background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background-color: rgba(0, 0, 0, 0.4);
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+/* Apply these styles to all elements with overflow */
+div,
+section,
+article,
+aside,
+nav,
+main,
+header,
+footer,
+form,
+textarea,
+pre,
+code,
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll,
+.overflow-y-scroll,
+.overflow-x-scroll {
+	/* Ensure consistent scrollbar styling in all overflow scenarios */
+	scrollbar-width: thin;
+	scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+div::-webkit-scrollbar-track,
+section::-webkit-scrollbar-track,
+article::-webkit-scrollbar-track,
+textarea::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track,
+code::-webkit-scrollbar-track,
+.overflow-auto::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track,
+.overflow-scroll::-webkit-scrollbar-track,
+.overflow-y-scroll::-webkit-scrollbar-track,
+.overflow-x-scroll::-webkit-scrollbar-track {
+	background: transparent !important;
+}
+
+/* Force visibility on the body scrollbar (but still styled as mac) */
+body::-webkit-scrollbar-thumb {
+	background-color: rgba(0, 0, 0, 0.25);
+}
+
+/* For Edge legacy */
+@supports (-ms-overflow-style: none) {
+	html,
+	body,
+	div,
+	section,
+	article,
+	aside,
+	nav,
+	main,
+	header,
+	footer,
+	form,
+	textarea,
+	pre,
+	code,
+	.overflow-auto,
+	.overflow-y-auto,
+	.overflow-x-auto,
+	.overflow-scroll,
+	.overflow-y-scroll,
+	.overflow-x-scroll {
+		-ms-overflow-style: -ms-autohiding-scrollbar;
+	}
+}
+
+:root {
+	font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+	line-height: 1.5;
+	font-weight: 400;
+
+	color-scheme: light dark;
+	color: rgba(255, 255, 255, 0.87);
+	background-color: #242424;
+
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* exctra colors
+
+*/
+:root {
+	--bgSurface: #f5faff;
+	--bgSurface-foreground: 48 96% 89%;
+}
+
+.dark {
+	--bg-surface: 225 9% 7%;
+	--bg-surface-foreground: 38 92% 50%;
+}
+
+.bg-crazy {
+	position: relative;
+	background-color: #f8f9fa; /* Fallback color */
+	overflow: hidden;
+	width: 100%; /* Takes full width */
+}
+
+.bg-crazy::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-size: 100% auto; /* Full width, auto height */
+	background-position: center top;
+	background-repeat: repeat-y; /* Tile vertically */
+	width: 100%;
+	height: 100%;
+	/* opacity: 0.6; /* Makes the background image more faded */
+	/* filter: grayscale(20%); /* Adds a slight grey tint */
+	z-index: 0;
+}
+
+/*
+.bg-crazy::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 90%; 
+  background: linear-gradient(to bottom, transparent, white);
+  z-index: 1;
+}*/
+
+
+  
+
+
+/* Controls how far up the fade goes */
+.bg-crazy > .container {
+	position: relative;
+	z-index: 2; /* Ensures content stays on top */
+}
+
+/*
+https://static.repo.md//wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_06-lg.jpeg
+https://static.repo.md//wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_06-lg.jpeg
+https://static.repo.md//wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_07-lg.jpeg
+https://static.repo.md//wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_08-lg.jpeg
+*/
+
+.bg-crazy.img1::before {
+	background-image: url("https://static.repo.md/wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_35-xl.jpeg");
+}
+.bg-crazy.img2::before {
+	background-image: url("https://static.repo.md/wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_36-xl.jpeg");
+}
+.bg-crazy.img3::before {
+	background-image: url("https://static.repo.md/wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_37-xl.jpeg");
+}
+.bg-crazy.img4::before {
+	background-image: url("https://static.repo.md/wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_38-xl.jpeg");
+}
+.bg-crazy.img5::before {
+	background-image: url("https://static.repo.md/wiki/assets/img/Image-Background/Format_Web_BG_Repo.md_39-xl.jpeg");
+}
+
+.noise-background1 {
+	/* Replace #f0f0f0 with your background color */
+	/*
+  background-color: #f0f0f0;
+*/
+	/* Encoded SVG as background image */
+	/* 
+
+
+  <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <filter id="noiseFilter">
+    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="1" stitchTiles="stitch" />
+  </filter>
+  <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+</svg>
+
+ 
+  
+  
+  */
+
+	/* Adjust the size of the noise pattern */
+	background-size: 100px 100px;
+
+	/* Makes the noise pattern repeat */
+	background-repeat: repeat;
+}
+.noise-background2 {
+	/* Replace #f0f0f0 with your background color */
+	/*
+  background-color: #f0f0f0;
+*/
+	/* Encoded SVG as background image */
+	/*<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <filter id="noise" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="1" result="noisy"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#noise)" fill="white"/>
+</svg>
+
+*/
+}
+
+.noise-background20 {
+	/* Replace #f0f0f0 with your background color */
+	/*
+  background-color: #f0f0f0;
+*/
+	/* Encoded SVG as background image */
+	/* <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+  <filter id="noise" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" stitchTiles="noStitch" result="noisy"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="linear" slope="0.2"/>  <!-- Adjust slope for opacity -->
+    </feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#noise)" fill="white"/>
+</svg>
+
+*/
+	background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj4KICA8ZmlsdGVyIGlkPSJub2lzZSIgeD0iMCUiIHk9IjAlIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICAgIDxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIxLjUiIG51bU9jdGF2ZXM9IjEiIHN0aXRjaFRpbGVzPSJub1N0aXRjaCIgcmVzdWx0PSJub2lzeSIvPgogICAgPGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPgogICAgPGZlQ29tcG9uZW50VHJhbnNmZXI+CiAgICAgIDxmZUZ1bmNBIHR5cGU9ImxpbmVhciIgc2xvcGU9IjAuMiIvPiAgPCEtLSBBZGp1c3Qgc2xvcGUgZm9yIG9wYWNpdHkgLS0+CiAgICA8L2ZlQ29tcG9uZW50VHJhbnNmZXI+CiAgPC9maWx0ZXI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI25vaXNlKSIgZmlsbD0id2hpdGUiLz4KPC9zdmc+");
+}
+
+.noise-background40 {
+	/* Replace #f0f0f0 with your background color */
+	/*
+  background-color: #f0f0f0;
+*/
+	/* Encoded SVG as background image */
+	/* <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+  <filter id="noise" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" stitchTiles="noStitch" result="noisy"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="linear" slope="0.4"/>  <!-- Adjust slope for opacity -->
+    </feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#noise)" fill="white"/>
+</svg>
+
+*/
+	background-image: url("data:image/svg+xml;base64,IDxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCI+CiAgPGZpbHRlciBpZD0ibm9pc2UiIHg9IjAlIiB5PSIwJSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSI+CiAgICA8ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMS41IiBudW1PY3RhdmVzPSIxIiBzdGl0Y2hUaWxlcz0ibm9TdGl0Y2giIHJlc3VsdD0ibm9pc3kiLz4KICAgIDxmZUNvbG9yTWF0cml4IHR5cGU9InNhdHVyYXRlIiB2YWx1ZXM9IjAiLz4KICAgIDxmZUNvbXBvbmVudFRyYW5zZmVyPgogICAgICA8ZmVGdW5jQSB0eXBlPSJsaW5lYXIiIHNsb3BlPSIwLjQiLz4gIDwhLS0gQWRqdXN0IHNsb3BlIGZvciBvcGFjaXR5IC0tPgogICAgPC9mZUNvbXBvbmVudFRyYW5zZmVyPgogIDwvZmlsdGVyPgogIDxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNub2lzZSkiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPg==");
+}
+
+.noise-background30 {
+	/* Replace #f0f0f0 with your background color */
+	/*
+  background-color: #f0f0f0;
+*/
+	/* Encoded SVG as background image */
+	/* <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+  <filter id="noise" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" stitchTiles="noStitch" result="noisy"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="linear" slope="0.3"/>  <!-- Adjust slope for opacity -->
+    </feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#noise)" fill="white"/>
+</svg>
+
+*/
+	background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj4KICA8ZmlsdGVyIGlkPSJub2lzZSIgeD0iMCUiIHk9IjAlIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICAgIDxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIxLjUiIG51bU9jdGF2ZXM9IjEiIHN0aXRjaFRpbGVzPSJub1N0aXRjaCIgcmVzdWx0PSJub2lzeSIvPgogICAgPGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPgogICAgPGZlQ29tcG9uZW50VHJhbnNmZXI+CiAgICAgIDxmZUZ1bmNBIHR5cGU9ImxpbmVhciIgc2xvcGU9IjAuMyIvPiAgPCEtLSBBZGp1c3Qgc2xvcGUgZm9yIG9wYWNpdHkgLS0+CiAgICA8L2ZlQ29tcG9uZW50VHJhbnNmZXI+CiAgPC9maWx0ZXI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI25vaXNlKSIgZmlsbD0id2hpdGUiLz4KPC9zdmc+");
+}
+.noise-background50 {
+	/* Replace #f0f0f0 with your background color */
+	/*
+  background-color: #f0f0f0;
+*/
+	/* Encoded SVG as background image */
+	/* <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300">
+  <filter id="noise" x="0%" y="0%" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" stitchTiles="noStitch" result="noisy"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer>
+      <feFuncA type="linear" slope="0.5"/>  <!-- Adjust slope for opacity -->
+    </feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#noise)" fill="white"/>
+</svg>
+
+*/
+
+	background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj4KICA8ZmlsdGVyIGlkPSJub2lzZSIgeD0iMCUiIHk9IjAlIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICAgIDxmZVR1cmJ1bGVuY2UgdHlwZT0iZnJhY3RhbE5vaXNlIiBiYXNlRnJlcXVlbmN5PSIxLjUiIG51bU9jdGF2ZXM9IjEiIHN0aXRjaFRpbGVzPSJub1N0aXRjaCIgcmVzdWx0PSJub2lzeSIvPgogICAgPGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPgogICAgPGZlQ29tcG9uZW50VHJhbnNmZXI+CiAgICAgIDxmZUZ1bmNBIHR5cGU9ImxpbmVhciIgc2xvcGU9IjAuNSIvPiAgPCEtLSBBZGp1c3Qgc2xvcGUgZm9yIG9wYWNpdHkgLS0+CiAgICA8L2ZlQ29tcG9uZW50VHJhbnNmZXI+CiAgPC9maWx0ZXI+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsdGVyPSJ1cmwoI25vaXNlKSIgZmlsbD0id2hpdGUiLz4KPC9zdmc+IA==");
+}
+
+/*
+font
+font-family: GeneralSans-Extralight;
+font-family: GeneralSans-ExtralightItalic;
+font-family: GeneralSans-Light;
+font-family: GeneralSans-LightItalic;
+font-family: GeneralSans-Regular;
+font-family: GeneralSans-Italic;
+font-family: GeneralSans-Medium;
+font-family: GeneralSans-MediumItalic;
+font-family: GeneralSans-Semibold;
+font-family: GeneralSans-SemiboldItalic;
+font-family: GeneralSans-Bold;
+font-family: GeneralSans-BoldItalic;
+font-family: GeneralSans-Variable;
+font-family: GeneralSans-VariableItalic;
+
+*/
+
+h1,
+h2 {
+	/**
+* This is a variable font
+* You can control variable axes as shown below:
+* font-variation-settings: wght 700.0;
+*
+* available axes:
+'wght' (range from 200.0 to 700.0
+*/
+
+	font-family: GeneralSans-Variable, Inter, system-ui, Avenir, Helvetica, Arial,
+		sans-serif;
+	/*
+  font-family: "Poppins", serif;
+   */
+	font-weight: 600;
+}
+
+a {
+	font-weight: 500;
+	color: #646cff;
+	text-decoration: inherit;
+}
+a:hover {
+	color: #535bf2;
+}
+
+body {
+	margin: 0;
+	display: flex;
+
+	min-width: 320px;
+	min-height: 100vh;
+	width: 100%;
+}
+
+h1 {
+	font-size: 3.2em;
+	line-height: 1.1;
+}
+
+button {
+	/*
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+  */
+}
+button:hover {
+	/*
+  border-color: #646cff;
+  */
+}
+button:focus,
+button:focus-visible {
+	/*
+  outline: 4px auto -webkit-focus-ring-color;
+  */
+}
+
+.card {
+	padding: 2em;
+}
+
+#app {
+	/*
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+  */
+	width: 100%;
+}
+
+@media (prefers-color-scheme: light) {
+	:root {
+		color: #213547;
+		background-color: #ffffff;
+	}
+	a:hover {
+		color: #747bff;
+	}
+	button {
+		background-color: #f9f9f9;
+	}
+}
+
+/*
+article-content*/
+
+.article-content {
+	font-family: Arial, sans-serif;
+	line-height: 1.6;
+	color: #333;
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 20px;
+}
+
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+	color: #222;
+	margin: 1.5em 0 0.5em;
+	line-height: 1.2;
+}
+
+.article-content h1 {
+	font-size: 2.5em;
+}
+
+.article-content h2 {
+	font-size: 2em;
+}
+
+.article-content h3 {
+	font-size: 1.75em;
+}
+
+.article-content h4 {
+	font-size: 1.5em;
+}
+
+.article-content h5 {
+	font-size: 1.25em;
+}
+
+.article-content h6 {
+	font-size: 1em;
+}
+
+.article-content p {
+	margin: 1em 0;
+}
+
+.article-content ul,
+.article-content ol {
+	padding-left: 2em;
+	margin: 1em 0;
+}
+
+.article-content ul {
+	list-style-type: disc;
+}
+
+.article-content ol {
+	list-style-type: decimal;
+}
+
+.article-content li {
+	margin: 0.5em 0;
+}
+
+.article-content blockquote {
+	border-left: 4px solid #ddd;
+	padding-left: 16px;
+	color: #666;
+	margin: 1em 0;
+	font-style: italic;
+}
+
+.article-content code {
+	font-family: "Courier New", Courier, monospace;
+	background-color: #f9f9f9;
+	padding: 2px 4px;
+	border-radius: 4px;
+}
+
+.article-content pre {
+	background-color: #f5f5f5;
+	padding: 10px;
+	overflow-x: auto;
+	border-radius: 4px;
+}
+
+.article-content pre code {
+	font-size: 0.9em;
+	line-height: 1.5;
+}
+
+.article-content a {
+	color: #1a0dab;
+	text-decoration: none;
+}
+
+.article-content a:hover {
+	text-decoration: underline;
+}
+
+.article-content img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: 1em 0;
+}
+
+.article-content table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 1em 0;
+}
+
+.article-content th,
+.article-content td {
+	border: 1px solid #ddd;
+	padding: 8px;
+	text-align: left;
+}
+
+.article-content th {
+	background-color: #f2f2f2;
+}
+
+.article-content hr {
+	border: 0;
+	height: 1px;
+	background-color: #ddd;
+	margin: 2em 0;
+}

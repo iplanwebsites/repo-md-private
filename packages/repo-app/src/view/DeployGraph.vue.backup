@@ -1,0 +1,444 @@
+<script setup>
+import { ref, computed, inject, onMounted, watch } from "vue";
+import { useOrgStore } from "@/store/orgStore";
+import {
+	Search,
+	User,
+	FileText,
+	Users,
+	Lock,
+	Shield,
+	Server,
+	BadgeAlert,
+	Save,
+	Link,
+	ClipboardCopy,
+	ExternalLink,
+	CornerLeftUp,
+	RefreshCw,
+	Loader,
+} from "lucide-vue-next";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "vue-router";
+import ThreeJSGraphViz from "@/components/viz/ThreeJSGraphViz.vue";
+import D3CircleViz from "@/components/viz/D3CircleViz.vue";
+import RessourceGraph from "@/components/pushmd/RessourceGraph.vue";
+import dummyGraphData from "@/components/viz/files/graph1.json";
+import PageHeadingBar from "@/components/PageHeadingBar.vue";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+
+// Define props from parent
+const props = defineProps({
+	deployment: {
+		type: Object,
+		required: true,
+	},
+	isLoading: {
+		type: Boolean,
+		default: false,
+	},
+	error: {
+		type: [String, Object, null],
+		default: null,
+	},
+	repoClient: {
+		type: Object,
+		default: null,
+	},
+});
+
+// Define emits to parent
+const emit = defineEmits(["refresh"]);
+
+// Get the organization store
+const orgStore = useOrgStore();
+const router = useRouter();
+
+// Development flag for using dummy data
+const USE_DUMMY_DATA = ref(false);
+
+// Graph data state
+const graphData = ref(null);
+const graphLoading = ref(false);
+const graphError = ref(null);
+
+// Embeddings data state
+const embeddingsData = ref(null);
+const embeddingsLoading = ref(false);
+const embeddingsError = ref(null);
+
+// Toggle between 2D and 3D visualization
+const visualizationMode = ref("3d"); // "2d" or "3d"
+
+// Active tab for switching between visualizations
+const activeTab = ref("interactive"); // "embeddings", "circular", or "interactive"
+
+// Options for graph visualization (restored)
+const showImages = ref(false);
+const showOrphans = ref(true);
+
+// Computed property for the graph data
+const displayGraphData = computed(() => {
+	let data = USE_DUMMY_DATA.value ? dummyGraphData : graphData.value;
+	
+	if (!data) return null;
+	
+	// Only apply filters when showing the circular or interactive graph views
+	if (activeTab.value === 'circular' || activeTab.value === 'interactive') {
+		// Filter media nodes if showImages is false
+		if (!showImages.value) {
+			const mediaNodeIds = new Set(
+				data.nodes.filter(node => node.type === 'media').map(node => node.id)
+			);
+			
+			data = {
+				nodes: data.nodes.filter(node => node.type !== 'media'),
+				edges: data.edges.filter(edge => 
+					!mediaNodeIds.has(edge.source) && !mediaNodeIds.has(edge.target)
+				)
+			};
+		}
+		
+		// Filter orphan nodes if showOrphans is false
+		if (!showOrphans.value) {
+			const connectedNodeIds = new Set();
+			data.edges.forEach(edge => {
+				connectedNodeIds.add(edge.source);
+				connectedNodeIds.add(edge.target);
+			});
+			
+			data = {
+				nodes: data.nodes.filter(node => connectedNodeIds.has(node.id)),
+				edges: data.edges
+			};
+		}
+	}
+	
+	return data;
+});
+
+// Fetch graph data
+const fetchGraphData = async () => {
+	if (!props.repoClient) return;
+
+	graphLoading.value = true;
+	graphError.value = null;
+
+	try {
+		graphData.value = await props.repoClient.getGraph();
+		console.log("Graph data loaded:", graphData.value);
+	} catch (err) {
+		console.error("Error fetching graph data:", err);
+		graphError.value = err.message || "Failed to load graph data";
+	} finally {
+		graphLoading.value = false;
+	}
+};
+
+// Fetch embeddings data
+const fetchEmbeddingsData = async () => {
+	if (!props.repoClient) return;
+
+	embeddingsLoading.value = true;
+	embeddingsError.value = null;
+
+	try {
+		// Fetch both posts.json and embeddings file
+		const [postsResponse, embeddingsResponse] = await Promise.all([
+			props.repoClient.getFile('posts.json').catch(() => null),
+			props.repoClient.getFile('posts-embedding-hash-map.json').catch(() => null)
+		]);
+
+		if (embeddingsResponse && embeddingsResponse.content) {
+			const embeddingsHashMap = JSON.parse(embeddingsResponse.content);
+			
+			// If we have posts.json, map post IDs to embeddings
+			if (postsResponse && postsResponse.content) {
+				const posts = JSON.parse(postsResponse.content);
+				embeddingsData.value = {};
+				
+				// Map each post to its embedding using the hash
+				posts.forEach(post => {
+					if (post.hash && embeddingsHashMap[post.hash]) {
+						// Use post path as the key for consistency with graph nodes
+						const postId = post.path || post.id;
+						embeddingsData.value[postId] = embeddingsHashMap[post.hash];
+					}
+				});
+				
+				console.log("Embeddings data loaded:", Object.keys(embeddingsData.value).length, "embeddings mapped from", Object.keys(embeddingsHashMap).length, "hashes");
+			} else {
+				// Fallback: use hash as ID if posts.json not available
+				embeddingsData.value = embeddingsHashMap;
+				console.log("Embeddings data loaded:", Object.keys(embeddingsData.value).length, "embeddings (using hashes as IDs)");
+			}
+		} else if (props.deployment && props.deployment.project_id && props.deployment.deployment_id) {
+			// Try to fetch from static URL as fallback
+			try {
+				const staticUrl = `https://static.repo.md/projects/${props.deployment.project_id}/${props.deployment.deployment_id}/posts-embedding-hash-map.json`;
+				const response = await fetch(staticUrl);
+				if (response.ok) {
+					const embeddingsHashMap = await response.json();
+					
+					// Try to get posts.json from static URL too
+					const postsUrl = `https://static.repo.md/projects/${props.deployment.project_id}/${props.deployment.deployment_id}/posts.json`;
+					const postsResponse = await fetch(postsUrl);
+					
+					if (postsResponse.ok) {
+						const posts = await postsResponse.json();
+						embeddingsData.value = {};
+						
+						// Map each post to its embedding using the hash
+						posts.forEach(post => {
+							if (post.hash && embeddingsHashMap[post.hash]) {
+								const postId = post.path || post.id;
+								embeddingsData.value[postId] = embeddingsHashMap[post.hash];
+							}
+						});
+						
+						console.log("Embeddings data loaded from static URL:", Object.keys(embeddingsData.value).length, "embeddings");
+					} else {
+						embeddingsData.value = embeddingsHashMap;
+						console.log("Embeddings data loaded from static URL:", Object.keys(embeddingsData.value).length, "embeddings (using hashes)");
+					}
+				}
+			} catch (staticErr) {
+				console.error("Error fetching from static URL:", staticErr);
+			}
+		}
+	} catch (err) {
+		console.error("Error fetching embeddings data:", err);
+		embeddingsError.value = err.message || "Failed to load embeddings data";
+		// Generate dummy embeddings for demo purposes
+		if (graphData.value && graphData.value.nodes) {
+			embeddingsData.value = {};
+			graphData.value.nodes.forEach(node => {
+				if (node.type === 'post') {
+					// Generate random 384-dimensional embedding (typical for sentence transformers)
+					embeddingsData.value[node.id] = Array.from({ length: 384 }, () => Math.random() * 2 - 1);
+				}
+			});
+			console.log("Generated dummy embeddings for", Object.keys(embeddingsData.value).length, "posts");
+		}
+	} finally {
+		embeddingsLoading.value = false;
+	}
+};
+
+// Refresh graph data
+const refreshGraph = () => {
+	fetchGraphData();
+	// Only fetch embeddings if that's the active tab
+	if (activeTab.value === 'embeddings') {
+		fetchEmbeddingsData();
+	}
+};
+
+// Watch for changes in the repoClient prop
+watch(
+	() => props.repoClient,
+	() => {
+		if (props.repoClient) {
+			fetchGraphData();
+			// Only fetch embeddings if that's the active tab
+			if (activeTab.value === 'embeddings') {
+				fetchEmbeddingsData();
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+// Watch for tab changes to fetch embeddings when needed
+watch(
+	() => activeTab.value,
+	(newTab) => {
+		if (newTab === 'embeddings' && !embeddingsData.value && !embeddingsLoading.value && props.repoClient) {
+			fetchEmbeddingsData();
+		}
+	}
+);
+
+// Initialize on component mount
+onMounted(() => {
+	if (props.repoClient) {
+		fetchGraphData();
+		// Only fetch embeddings if that's the active tab
+		if (activeTab.value === 'embeddings') {
+			fetchEmbeddingsData();
+		}
+	}
+});
+
+// Computed properties
+const currentOrg = computed(() => orgStore.currentOrg);
+</script>
+
+<template>
+  <PageHeadingBar title="Graph" subtitle="How your content is connected">
+    <div class="flex items-center gap-4 ml-auto">
+      <!-- Controls for embeddings view -->
+      <template v-if="activeTab === 'embeddings'">
+        <!-- Visualization Mode Selector -->
+        <Select v-model="visualizationMode" class="w-32">
+          <SelectTrigger>
+            <SelectValue placeholder="View mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="3d">3D View</SelectItem>
+            <SelectItem value="2d">2D View</SelectItem>
+          </SelectContent>
+        </Select>
+      </template>
+      
+      <!-- Controls for graph views -->
+      <template v-else-if="activeTab === 'circular' || activeTab === 'interactive'">
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            v-model="showImages"
+            class="rounded"
+          />
+          Show Media
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            v-model="showOrphans"
+            class="rounded"
+          />
+          Show Orphans
+        </label>
+      </template>
+      
+      <label class="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          v-model="USE_DUMMY_DATA"
+          class="rounded"
+        />
+        Use Dummy Data
+      </label>
+      <Button
+        @click="refreshGraph"
+        :disabled="graphLoading"
+        variant="outline"
+      >
+        <RefreshCw v-if="!graphLoading" class="w-4 h-4 mr-2" />
+        <Loader v-else class="w-4 h-4 mr-2 animate-spin" />
+        Refresh
+      </Button>
+    </div>
+  </PageHeadingBar>
+
+  <div class="container mt-4">
+    <!-- Tabs for switching between visualizations -->
+    <Tabs v-model="activeTab" class="w-full">
+      <TabsList class="grid w-full grid-cols-3 mb-4">
+        <TabsTrigger value="interactive">Interactive Graph</TabsTrigger>
+        <TabsTrigger value="circular">Circular Graph</TabsTrigger>
+        <TabsTrigger value="embeddings">Embeddings View</TabsTrigger>
+      </TabsList>
+      
+      <!-- Embeddings Tab Content -->
+      <TabsContent value="embeddings">
+        <div v-if="embeddingsData && displayGraphData" class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <ThreeJSGraphViz
+            :embeddings="embeddingsData"
+            :graph-data="displayGraphData"
+            :width="1200"
+            :height="600"
+            :is3D="visualizationMode === '3d'"
+          />
+        </div>
+        <div v-else-if="embeddingsLoading" class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <div class="flex flex-col items-center justify-center h-64">
+            <Loader class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+            <span class="text-sm text-gray-500">Loading embeddings data...</span>
+          </div>
+        </div>
+        <div v-else class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <div class="flex flex-col items-center justify-center h-64 text-center">
+            <FileText class="w-12 h-12 text-gray-300 mb-2" />
+            <h3 class="text-lg font-medium mb-1">No Embeddings Data</h3>
+            <p class="text-sm text-gray-500">
+              Embeddings data is not available for this deployment
+            </p>
+          </div>
+        </div>
+      </TabsContent>
+      
+      <!-- Interactive Graph Tab Content -->
+      <TabsContent value="interactive">
+        <div v-if="displayGraphData" class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <RessourceGraph
+            :graphData="displayGraphData"
+            style="height: 600px"
+          />
+        </div>
+        <div v-else-if="graphLoading" class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <div class="flex flex-col items-center justify-center h-64">
+            <Loader class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+            <span class="text-sm text-gray-500">Loading graph data...</span>
+          </div>
+        </div>
+        <div v-else class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <div class="flex flex-col items-center justify-center h-64 text-center">
+            <FileText class="w-12 h-12 text-gray-300 mb-2" />
+            <h3 class="text-lg font-medium mb-1">No Graph Data</h3>
+            <p class="text-sm text-gray-500">
+              Graph data is not available for this deployment
+            </p>
+          </div>
+        </div>
+      </TabsContent>
+      
+      <!-- Circular Graph Tab Content -->
+      <TabsContent value="circular">
+        <div v-if="displayGraphData" class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <D3CircleViz
+            :data="displayGraphData"
+            :width="800"
+            :show-controls="false"
+            :colors="{
+              in: '#0066cc',
+              out: '#cc0000',
+              mutual: '#9900cc',
+              image: '#ff6600',
+              none: '#cccccc',
+              oneWay: '#e6e6e6'
+            }"
+            title="Links between your content"
+          />
+        </div>
+        <div v-else-if="graphLoading" class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <div class="flex flex-col items-center justify-center h-64">
+            <Loader class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+            <span class="text-sm text-gray-500">Loading graph data...</span>
+          </div>
+        </div>
+        <div v-else class="bg-white border border-gray-200 rounded-lg overflow-hidden p-6">
+          <div class="flex flex-col items-center justify-center h-64 text-center">
+            <FileText class="w-12 h-12 text-gray-300 mb-2" />
+            <h3 class="text-lg font-medium mb-1">No Graph Data</h3>
+            <p class="text-sm text-gray-500">
+              Graph data is not available for this deployment
+            </p>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
+  </div>
+</template>
+
+<style scoped>
+/* Additional styling can be added here */
+</style>

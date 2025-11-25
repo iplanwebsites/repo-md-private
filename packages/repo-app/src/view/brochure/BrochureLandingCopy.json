@@ -1,0 +1,354 @@
+{
+	"navigation": {
+		"logo": "Repo.md",
+		"links": [
+			{
+				"name": "Home",
+				"href": "#home"
+			},
+			{
+				"name": "Features",
+				"href": "#features"
+			},
+			{
+				"name": "Testimonials",
+				"href": "#testimonials"
+			},
+			{
+				"name": "Pricing",
+				"href": "#pricing"
+			},
+			{
+				"name": "FAQ",
+				"href": "#faq"
+			}
+		]
+	},
+	"hero": {
+		"tagline": "Publish Markdown, Effortlessly",
+		"title": "The simplest way to turn your Markdown files into beautiful websites",
+		"description": "PushMd connects your Markdown files directly to the web—no complex CMS, no endless configuration, just clean, fast publishing with Git-powered version control.",
+		"bg": "https://images.unsplash.com/photo-1713271320856-c7a30ae22cd2?q=80&w=1674&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+		"cta": "Get Started Free",
+		"ctaLink": "/beta",
+		"whiteText": true
+	},
+	"stats": [
+		{
+			"value": "100",
+			"unit": "%",
+			"label": "file ownership with no vendor lock-in",
+			"icon": "Lock"
+		},
+		{
+			"value": "80",
+			"unit": "%",
+			"label": "less publishing time compared to traditional CMS",
+			"icon": "Clock"
+		},
+		{
+			"value": "9",
+			"unit": "/10",
+			"label": "developers recommend PushMd",
+			"icon": "Users"
+		}
+	],
+	"trustedBy": {
+		"title": "Your Tools, Your Files",
+		"count": "1st",
+		"subtitle": "Keep using Obsidian, VS Code, or any Markdown editor you love - files stay on YOUR computer, not locked in a proprietary system",
+		"imageSrc": "https://static.repo.md/wiki/assets/img/LandingPage_Img/EditorsShowcase-md.webp"
+	},
+
+	"featuresTitle": {
+		"title": "A Complete System.",
+		"subtitle": "One mission: Simplified content publishing for developers and writers.",
+		"description": "PushMd combines the power of Git-based version control with elegant publishing to offer all the tools necessary to maximize your content creation workflow."
+	},
+	"features": [
+		{
+			"icon": "Edit",
+			"title": "Optimized Writing & Editing Experience",
+			"description": "Your tools, your files. Use any Markdown editor you love, work offline, and maintain true ownership of your content. No proprietary systems or vendor lock-in, ever.",
+			"cta": "Discover how it works",
+			"ctaLink": "/signup",
+			"imageSrc": "https://static.repo.md/wiki/assets/img/brochure/editing-md.webp",
+			"widgets": []
+		},
+		{
+			"icon": "Git",
+			"title": "Complete Version Control",
+			"description": "Track every change with Git-based version control. Risk-free experimentation knowing you can always revert. Use branches for drafts, PRs for reviews, and merge to publish.",
+			"cta": "Discover how it works",
+			"ctaLink": "/signup",
+			"imageSrc": "https://static.repo.md/wiki/assets/img/LandingPage_Img/GitWorkflow-md.webp",
+			"widgets": []
+		},
+		{
+			"icon": "Image",
+			"title": "Effortless Media Handling",
+			"description": "Drag-and-drop simplicity for adding images directly from your editor. Automatic optimization with images compressed and resized for optimal performance, all served via blazing-fast CDN.",
+			"cta": "Discover how it works",
+			"ctaLink": "/signup",
+			"imageSrc": "https://static.repo.md/wiki/assets/img/brochure/media-md.webp",
+			"widgets": []
+		},
+		{
+			"icon": "Code",
+			"title": "API-First Architecture",
+			"description": "Full SDK access to query and manipulate content from any frontend. Webhook support to trigger custom actions on content changes. Truly headless by design to use with any frontend framework.",
+			"cta": "Discover how it works",
+			"ctaLink": "/signup",
+			"imageSrc": "https://static.repo.md/wiki/assets/img/LandingPage_Img/API-md.webp",
+			"widgets": []
+		},
+		{
+			"icon": "Rocket",
+			"title": "Friction-Free Deployment",
+			"description": "Git-powered publishing where every commit becomes a deployment automatically. No complex CI/CD setups to manage. See changes live in seconds, not minutes, with detailed logs for debugging.",
+			"cta": "Discover how it works",
+			"ctaLink": "/signup",
+			"imageSrc": "https://static.repo.md/wiki/assets/img/LandingPage_Img/Deployment-md.webp",
+			"widgets": []
+		},
+		{
+			"icon": "Puzzle",
+			"title": "Intelligent Content Structure",
+			"description": "Extract and use frontmatter across your application. Find content by keyword or semantic similarity. Discover connections between articles and build advanced categorization systems with custom taxonomies.",
+			"cta": "Discover how it works",
+			"ctaLink": "/signup",
+			"imageSrc": "https://static.repo.md/wiki/assets/img/brochure/structure-md.webp",
+			"widgets": []
+		}
+	],
+	"securitySection": {
+		"title": "Your data is yours. Non-negotiable.",
+		"description": "The protection of your content and data is our absolute priority. With cutting-edge technologies and strict adherence to international standards, we ensure the security of your content and provide the flexibility you need.",
+		"features": [
+			{
+				"icon": "Shield",
+				"title": "Certified Hosting",
+				"description": "Data stored on certified servers meeting ISO standards and industry best practices."
+			},
+			{
+				"icon": "Lock",
+				"title": "Advanced Encryption",
+				"description": "Data protected by advanced encryption during transmission and storage."
+			},
+			{
+				"icon": "Git",
+				"title": "Git-Based Backups",
+				"description": "Your complete history is preserved with Git-based version control."
+			},
+			{
+				"icon": "Key",
+				"title": "2FA Authentication",
+				"description": "Secure access through two-factor authentication and strict access controls. Only you access your content repository."
+			}
+		]
+	},
+	"testimonialHeader": {
+		"title": "They won't go back.",
+		"subtitle": "Discover PushMd's impact on content creators' workflows"
+	},
+	"testimonials": [
+		{
+			"messages": [
+				"PushMd lets me focus on writing docs, not wrestling with complicated CMS systems.",
+				"My documentation workflow is finally streamlined."
+			],
+			"author": {
+				"name": "Sara L.",
+				"position": "Technical Writer at",
+				"company": "DevDocs",
+				"avatarClass": "sara-avatar",
+				"avatarUrl": "https://static.repo.md/wiki/assets/img/LandingPage_Img/Sara-sm.webp"
+			}
+		},
+		{
+			"messages": [
+				"We migrated our entire knowledge base to PushMd and cut our publishing time by 80%.",
+				"A transformative experience for our documentation process."
+			],
+			"author": {
+				"name": "Mark J.",
+				"position": "Engineering Lead at",
+				"company": "TechStack",
+				"avatarClass": "mark-avatar",
+				"avatarUrl": "https://static.repo.md/wiki/assets/img/LandingPage_Img/Mark-sm.webp"
+			}
+		},
+		{
+			"messages": [
+				"The combination of Git workflows with content publishing is exactly what I've been looking for.",
+				"My content stays in sync with my code now."
+			],
+			"author": {
+				"name": "Ana P.",
+				"position": "Developer Advocate at",
+				"company": "CodeShare",
+				"avatarClass": "ana-avatar",
+				"avatarUrl": "https://static.repo.md/wiki/assets/img/LandingPage_Img/Ana-sm.webp"
+			}
+		},
+		{
+			"messages": [
+				"The best content platforms don't get in your way, they enhance your existing workflow.",
+				"PushMd gave me this superpower."
+			],
+			"author": {
+				"name": "Robert T.",
+				"position": "Content Strategist at",
+				"company": "ContentLab",
+				"avatarClass": "robert-avatar",
+				"avatarUrl": "https://static.repo.md/wiki/assets/img/LandingPage_Img/Robert-sm.webp"
+			}
+		},
+		{
+			"messages": [
+				"My approach to documentation is human, intuitive, nuanced.",
+				"PushMd allows me to amplify my writing while maintaining complete control over my process."
+			],
+			"author": {
+				"name": "Emily R.",
+				"position": "Documentation Lead at",
+				"company": "DocsFirst",
+				"avatarClass": "emily-avatar",
+				"avatarUrl": "https://static.repo.md/wiki/assets/img/LandingPage_Img/Emily-sm.webp"
+			}
+		}
+	],
+	"pricingSection": {
+		"title": "Free Forever, Scale When You Need",
+		"description": "Choose the plan that fits your needs",
+		"plans": [
+			{
+				"name": "Personal",
+				"price": "Free",
+				"features": [
+					"Single project",
+					"Unlimited pages",
+					"Public repositories",
+					"5GB image storage",
+					"Community support"
+				],
+				"cta": "Get Started",
+				"ctaLink": "/signup",
+				"popular": false
+			},
+			{
+				"name": "Pro",
+				"price": "$7",
+				"period": "month",
+				"features": [
+					"5 projects",
+					"Unlimited pages",
+					"Private repositories",
+					"20GB image storage",
+					"Basic API access",
+					"Email support"
+				],
+				"cta": "Try Pro",
+				"ctaLink": "/signup-pro",
+				"popular": true
+			},
+			{
+				"name": "Team",
+				"price": "$19",
+				"period": "month",
+				"features": [
+					"15 projects",
+					"Unlimited pages",
+					"Team access controls",
+					"100GB image storage",
+					"Full API access",
+					"Priority support",
+					"Custom domains"
+				],
+				"cta": "Try Team",
+				"ctaLink": "/signup-team",
+				"popular": false
+			},
+			{
+				"name": "Enterprise",
+				"price": "Contact us",
+				"features": [
+					"Unlimited projects",
+					"Unlimited storage",
+					"SSO integration",
+					"SLA guarantees",
+					"Dedicated support"
+				],
+				"cta": "Contact Sales",
+				"ctaLink": "/contact",
+				"popular": false
+			}
+		]
+	},
+	"faqSection": {
+		"title": "Frequently Asked Questions",
+		"faqs": [
+			{
+				"question": "What's the difference between PushMd and other static site generators?",
+				"answer": "PushMd handles the entire pipeline—from content to deployment—without requiring you to manage build processes or hosting configuration."
+			},
+			{
+				"question": "Can I use my existing Markdown files?",
+				"answer": "Absolutely! PushMd works with standard Markdown files and is especially optimized for Obsidian vaults."
+			},
+			{
+				"question": "Do I need to know Git to use PushMd?",
+				"answer": "No—while Git powers our version control, you can use our desktop app or web interface if you prefer not to use Git directly."
+			},
+			{
+				"question": "Can I customize the look and feel of my site?",
+				"answer": "Yes, you can choose from our ready-to-use blog templates or integrate PushMd with your own frontend for complete design control."
+			},
+			{
+				"question": "Is my content locked in?",
+				"answer": "Never. Your content remains in standard Markdown format on YOUR computer. No vendor lock-in, ever."
+			},
+			{
+				"question": "How does image hosting work?",
+				"answer": "Simply include images in your repository or reference them in your Markdown. We automatically optimize them, create responsive versions, and serve them through our global CDN."
+			},
+			{
+				"question": "Can I use my preferred AI tools?",
+				"answer": "Yes! Unlike other platforms that lock you into specific AI tools, PushMd lets you use any AI assistant you prefer since you're working with local files."
+			}
+		]
+	},
+	"howItWorks": {
+		"title": "How It Works: Four Steps to Publishing",
+		"steps": [
+			{
+				"number": "1",
+				"title": "Connect",
+				"description": "Link your GitHub or GitLab repository"
+			},
+			{
+				"number": "2",
+				"title": "Create",
+				"description": "Write Markdown in your favorite editor"
+			},
+			{
+				"number": "3",
+				"title": "Push",
+				"description": "Commit and push changes to your repository"
+			},
+			{
+				"number": "4",
+				"title": "Done",
+				"description": "Your content is automatically published"
+			}
+		],
+		"tagline": "No build configs to maintain. No deployment headaches. Just writing and publishing."
+	},
+	"bottomSection": {
+		"tagline": "Join thousands of developers, writers, and teams who've simplified their content publishing",
+		"title": "Invest in your content workflow.",
+		"description": "PushMd is for writers and developers who want to combine powerful version control with efficient publishing. For those who want to do better, faster, without compromising on content quality or ownership.",
+		"cta": "Start Publishing Today",
+		"ctaLink": "/signup"
+	}
+}

@@ -15,7 +15,7 @@ packages/
 ├── repo-client/      # @repo-md/client - JS SDK
 ├── repo-processor/   # @repo-md/processor - Markdown processor
 ├── pushmd-api/       # @repo-md/api - Express API server
-├── pushmd-app/       # @repo-md/app - Vue.js frontend
+├── repo-app/         # @repo-md/app - Vue.js frontend
 ├── repo-build-worker/# @repo-md/worker - Async build worker
 ├── repo-cli/         # @repo-md/cli - CLI tool
 ├── repo-mcp-server/  # @repo-md/mcp-server - MCP Cloudflare Worker
