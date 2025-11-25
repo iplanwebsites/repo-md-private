@@ -20,7 +20,8 @@
   "private": true,
   "scripts": {
     "publish-npm": "npm run build-npm:force && cd dist && npm publish && cd .. && npm run version-bump-patch",
-    "build": "npm run clean && npm run build:lib && npm run build:cli && node npm/copy-to-dist.js",
+    "build": "npm run clean && npm run build:lib && npm run build:cli",
+    "build:full": "npm run clean && npm run build:lib && npm run build:cli && node npm/copy-to-dist.js",
     "build:lib": "npx vite build",
     "build:cli": "npx vite build --config cli.vite.config.ts",
     "build:minified": "npm run clean && MINIFY=true npx vite build && npm run build:cli && node npm/copy-to-dist.js",
