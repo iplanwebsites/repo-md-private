@@ -1,10 +1,13 @@
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { URL, fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { createRequire } from "node:module";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
 import AutoImport from "unplugin-auto-import/vite";
+
+const require = createRequire(import.meta.url);
 
 
 
@@ -138,6 +141,32 @@ function getCurrentDir() {
 // Get the monorepo root for resolving hoisted node_modules
 const repoRoot = resolve(getCurrentDir(), "../..");
 
+// Plugin to resolve packages from hoisted root node_modules
+// Needed because npm workspaces hoists deps and Vite can't find them when
+// processing @repo-md/client source files (which are aliased, not built)
+function resolveHoistedPackages() {
+	const packages = ['envizion', 'quick-lru', 'compute-cosine-similarity', 'minisearch', 'zod-metadata', 'zod'];
+
+	return {
+		name: 'resolve-hoisted-packages',
+		enforce: 'pre' as const,
+		resolveId(source: string) {
+			const pkgName = packages.find(p => source === p || source.startsWith(p + '/'));
+			if (!pkgName) return null;
+
+			try {
+				// Use Node's require.resolve with explicit paths to find the package
+				const resolved = require.resolve(source, {
+					paths: [resolve(repoRoot, 'node_modules')]
+				});
+				return resolved;
+			} catch {
+				return null;
+			}
+		}
+	};
+}
+
 import packageJson from "./package.json";
 
 export default defineConfig(async ({ command, mode }) => {
@@ -263,6 +292,8 @@ export default defineConfig(async ({ command, mode }) => {
 	},
 
 	plugins: [
+		// Resolve hoisted packages from root node_modules
+		resolveHoistedPackages(),
 		//https://github.com/unplugin/unplugin-auto-import
 		AutoImport(AUTO_IMPORT_OPTIONS),
 		vue({
@@ -298,13 +329,6 @@ export default defineConfig(async ({ command, mode }) => {
 			"@": resolve(getCurrentDir(), "./src"),
 			// Resolve workspace package for Vercel builds where symlinks don't work
 			"@repo-md/client": resolve(getCurrentDir(), "../repo-client/src/lib/index.js"),
-			// Explicitly resolve @repo-md/client dependencies from hoisted root node_modules
-			"envizion": resolve(repoRoot, "node_modules/envizion"),
-			"quick-lru": resolve(repoRoot, "node_modules/quick-lru"),
-			"compute-cosine-similarity": resolve(repoRoot, "node_modules/compute-cosine-similarity"),
-			"minisearch": resolve(repoRoot, "node_modules/minisearch"),
-			"zod-metadata": resolve(repoRoot, "node_modules/zod-metadata"),
-			"zod": resolve(repoRoot, "node_modules/zod"),
 		},
 	},
 
