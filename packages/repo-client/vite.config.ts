@@ -4,12 +4,15 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Create aliases for all dependencies to resolve from hoisted root node_modules
+const depAliases = Object.keys(packageJson.dependencies || {}).reduce((acc, dep) => {
+  acc[dep] = path.resolve(__dirname, '../../node_modules', dep);
+  return acc;
+}, {});
+
 export default {
   resolve: {
-    alias: {
-      // Help resolve packages from hoisted root node_modules
-      'envizion': path.resolve(__dirname, '../../node_modules/envizion')
-    }
+    alias: depAliases
   },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
