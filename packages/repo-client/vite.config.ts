@@ -1,5 +1,12 @@
 import packageJson from './package.json';
 
+// For library builds, externalize all dependencies - consumers will provide them
+const external = [
+  ...Object.keys(packageJson.dependencies || {}),
+  ...Object.keys(packageJson.devDependencies || {}),
+  /^node:.*/  // Also externalize node: imports
+];
+
 export default {
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
@@ -12,12 +19,9 @@ export default {
       fileName: 'repo-md'
     },
     rollupOptions: {
-      external: ['quick-lru'],
+      external,
       output: {
-        exports: 'named',
-        globals: {
-          'quick-lru': 'QuickLRU'
-        }
+        exports: 'named'
       }
     },
     // Disable minification for standard builds - the minified version will be created separately
