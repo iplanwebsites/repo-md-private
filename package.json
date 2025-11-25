@@ -29,13 +29,16 @@
     "format": "turbo run format",
     "vercel:build": "vercel build",
     "vercel:dev": "vercel dev",
-    "vercel:pull": "vercel pull",
-    "turbo": "^2.6.1",
-    "vercel": "^39.0.0",
+    "vercel:pull": "vercel pull"
+  },
+  "dependencies": {
     "vite": "^5.4.2",
     "typescript": "^5.5.3"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "turbo": "^2.6.1",
+    "vercel": "^39.0.0"
+  },
   "engines": {
     "node": "22.x"
   },
