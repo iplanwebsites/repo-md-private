@@ -1,9 +1,13 @@
 import packageJson from './package.json';
 
 // For library builds, externalize all dependencies - consumers will provide them
-const external = [
+// Use regex to match package and all subpaths (e.g., 'zod-metadata' and 'zod-metadata/register')
+const deps = [
   ...Object.keys(packageJson.dependencies || {}),
-  ...Object.keys(packageJson.devDependencies || {}),
+  ...Object.keys(packageJson.devDependencies || {})
+];
+const external = [
+  ...deps.map(dep => new RegExp(`^${dep}(/.*)?$`)),
   /^node:.*/  // Also externalize node: imports
 ];
 
