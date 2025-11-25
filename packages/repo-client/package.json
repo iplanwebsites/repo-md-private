@@ -21,9 +21,9 @@
   "scripts": {
     "publish-npm": "npm run build-npm:force && cd dist && npm publish && cd .. && npm run version-bump-patch",
     "build": "npm run clean && npm run build:lib && npm run build:cli && node npm/copy-to-dist.js",
-    "build:lib": "npx vite build",
-    "build:cli": "npx vite build --config cli.vite.config.ts",
-    "build:minified": "npm run clean && MINIFY=true npx vite build && npm run build:cli && node npm/copy-to-dist.js",
+    "build:lib": "NODE_PATH=../../node_modules npx vite build",
+    "build:cli": "NODE_PATH=../../node_modules npx vite build --config cli.vite.config.ts",
+    "build:minified": "npm run clean && MINIFY=true NODE_PATH=../../node_modules npx vite build && npm run build:cli && node npm/copy-to-dist.js",
     "build:demo": "cd src/demo && npm install && npm run build",
     "build:demo:pages": "npm run build:demo && touch demo/.nojekyll",
     "clean": "rimraf dist",
