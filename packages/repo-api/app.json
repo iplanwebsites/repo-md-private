@@ -1,0 +1,27 @@
+{
+  "name": "repo-md-api",
+  "description": "repo.md API server",
+  "scripts": {
+    "dokku": {
+      "predeploy": "npm run build --if-present"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "healthchecks": {
+    "web": [
+      {
+        "type": "startup",
+        "name": "web check",
+        "description": "Checking if the web server is up and responding",
+        "path": "/",
+        "attempts": 3,
+        "timeout": 5,
+        "wait": 5
+      }
+    ]
+  }
+}

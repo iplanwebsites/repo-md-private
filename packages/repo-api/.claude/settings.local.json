@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(rm:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(for file in lib/schedule/*.js routes/express/scheduleRoutes.js routes/scheduleRouter.js)",
+      "Bash(do echo \"Checking $file...\")",
+      "Bash(done)",
+      "Bash(rg:*)",
+      "Bash(npm start)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run demo:weather:*)",
+      "Bash(USE_MOCK_WEATHER_DATA=true node scripts/testChatTools.js)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx unimported:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": false
+}

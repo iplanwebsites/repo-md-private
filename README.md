@@ -80,6 +80,39 @@ Packages can reference each other using workspace protocol:
 - **Static Assets**: https://static.repo.md
 - **npm Package**: `repo-md`
 
+## Deployment
+
+### API Server (Dokku)
+
+Deploy `@repo-md/api` to Dokku from the monorepo:
+
+```bash
+# On Dokku server: create app and set app.json path for monorepo
+dokku apps:create repo-md-api
+dokku app-json:set repo-md-api appjson-path packages/repo-api/app.json
+
+# Set the build directory to the API package
+dokku builder:set repo-md-api build-dir packages/repo-api
+
+# Add Dokku remote and deploy
+git remote add dokku dokku@your-server:repo-md-api
+git push dokku main
+```
+
+The `app.json` in `packages/repo-api/` configures:
+- Predeploy scripts (build step)
+- Health checks
+- Process formation
+
+### Frontend App (Vercel)
+
+Deploy `@repo-md/app` to Vercel:
+
+1. Import repo in Vercel dashboard
+2. Set **Root Directory**: `packages/repo-app`
+3. Framework will auto-detect as Vite
+4. Deploy
+
 ## Architecture
 
 ```

@@ -1,0 +1,30 @@
+{
+  "entry": ["server.js"],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/scripts/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/*.test.js",
+    "**/*.spec.js"
+  ],
+  "ignoreUnresolved": [
+    "https",
+    "http",
+    "fs",
+    "path",
+    "crypto",
+    "url",
+    "util",
+    "stream",
+    "zlib",
+    "querystring",
+    "events",
+    "child_process",
+    "worker_threads",
+    "cluster",
+    "os",
+    "process"
+  ]
+}

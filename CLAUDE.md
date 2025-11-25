@@ -14,7 +14,7 @@ This is a Turborepo monorepo using npm workspaces. All packages live in `package
 packages/
 ├── repo-client/      # @repo-md/client - JS SDK
 ├── repo-processor/   # @repo-md/processor - Markdown processor
-├── pushmd-api/       # @repo-md/api - Express API server
+├── repo-api/         # @repo-md/api - Express API server
 ├── repo-app/         # @repo-md/app - Vue.js frontend
 ├── repo-build-worker/# @repo-md/worker - Async build worker
 ├── repo-cli/         # @repo-md/cli - CLI tool

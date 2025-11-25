@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "authtoken": "YOUR_AUTH_TOKEN",
+  "tunnels": {
+    "repo-md": {
+      "proto": "http",
+      "addr": "${PORT:-5588}",
+      "subdomain": "repo-md-dev"
+    }
+  }
+}
