@@ -1,0 +1,42 @@
+{
+  "name": "repo-migrator",
+  "version": "1.1.0",
+  "description": "RSS and WordPress migrator for repo-md",
+  "main": "index.js",
+  "directories": {
+    "lib": "./lib"
+  },
+  "files": [
+    "index.js",
+    "lib/"
+  ],
+  "scripts": {
+    "eslint": "eslint .",
+    "test-rss": "node test-migrator.js rss https://hardcoresoftware.learningbyshipping.com/feed",
+    "test-wp": "node test-migrator.js wordpress ./example-export.xml"
+  },
+  "repository": "hexojs/hexo-migrator-rss",
+  "bugs": "https://github.com/hexojs/hexo-migrator-rss/issues",
+  "keywords": [
+    "repo-md",
+    "rss",
+    "feed",
+    "atom",
+    "migrator"
+  ],
+  "author": "repo.md",
+  "license": "c",
+  "type": "module",
+  "dependencies": {
+    "camaro": "^6.0.2",
+    "got": "^11.0.1",
+    "turndown": "^6.0.0",
+    "wordpress-export-to-markdown": "^3.0.4"
+  },
+  "devDependencies": {
+    "eslint": "^8.22.0"
+  },
+  "engines": {
+    "node": ">=12.13.0 <13 || >=14"
+  }
+}
