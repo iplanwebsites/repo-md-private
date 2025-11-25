@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build:app",
   "outputDirectory": "packages/repo-app/dist",
-  "installCommand": "npm install",
+  "installCommand": "npm ci",
   "framework": null,
   "headers": [
     {
