@@ -32,8 +32,9 @@
     "vercel:pull": "vercel pull"
   },
   "dependencies": {
-    "vite": "^5.4.2",
-    "typescript": "^5.5.3"
+    "envizion": "0.0.3",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.2"
   },
   "devDependencies": {
     "turbo": "^2.6.1",
