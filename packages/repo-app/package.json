@@ -59,7 +59,7 @@
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.2.0",
     "reka-ui": "^2.4.0",
-    "@repo-md/client": "workspace:*",
+    "@repo-md/client": "*",
     "seedrandom": "^3.0.5",
     "simple-icons": "^14.12.3",
     "sql.js": "^1.13.0",

@@ -28,7 +28,12 @@
       "Bash(packages/pushmd-api/scripts/testContentDelegation.js )",
       "Bash(packages/pushmd-api/lib/llm/agents/projectContentAgent.js )",
       "Bash(packages/pushmd-app/src/view/ProjectApi.vue )",
-      "Bash(packages/pushmd-app/src/view/ProjectDB.vue)"
+      "Bash(packages/pushmd-app/src/view/ProjectDB.vue)",
+      "Bash(packages/repo-api/package.json )",
+      "Bash(packages/repo-app/package.json )",
+      "Bash(packages/repo-build-worker/package.json )",
+      "Bash(packages/repo-mcp-npm/package.json )",
+      "Bash(packages/repo-mcp-server/package.json)"
     ],
     "deny": []
   },
