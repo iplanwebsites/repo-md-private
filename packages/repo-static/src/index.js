@@ -110,6 +110,9 @@ async function handleRequest(request, env, ctx) {
     // Add CORS headers
     headers.set('Access-Control-Allow-Origin', '*')
 
+    // Allow cross-origin embedding (images, fonts, etc.)
+    headers.set('Cross-Origin-Resource-Policy', 'cross-origin')
+
     // Add Vary header for proper CORS caching
     headers.set('Vary', 'Origin')
 
