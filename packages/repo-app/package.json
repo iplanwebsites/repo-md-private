@@ -36,6 +36,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "color-convert": "^2.0.1",
+    "compute-cosine-similarity": "^1.1.0",
     "cytoscape": "^3.32.0",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
@@ -55,10 +56,12 @@
     "mathjs": "^14.5.3",
     "ml-matrix": "^6.12.1",
     "ml-pca": "^4.1.1",
+    "minisearch": "^6.3.0",
     "monaco-editor": "^0.52.2",
     "ogl": "^1.0.11",
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.2.0",
+    "quick-lru": "^6.1.1",
     "reka-ui": "^2.4.0",
     "repo-md": "0.0.32",
     "seedrandom": "^3.0.5",
@@ -80,7 +83,8 @@
     "vue-speedometer": "^3.0.1",
     "vue3-apexcharts": "^1.8.0",
     "vue3-plotly": "^0.0.7",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zod-metadata": "^1.1.2"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.6.1",
