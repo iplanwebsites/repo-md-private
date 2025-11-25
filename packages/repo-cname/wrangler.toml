@@ -1,0 +1,20 @@
+name = "repo-cname"
+main = "src/index.js"
+compatibility_date = "2023-05-03"
+
+[triggers]
+crons = []
+
+
+
+[observability.logs]
+enabled = true
+
+
+
+
+
+# Domain bindings can be configured here
+# [[routes]]
+# pattern = "example.com/*"
+# zone_name = "example.com"

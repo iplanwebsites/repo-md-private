@@ -1,0 +1,11 @@
+{
+  "name": "next-template-a",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NextJS template A for multi-tenant platform",
+  "scripts": {
+    "dev": "echo \"Running development server for next-template-a\"",
+    "build": "echo \"Building next-template-a\"",
+    "start": "echo \"Starting next-template-a\""
+  }
+}

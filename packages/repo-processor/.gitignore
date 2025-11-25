@@ -1,0 +1,9 @@
+node_modules
+dist
+.idea
+DEV.md 
+**/.claude/settings.local.json1
+
+**/.claude/settings.local.json
+.claude/settings.local.json
+test/portfolio-dist/

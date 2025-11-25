@@ -1,0 +1,20 @@
+{
+  "name": "@repo-md/static",
+  "version": "0.0.1",
+  "description": "Cloudflare Worker to serve R2 assets with immutable caching",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "publish": "wrangler publish",
+    "test": "jest",
+    "format": "prettier --write '**/*.{js,css,json,md}'"
+  },
+  "author": "repo.md",
+  "devDependencies": {
+    "wrangler": "^4.15.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  }
+}

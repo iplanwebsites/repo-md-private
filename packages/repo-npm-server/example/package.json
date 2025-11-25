@@ -1,0 +1,21 @@
+{
+  "name": "repo-md-example",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Example usage of dynamic repo-md package creation and installation",
+  "main": "createRemoteRepoFromPrompt.js",
+  "scripts": {
+    "create": "node createRemoteRepoFromPrompt.js",
+    "demo:cooking": "node createRemoteRepoFromPrompt.js \"Create a cooking blog with AI-generated recipes\"",
+    "demo:tech": "node createRemoteRepoFromPrompt.js \"Create a tech blog about web development\"",
+    "demo:docs": "node createRemoteRepoFromPrompt.js \"Create documentation for my API project\"",
+    "test-package": "node testPackage.js"
+  },
+  "keywords": [
+    "repo-md",
+    "dynamic-packages",
+    "example"
+  ],
+  "author": "repo-md",
+  "license": "MIT"
+}

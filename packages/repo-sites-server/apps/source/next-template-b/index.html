@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Next Template B</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Open Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #DB4437;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .content {
+      padding: 20px;
+      background-color: white;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+    .footer {
+      background-color: #F4B400;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .feature-card {
+      border: 1px solid #eee;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{TENANT_NAME}}</h1>
+    <p>Welcome to our modern site built with Template B</p>
+  </div>
+  
+  <div class="container">
+    <div class="content">
+      <h2>Welcome to Our Platform</h2>
+      <p>This is template B, featuring a more modern design with cards and enhanced styling.</p>
+      
+      <h2>Our Services</h2>
+      <div class="feature-cards">
+        {{FEATURE_CARDS}}
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>&copy; 2024 {{TENANT_NAME}} | All rights reserved</p>
+  </div>
+  
+  <script>
+    // This script would be replaced with actual NextJS code
+    // that loads tenant configuration and renders the page
+    console.log('Template B loaded');
+  </script>
+</body>
+</html>

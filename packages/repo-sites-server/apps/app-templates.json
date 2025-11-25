@@ -1,0 +1,38 @@
+{
+  "templates": [
+    {
+      "name": "next-template-a",
+      "repo": "https://github.com/example/next-template-a.git",
+      "branch": "main",
+      "buildCommand": "npm run build",
+      "distDir": "dist",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "description": "Basic NextJS template with simple styling"
+    },
+    {
+      "name": "next-template-b",
+      "repo": "https://github.com/example/next-template-b.git",
+      "branch": "main",
+      "buildCommand": "npm run build",
+      "distDir": "out",
+      "env": {
+        "NODE_ENV": "production",
+        "NEXT_PUBLIC_API_URL": "/api"
+      },
+      "description": "Modern NextJS template with enhanced UI components"
+    },
+    {
+      "name": "remix-template",
+      "repo": "https://github.com/example/remix-template.git",
+      "branch": "main",
+      "buildCommand": "npm run build",
+      "distDir": "public/build",
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "description": "Remix-based template optimized for documentation sites"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# Test .repoignore file
+# Ignore all README files  
+README.md
+readme.md
+# Ignore all license files
+LICENSE.md
+# Pattern matching
+TEST_*.md
+# Wildcard patterns
+*.tmp.md
+# Directory patterns
+internal/*
+private/*
+drafts/

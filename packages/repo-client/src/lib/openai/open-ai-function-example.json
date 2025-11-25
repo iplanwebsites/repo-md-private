@@ -1,0 +1,30 @@
+[
+  {
+    "name": "get_weather",
+    "description": "Get the weather for a given location",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "Location to get weather for"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit to get weather in",
+          "enum": ["celsius", "fahrenheit"]
+        }
+      },
+      "required": ["location"]
+    }
+  },
+  {
+    "name": "get_joke",
+    "description": "Get a programming joke",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  }
+]

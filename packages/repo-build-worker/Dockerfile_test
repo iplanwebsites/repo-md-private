@@ -1,0 +1,93 @@
+# Build stage
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install build dependencies for better-sqlite3 and other native modules
+RUN apk add --no-cache \
+    build-base \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev \
+    pixman-dev \
+    freetype-dev \
+    fontconfig \
+    ttf-dejavu \
+    ttf-freefont \
+    python3 \
+    vips-dev \
+    sqlite-dev \
+    git
+
+# No need for special repo-processor handling - it's included with the rest of the source code
+
+# Install dependencies with proper flags for native modules 
+RUN npm ci --omit=dev --unsafe-perm=true || (cat /root/.npm/_logs/*-debug-0.log && exit 1)
+
+# Install sharp first
+RUN npm install --platform=linuxmusl sharp --unsafe-perm=true
+
+# Install transformers with --ignore-scripts to skip all install scripts
+RUN npm install --platform=linuxmusl --ignore-scripts @xenova/transformers --unsafe-perm=true
+
+# Production stage
+FROM node:22-alpine
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache vips-dev sqlite
+
+# Copy node modules from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5522
+ENV TRANSFORMERS_CACHE="/app/models"
+ENV AI_MODELS="XENOVA/DISTILBERT-BASE-UNCASED-FINETUNED-SST-2-ENGLISH,XENOVA/ALL-MINILM-L6-V2"
+ENV USE_PERSISTENT_MODELS="false"
+
+# Create directory for models
+RUN mkdir -p /app/models
+
+# Create startup script
+RUN echo '#!/bin/sh\n\
+    # Use PORT from environment\n\
+    echo "Starting server on port: $PORT"\n\
+    \n\
+    # Check if we should use persistence\n\
+    if [ "$USE_PERSISTENT_MODELS" = "true" ]; then\n\
+    # Only download if not already downloaded\n\
+    if [ ! -f /app/models/.downloaded ]; then\n\
+    echo "Downloading AI models (persistent mode): $AI_MODELS"\n\
+    IFS=","\n\
+    for model in $AI_MODELS; do\n\
+    npx --yes @xenova/transformers download $model\n\
+    done\n\
+    touch /app/models/.downloaded\n\
+    else\n\
+    echo "Using cached AI models (persistent mode)"\n\
+    fi\n\
+    else\n\
+    # Always download models on startup\n\
+    echo "Downloading AI models (non-persistent mode): $AI_MODELS"\n\
+    IFS=","\n\
+    for model in $AI_MODELS; do\n\
+    npx --yes @xenova/transformers download $model\n\
+    done\n\
+    fi\n\
+    \n\
+    # Start the application using npm start\n\
+    exec npm start' > /app/start.sh
+
+RUN chmod +x /app/start.sh
+
+# Start using the script
+CMD ["/app/start.sh"]

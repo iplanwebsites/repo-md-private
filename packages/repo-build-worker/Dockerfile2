@@ -1,0 +1,47 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY package*.json ./
+
+# Install only the necessary dependencies
+RUN apk add --no-cache \
+    build-base \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    vips-dev \
+    sqlite-dev \
+    python3 \
+    libc6-compat \
+    gcompat
+
+# Install dependencies without optional packages first to avoid onnxruntime
+RUN npm ci --omit=optional \
+    && npm rebuild --arch=x64 --platform=linux --libc=musl sharp
+
+# Explicitly remove problematic onnxruntime package or downgrade to compatible version
+RUN npm uninstall onnxruntime-node || true \
+    && rm -rf /app/node_modules/onnxruntime-node 2>/dev/null || true
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5522
+ENV TRANSFORMERS_CACHE="/app/models"
+# Ensure AI models are disabled
+ENV AI_MODELS=""
+ENV USE_PERSISTENT_MODELS="false"
+
+# Create directory for models
+RUN mkdir -p /app/models && \
+    chmod +x /app/scripts/docker-start.sh
+
+# Expose the port
+EXPOSE 5522
+
+# Start the application
+CMD ["/bin/sh", "/app/scripts/docker-start.sh"]

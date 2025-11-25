@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Next Template A</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #4285F4;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .content {
+      padding: 20px;
+    }
+    .footer {
+      background-color: #34A853;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>{{TENANT_NAME}}</h1>
+    <p>Welcome to our site built with Template A</p>
+  </div>
+  
+  <div class="container">
+    <div class="content">
+      <h2>About Us</h2>
+      <p>This is a demo page for the multi-tenant platform. This content would be customized based on tenant configuration.</p>
+      
+      <h2>Features</h2>
+      <ul>
+        {{FEATURES}}
+      </ul>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>&copy; 2024 {{TENANT_NAME}} | Powered by Multi-tenant Platform</p>
+  </div>
+  
+  <script>
+    // This script would be replaced with actual NextJS code
+    // that loads tenant configuration and renders the page
+    console.log('Template A loaded');
+  </script>
+</body>
+</html>

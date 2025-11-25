@@ -1,0 +1,27 @@
+name = "repo-npm-instance"
+main = "worker.js"
+compatibility_date = "2024-06-27"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "repo-npm-instance"
+routes = [
+  { pattern = "npm.repo.md/*", zone_name = "repo.md" }
+]
+
+[env.staging]
+name = "repo-npm-instance-staging"
+routes = [
+  { pattern = "npm-staging.repo.md/*", zone_name = "repo.md" }
+]
+
+# Optional: Add KV namespace for caching
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-namespace-id"
+# preview_id = "your-preview-kv-namespace-id"
+
+# Optional: Add analytics for monitoring
+# [analytics_engine_datasets]
+# binding = "ANALYTICS"
+# dataset = "repo_npm_analytics"

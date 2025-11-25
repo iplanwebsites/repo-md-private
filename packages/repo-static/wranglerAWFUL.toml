@@ -1,0 +1,30 @@
+name = "repo-static"
+main = "src/index.js"
+compatibility_date = "2023-06-01"
+
+# Configure your R2 bucket
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "repomd1"
+preview_bucket_name = "repomd1"
+
+# Routes configuration - Updated format
+routes = [
+  { pattern = "static.repo.md/*", zone_name = "repo.md" }
+]
+
+# Optional: Customize the Worker environment
+[vars]
+# You can add environment variables here
+# Example:
+# ENV = "production"
+
+# Enable logs
+[logs]
+enabled = true
+
+# Configure resource consumption - not supported on FREE plans
+# [limits]
+# Increase limits if needed for larger assets or more requests
+# cpu_ms = 50
+# memory_mb = 128

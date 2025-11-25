@@ -1,0 +1,39 @@
+{
+  "name": "@repo-md/npm-server",
+  "version": "0.0.1",
+  "private": true,
+  "homepage": "https://repo.md",
+  "description": "Cloudflare Worker for serving dynamic npm packages for repo-md",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:test": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:dev": "wrangler dev --local --port 8788"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240620.0",
+    "wrangler": "^3.60.3",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "npm",
+    "repo-md",
+    "dynamic-packages"
+  ],
+  "author": "repo-md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/repo-md/repo-npm-instance.git"
+  }
+}

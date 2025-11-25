@@ -1,0 +1,54 @@
+{
+  "name": "repo-md",
+  "version": "0.0.33",
+  "type": "module",
+  "main": "./repo-md.js",
+  "module": "./repo-md.js",
+  "unpkg": "./repo-md.min.umd.cjs",
+  "jsdelivr": "./repo-md.min.umd.cjs",
+  "types": "./index.d.ts",
+  "bin": {
+    "repo-md": "./cli/repo-md-cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./repo-md.js",
+      "require": "./repo-md.umd.cjs",
+      "types": "./index.d.ts"
+    },
+    "./min": {
+      "require": "./repo-md.min.umd.cjs"
+    }
+  },
+  "files": [
+    "*.js",
+    "*.cjs",
+    "*.d.ts",
+    "cli",
+    "README.md"
+  ],
+  "description": "API client for consuming content from your repo.md projects",
+  "keywords": [
+    "repo.md",
+    "cms",
+    "content",
+    "api",
+    "json",
+    "typescript",
+    "search"
+  ],
+  "author": "repo.md",
+  "website": "https://repo.md",
+  "homepage": "https://repo.md",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/repo-md/repo-md.git"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "commander": "^11.1.0",
+    "quick-lru": "^6.1.1"
+  },
+  "private": false
+}

@@ -1,0 +1,68 @@
+# Cloudflare Workers + Containers Configuration
+# https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "repo-build-worker"
+main = "src/cf-worker.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Account details (configure with: wrangler login)
+# account_id will be set automatically after login
+
+# Container Configuration
+# https://developers.cloudflare.com/containers/configuration/
+[[containers]]
+max_instances = 10
+class_name = "RepoBuildContainer"
+image = "./Dockerfile.cf"
+
+# Durable Object Bindings for Container Management
+[[durable_objects.bindings]]
+name = "BUILD_CONTAINER"
+class_name = "RepoBuildContainer"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RepoBuildContainer"]
+
+# Environment Variables
+[vars]
+SKIP_EMBEDDINGS = "true"  # Disable embeddings in CF Workers
+NODE_ENV = "production"
+PORT = "5522"
+
+# Secrets (set with: wrangler secret put <NAME>)
+# wrangler secret put GITHUB_TOKEN
+# wrangler secret put OPENAI_API_KEY
+# wrangler secret put R2_ACCESS_KEY_ID
+# wrangler secret put R2_SECRET_ACCESS_KEY
+# wrangler secret put R2_ACCOUNT_ID
+# wrangler secret put R2_BUCKET_NAME
+
+# KV Namespaces for State Management
+# Create with: wrangler kv:namespace create "JOB_STATE"
+# [[kv_namespaces]]
+# binding = "JOB_STATE"
+# id = "YOUR_KV_NAMESPACE_ID"
+
+# R2 Bucket Bindings (for asset storage)
+# [[r2_buckets]]
+# binding = "ASSETS_BUCKET"
+# bucket_name = "repo-build-assets"
+
+# D1 Database (alternative to SQLite)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "repo_build_db"
+# database_id = "YOUR_D1_DATABASE_ID"
+
+# Build Configuration
+[build]
+command = ""
+watch_dirs = ["src"]
+
+# Development Configuration
+[dev]
+port = 5522
+local_protocol = "http"

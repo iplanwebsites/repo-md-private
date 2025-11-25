@@ -1,0 +1,11 @@
+{
+  "name": "remix-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remix template for multi-tenant platform",
+  "scripts": {
+    "dev": "echo \"Running development server for remix-template\"",
+    "build": "echo \"Building remix-template\"",
+    "start": "echo \"Starting remix-template\""
+  }
+}

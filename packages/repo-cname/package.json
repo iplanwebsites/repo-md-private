@@ -1,0 +1,13 @@
+{
+  "name": "@repo-md/cname",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler publish",
+    "dev": "wrangler dev",
+    "test": "echo \"No tests yet\""
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
