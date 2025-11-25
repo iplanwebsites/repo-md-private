@@ -6,20 +6,20 @@ A Git-based headless CMS platform. Push markdown to Git, get instant edge deploy
 
 This monorepo contains all packages for the repo.md platform:
 
-| Package | Description |
-|---------|-------------|
-| `@repo-md/client` | JavaScript SDK for consuming repo.md content |
-| `@repo-md/processor` | Markdown processor (Obsidian vault to JSON) |
-| `@repo-md/api` | Express API server |
-| `@repo-md/app` | Vue.js frontend application (`repo-app`) |
-| `@repo-md/worker` | Async build worker (GCP Cloud Run / Cloudflare) |
-| `@repo-md/cli` | Command-line interface |
-| `@repo-md/mcp-server` | MCP server (Cloudflare Worker) |
-| `@repo-md/mcp` | MCP npm package |
-| `@repo-md/npm-server` | Dynamic npm package server |
-| `@repo-md/sites-server` | Multi-tenant sites server |
-| `@repo-md/cname` | Custom domain worker |
-| `@repo-md/static` | Static asset CDN worker |
+| Package                 | Description                                     |
+| ----------------------- | ----------------------------------------------- |
+| `@repo-md/client`       | JavaScript SDK for consuming repo.md content    |
+| `@repo-md/processor`    | Markdown processor (Obsidian vault to JSON)     |
+| `@repo-md/api`          | Express API server                              |
+| `@repo-md/app`          | Vue.js frontend application (`repo-app`)        |
+| `@repo-md/worker`       | Async build worker (GCP Cloud Run / Cloudflare) |
+| `@repo-md/cli`          | Command-line interface                          |
+| `@repo-md/mcp-server`   | MCP server (Cloudflare Worker)                  |
+| `@repo-md/mcp`          | MCP npm package                                 |
+| `@repo-md/npm-server`   | Dynamic npm package server                      |
+| `@repo-md/sites-server` | Multi-tenant sites server                       |
+| `@repo-md/cname`        | Custom domain worker                            |
+| `@repo-md/static`       | Static asset CDN worker                         |
 
 ## Quick Start
 
@@ -100,6 +100,7 @@ git push dokku main
 ```
 
 The `app.json` in `packages/repo-api/` configures:
+
 - Predeploy scripts (build step)
 - Health checks
 - Process formation
