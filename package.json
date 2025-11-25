@@ -1,0 +1,38 @@
+{
+  "name": "repo-md-monorepo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "repo.md monorepo - Git-based headless CMS platform",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build --filter=!@repo-md/cli",
+    "build:client": "turbo run build --filter=@repo-md/client",
+    "build:processor": "turbo run build --filter=@repo-md/processor",
+    "build:api": "turbo run build --filter=@repo-md/api",
+    "build:app": "turbo run build --filter=@repo-md/app",
+    "build:worker": "turbo run build --filter=@repo-md/worker",
+    "dev": "turbo run dev",
+    "dev:client": "turbo run dev --filter=@repo-md/client",
+    "dev:processor": "turbo run dev --filter=@repo-md/processor",
+    "dev:api": "turbo run dev --filter=@repo-md/api",
+    "dev:app": "turbo run dev --filter=@repo-md/app",
+    "dev:worker": "turbo run dev --filter=@repo-md/worker",
+    "dev:mcp-server": "turbo run dev --filter=@repo-md/mcp-server",
+    "dev:sites-server": "turbo run dev --filter=@repo-md/sites-server",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "turbo run format"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}

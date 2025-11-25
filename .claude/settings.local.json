@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(rm:*)",
+      "Bash(rg:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(ls:*)",
+      "Bash(packages/pushmd-api/lib/llm/tools/repoMdNativeTools.js )",
+      "Bash(packages/pushmd-api/lib/llm/agents/ContentAgent.js )",
+      "Bash(packages/pushmd-api/lib/llm/editorChat.js )",
+      "Bash(packages/pushmd-api/lib/repoBlogOfficial.js )",
+      "Bash(packages/pushmd-api/DEV/repo-agent-demo/repo.ts )",
+      "Bash(packages/pushmd-app/vite.config.ts )",
+      "Bash(packages/pushmd-app/src/view/Deploy.vue )",
+      "Bash(packages/pushmd-app/src/lib/repoDocsOfficial.js )",
+      "Bash(packages/pushmd-app/src/lib/repoBlogOfficial.js )",
+      "Bash(packages/repo-mcp-server/repo-instance-example.js )",
+      "Bash(packages/repo-mcp-server/src/index.ts )",
+      "Bash(packages/repo-mcp-server/src/index_BROKEN_HONO.ts)",
+      "Bash(packages/pushmd-api/scripts/testContentDelegation.js )",
+      "Bash(packages/pushmd-api/lib/llm/agents/projectContentAgent.js )",
+      "Bash(packages/pushmd-app/src/view/ProjectApi.vue )",
+      "Bash(packages/pushmd-app/src/view/ProjectDB.vue)"
+    ],
+    "deny": []
+  },
+  "enableAllProjectMcpServers": false
+}

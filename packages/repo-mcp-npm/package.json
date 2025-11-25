@@ -1,0 +1,17 @@
+{
+  "name": "@repo-md/mcp",
+  "version": "0.0.1",
+  "description": "MCP server for repo.md projects",
+  "author": "repo.md",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "repo.md",
+    "markdown"
+  ],
+  "scripts": {},
+  "dependencies": {
+    "@repo-md/client": "workspace:*"
+  }
+}
