@@ -39,7 +39,8 @@
       "Bash(npx tsc:*)",
       "Bash(node --check:*)",
       "Bash(node -e:*)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(npm run build:client:*)"
     ],
     "deny": []
   },
