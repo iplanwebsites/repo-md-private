@@ -120,7 +120,9 @@ console.log("📷 Registering media upload routes: /api/projects");
 app.use("/api/projects", mediaUploadRoutes);
 
 // Register project generation streaming routes
-console.log("🤖 Registering project generation streaming routes: /api/project-generation/stream");
+console.log(
+  "🤖 Registering project generation streaming routes: /api/project-generation/stream"
+);
 app.use("/api/project-generation/stream", projectGenerationStreamRoutes);
 
 // Register Slack routes
@@ -204,7 +206,8 @@ app.use(
 // Define root route
 app.get("/", (req, res) => {
   res.json({
-    response: "Repo.md servers are up!   check out repo.md for your dashboard",
+    response:
+      "Repo.md servers are up! yo!  check out repo.md for your dashboard",
     date: new Date().toISOString(),
   });
 });
