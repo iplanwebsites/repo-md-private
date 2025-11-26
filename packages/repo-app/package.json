@@ -36,7 +36,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "color-convert": "^2.0.1",
-    "compute-cosine-similarity": "^1.1.0",
     "cytoscape": "^3.32.0",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
@@ -86,6 +85,7 @@
     "zod-metadata": "^1.1.2"
   },
   "devDependencies": {
+    "repo-md": "file:../npm-repo-md",
     "@antfu/eslint-config": "^2.6.1",
     "@biomejs/biome": "1.9.4",
     "@iconify-json/radix-icons": "^1.1.14",

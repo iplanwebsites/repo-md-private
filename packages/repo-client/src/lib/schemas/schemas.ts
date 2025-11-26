@@ -1,9 +1,18 @@
 // zod-metadata must be registered before using .meta() on zod schemas
 import { z, type ZodTypeAny } from "zod";
-import { register } from "zod-metadata";
 
-// Register zod-metadata to extend ZodType prototype with .meta()
-register(z);
+// Inline zod-metadata register to avoid CJS interop issues in Vite dev mode
+function registerZodMeta(zod: typeof z): void {
+  if (typeof zod.ZodType.prototype.meta !== 'undefined') return;
+  zod.ZodType.prototype.meta = function(meta: Record<string, unknown>) {
+    this._def.meta = { ...this._def.meta, ...meta };
+    return this;
+  };
+  zod.ZodType.prototype.getMeta = function() {
+    return this._def.meta;
+  };
+}
+registerZodMeta(z);
 
 // Base schemas for common parameter types
 const stringSchema = z.string();

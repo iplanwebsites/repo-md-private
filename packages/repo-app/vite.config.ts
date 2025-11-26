@@ -145,12 +145,29 @@ const repoRoot = resolve(getCurrentDir(), "../..");
 // Needed because npm workspaces hoists deps and Vite can't find them when
 // processing @repo-md/client source files (which are aliased, not built)
 function resolveHoistedPackages() {
-	const packages = ['envizion', 'quick-lru', 'compute-cosine-similarity', 'minisearch', 'zod-metadata', 'zod'];
+	// Packages that need explicit ESM resolution (have dual CJS/ESM exports)
+	const esmPackages: Record<string, string> = {
+		'minisearch': 'minisearch/dist/es/index.js',
+		'zod': 'zod/index.js',
+	};
+	// Packages that can use require.resolve (pure ESM or CJS-compatible)
+	const packages = ['envizion', 'quick-lru'];
 
 	return {
 		name: 'resolve-hoisted-packages',
 		enforce: 'pre' as const,
 		resolveId(source: string) {
+			// Check for packages that need explicit ESM path
+			if (esmPackages[source]) {
+				try {
+					return require.resolve(esmPackages[source], {
+						paths: [resolve(repoRoot, 'node_modules')]
+					});
+				} catch {
+					return null;
+				}
+			}
+
 			const pkgName = packages.find(p => source === p || source.startsWith(p + '/'));
 			if (!pkgName) return null;
 
@@ -174,14 +191,15 @@ export default defineConfig(async ({ command, mode }) => {
 	let proxyConfig = {};
 	if (command === 'serve') {
 		try {
-			const { viteRepoMdProxy } = await import("@repo-md/client");
+			// Use bundled repo-md for vite.config (runs in Node.js, not Vite transform)
+			const { viteRepoMdProxy } = await import("repo-md");
 			proxyConfig = {
 				...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo' }),
 				...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo_docs' }),
 				...viteRepoMdProxy({ projectId: '680e97604a0559a192640d2c', route: '_repo_blog' }),
 			};
 		} catch (e) {
-			console.warn('Could not load @repo-md/client proxy config:', e);
+			console.warn('Could not load repo-md proxy config:', e);
 		}
 	}
 

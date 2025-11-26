@@ -3,9 +3,8 @@
  * Provides functions for computing and retrieving media similarities
  */
 
-import computeCosineSimilarityPkg from "compute-cosine-similarity";
-const computeCosineSimilarity = computeCosineSimilarityPkg as unknown as (a: number[], b: number[]) => number;
 import { LOG_PREFIXES } from "../logger.js";
+import { cosineSimilarity } from "../vector.js";
 import type { Media } from '../posts/search.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
@@ -199,7 +198,7 @@ export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimil
     }
 
     // Calculate similarity
-    const similarity = computeCosineSimilarity(
+    const similarity = cosineSimilarity(
       embeddingsMap[hash1],
       embeddingsMap[hash2]
     );
