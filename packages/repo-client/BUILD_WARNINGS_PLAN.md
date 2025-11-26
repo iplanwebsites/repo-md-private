@@ -97,5 +97,5 @@ The following type nodes were renamed because of name collisions:
 ## Priority
 
 1. ~~**Type collisions** - Most impactful for API consumers~~ ✅ FIXED
-2. **UMD globals** - Quick fix, improves UMD usage (TODO)
+2. ~~**UMD globals** - Quick fix, improves UMD usage~~ ✅ FIXED
 3. **Dynamic import** - Low priority, just informational (can ignore)
