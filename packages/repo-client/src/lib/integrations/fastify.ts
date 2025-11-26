@@ -4,15 +4,69 @@
  */
 
 import { UnifiedProxyConfig } from '../proxy/UnifiedProxyConfig.js';
-import { parseMediaPath, proxyFetch, handleProxyError, createResponseHeaders, debugLog } from '../proxy/nodeUtils.js';
+import {
+  parseMediaPath,
+  proxyFetch,
+  handleProxyError,
+  createResponseHeaders,
+  debugLog,
+  type HeaderMap,
+} from '../proxy/nodeUtils.js';
+
+/** Fastify plugin options */
+export interface FastifyRepoMdOptions {
+  projectId: string;
+  mediaUrlPrefix?: string;
+  r2Url?: string;
+  cacheMaxAge?: number;
+  debug?: boolean;
+  projectPathPrefix?: string;
+}
+
+/** Fastify request interface */
+export interface FastifyRequest {
+  url: string;
+  method: string;
+  headers: HeaderMap;
+}
+
+/** Fastify reply interface */
+export interface FastifyReply {
+  code: (statusCode: number) => FastifyReply;
+  header: (key: string, value: string) => FastifyReply;
+  send: (payload?: unknown) => FastifyReply;
+}
+
+/** Fastify route handler */
+export type FastifyRouteHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+
+/** Fastify instance interface */
+export interface FastifyInstance {
+  get: (path: string, handler: FastifyRouteHandler) => void;
+  head: (path: string, handler: FastifyRouteHandler) => void;
+}
+
+/** Fastify plugin done callback */
+export type FastifyDone = () => void;
+
+/** Fastify plugin function */
+export type FastifyPlugin = (
+  fastify: FastifyInstance,
+  options: FastifyRepoMdOptions,
+  done: FastifyDone
+) => Promise<void>;
 
 /**
  * Create a Fastify plugin for RepoMD media proxy
- * @param {Object} fastify - Fastify instance
- * @param {Object} options - Plugin options including projectId
- * @param {Function} done - Callback to signal plugin registration complete
+ * @param fastify - Fastify instance
+ * @param options - Plugin options including projectId
+ * @param done - Callback to signal plugin registration complete
  */
-async function fastifyRepoMdPlugin(fastify, options, done) {
+async function fastifyRepoMdPlugin(
+  fastify: FastifyInstance,
+  options: FastifyRepoMdOptions,
+  done: FastifyDone
+): Promise<void> {
   const { projectId, ...proxyOptions } = options;
 
   if (!projectId) {
@@ -25,9 +79,9 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
   });
 
   // Register a wildcard route for media files
-  fastify.get(`${config.mediaUrlPrefix}*`, async (request, reply) => {
+  fastify.get(`${config.mediaUrlPrefix}*`, async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const mediaPath = parseMediaPath(request.url, config.mediaUrlPrefix);
-    
+
     if (!mediaPath) {
       // This shouldn't happen with our route, but just in case
       reply.code(404).send('Not found');
@@ -38,9 +92,9 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
 
     try {
       const targetUrl = config.getTargetUrl(mediaPath);
-      
+
       // Create headers object from request
-      const requestHeaders = {};
+      const requestHeaders: HeaderMap = {};
       Object.entries(request.headers).forEach(([key, value]) => {
         if (key.toLowerCase() !== 'host') {
           requestHeaders[key] = value;
@@ -52,7 +106,7 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
         headers: requestHeaders,
       });
 
-      const headers = response.ok 
+      const headers = response.ok
         ? createResponseHeaders(response.headers, config.getCacheHeaders())
         : createResponseHeaders(response.headers, config.getErrorCacheHeaders());
 
@@ -69,15 +123,15 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
         // For Node.js 18+, response.body is a web stream
         // We need to convert it to a Node.js stream
         const reader = response.body.getReader();
-        
+
         try {
-          const chunks = [];
+          const chunks: Uint8Array[] = [];
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             chunks.push(value);
           }
-          
+
           // Combine all chunks and send
           const buffer = Buffer.concat(chunks);
           reply.send(buffer);
@@ -89,19 +143,19 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
       }
     } catch (error) {
       const errorResponse = handleProxyError(error, config.getErrorCacheHeaders(), config.debug);
-      
+
       Object.entries(errorResponse.headers).forEach(([key, value]) => {
         reply.header(key, value);
       });
-      
+
       reply.code(errorResponse.status).send(errorResponse.body);
     }
   });
 
   // Also handle HEAD requests for media files
-  fastify.head(`${config.mediaUrlPrefix}*`, async (request, reply) => {
+  fastify.head(`${config.mediaUrlPrefix}*`, async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     const mediaPath = parseMediaPath(request.url, config.mediaUrlPrefix);
-    
+
     if (!mediaPath) {
       reply.code(404).send();
       return;
@@ -114,7 +168,7 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
         headers: request.headers,
       });
 
-      const headers = response.ok 
+      const headers = response.ok
         ? createResponseHeaders(response.headers, config.getCacheHeaders())
         : createResponseHeaders(response.headers, config.getErrorCacheHeaders());
 
@@ -123,7 +177,7 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
       });
 
       reply.code(response.status).send();
-    } catch (error) {
+    } catch {
       reply.code(502).send();
     }
   });
@@ -132,10 +186,13 @@ async function fastifyRepoMdPlugin(fastify, options, done) {
 }
 
 // Set Fastify plugin metadata
-fastifyRepoMdPlugin[Symbol.for('plugin-meta')] = {
+const pluginMeta = {
   fastify: '4.x',
   name: 'repo-md-proxy',
 };
+
+// Attach metadata to plugin
+(fastifyRepoMdPlugin as FastifyPlugin & { [key: symbol]: typeof pluginMeta })[Symbol.for('plugin-meta')] = pluginMeta;
 
 /**
  * Export the plugin function

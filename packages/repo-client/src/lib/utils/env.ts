@@ -7,7 +7,11 @@ export type EnvContext =
   | 'Next.js middleware'
   | 'Next.js config'
   | 'Vite proxy'
+  | 'Vite plugin'
   | 'Remix loader'
+  | 'Remix action'
+  | 'Cloudflare Workers'
+  | 'auto-detect proxy'
   | 'RepoMD constructor'
   | '';
 
@@ -72,7 +76,11 @@ const contextExamples: Record<EnvContext, string> = {
   'Next.js middleware': `nextRepoMdMiddleware({ projectId: 'your-project-id' })`,
   'Next.js config': `nextRepoMdConfig({ projectId: 'your-project-id' })`,
   'Vite proxy': `viteRepoMdProxy({ projectId: 'your-project-id' })`,
+  'Vite plugin': `viteRepoMdPlugin({ projectId: 'your-project-id' })`,
   'Remix loader': `remixRepoMdLoader({ projectId: 'your-project-id' })`,
+  'Remix action': `remixRepoMdAction({ projectId: 'your-project-id' })`,
+  'Cloudflare Workers': `cloudflareRepoMdHandler({ projectId: 'your-project-id' })`,
+  'auto-detect proxy': `repoMdProxy({ projectId: 'your-project-id' })`,
   'RepoMD constructor': `new RepoMD({ projectId: 'your-project-id' })`,
   '': `{ projectId: 'your-project-id' }`,
 };

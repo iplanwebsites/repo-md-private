@@ -7,6 +7,71 @@ import { LOG_PREFIXES } from '../logger.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
+/** Configuration options for the proxy */
+export interface ProxyConfigOptions {
+  projectId: string;
+  mediaUrlPrefix?: string;
+  r2Url?: string;
+  cacheMaxAge?: number;
+  debug?: boolean;
+  projectPathPrefix?: string;
+}
+
+/** Cache headers type */
+export type CacheHeaders = Record<string, string>;
+
+/** Vite proxy configuration handler */
+export interface ViteProxyHandler {
+  target: string;
+  changeOrigin: boolean;
+  rewrite: (path: string) => string;
+  configure: (proxy: ViteProxyEvents) => void;
+}
+
+/** Vite proxy event handler type */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ViteProxyEventHandler = (...args: any[]) => void;
+
+/** Vite proxy events interface */
+export interface ViteProxyEvents {
+  on: (event: string, handler: ViteProxyEventHandler) => void;
+}
+
+/** Vite proxy configuration */
+export type ViteProxyConfig = Record<string, ViteProxyHandler>;
+
+/** Next.js rewrite configuration */
+export interface NextRewrite {
+  source: string;
+  destination: string;
+}
+
+/** Next.js header entry */
+export interface NextHeader {
+  key: string;
+  value: string;
+}
+
+/** Next.js headers configuration */
+export interface NextHeadersConfig {
+  source: string;
+  headers: NextHeader[];
+}
+
+/** Next.js configuration for proxy */
+export interface NextConfig {
+  rewrites: () => Promise<NextRewrite[]>;
+  headers: () => Promise<NextHeadersConfig[]>;
+}
+
+/** Remix loader context */
+export interface RemixLoaderContext {
+  request: Request;
+}
+
+/** Remix loader function type */
+export type RemixLoader = (context: RemixLoaderContext) => Promise<Response | null>;
+
 // Default configuration values
 export const REPO_MD_DEFAULTS = {
   mediaUrlPrefix: '/_repo/medias/',
@@ -23,6 +88,13 @@ const DEFAULTS = REPO_MD_DEFAULTS;
  * Base configuration for all proxy implementations
  */
 export class UnifiedProxyConfig {
+  projectId: string;
+  mediaUrlPrefix: string;
+  r2Url: string;
+  cacheMaxAge: number;
+  debug: boolean;
+  projectPathPrefix: string;
+
   constructor({
     projectId,
     mediaUrlPrefix = DEFAULTS.mediaUrlPrefix,
@@ -30,7 +102,7 @@ export class UnifiedProxyConfig {
     cacheMaxAge = DEFAULTS.cacheMaxAge,
     debug = DEFAULTS.debug,
     projectPathPrefix = DEFAULTS.projectPathPrefix,
-  }) {
+  }: ProxyConfigOptions) {
     if (!projectId) {
       throw new Error('projectId is required for proxy configuration');
     }
@@ -49,10 +121,10 @@ export class UnifiedProxyConfig {
 
   /**
    * Get the target URL for a given media path
-   * @param {string} mediaPath - The media file path
-   * @returns {string} The full CDN URL
+   * @param mediaPath - The media file path
+   * @returns The full CDN URL
    */
-  getTargetUrl(mediaPath) {
+  getTargetUrl(mediaPath: string): string {
     // Remove leading slash if present
     const cleanPath = mediaPath.replace(/^\//, '');
     return `${this.r2Url}/${this.projectPathPrefix}/${this.projectId}/_shared/medias/${cleanPath}`;
@@ -60,17 +132,17 @@ export class UnifiedProxyConfig {
 
   /**
    * Get the source pattern for matching requests
-   * @returns {string} The pattern to match incoming requests
+   * @returns The pattern to match incoming requests
    */
-  getSourcePattern() {
+  getSourcePattern(): string {
     return `${this.mediaUrlPrefix}/:path*`;
   }
 
   /**
    * Get cache headers for successful responses
-   * @returns {Object} Headers object
+   * @returns Headers object
    */
-  getCacheHeaders() {
+  getCacheHeaders(): CacheHeaders {
     return {
       'Cache-Control': `public, max-age=${this.cacheMaxAge}, immutable`,
       'X-Repo-Proxy': 'true',
@@ -79,9 +151,9 @@ export class UnifiedProxyConfig {
 
   /**
    * Get error cache headers
-   * @returns {Object} Headers object for error responses
+   * @returns Headers object for error responses
    */
-  getErrorCacheHeaders() {
+  getErrorCacheHeaders(): CacheHeaders {
     return {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Expires': '0',
@@ -91,9 +163,9 @@ export class UnifiedProxyConfig {
 
   /**
    * Log a debug message if debug mode is enabled
-   * @param {string} message - The message to log
+   * @param message - The message to log
    */
-  log(message) {
+  log(message: string): void {
     if (this.debug) {
       console.log(`${prefix} ${message}`);
     }
@@ -101,30 +173,30 @@ export class UnifiedProxyConfig {
 
   /**
    * Create a Vite proxy configuration
-   * @returns {Object} Vite proxy config
+   * @returns Vite proxy config
    */
-  toViteConfig() {
+  toViteConfig(): ViteProxyConfig {
     const proxyPath = this.mediaUrlPrefix;
-    
+
     return {
       [proxyPath]: {
         target: this.r2Url,
         changeOrigin: true,
-        rewrite: (path) => {
+        rewrite: (path: string): string => {
           const rewritten = path.replace(proxyPath, `/projects/${this.projectId}/_shared/medias`);
           this.log(`Vite proxy rewrite: ${path} → ${rewritten}`);
           return rewritten;
         },
-        configure: (proxy) => {
+        configure: (proxy: ViteProxyEvents): void => {
           if (this.debug) {
             proxy.on('error', (err, req) => {
-              console.error(`${prefix} Vite proxy error:`, err, req.url);
+              console.error(`${prefix} Vite proxy error:`, err, (req as { url?: string })?.url);
             });
-            proxy.on('proxyReq', (proxyReq, req) => {
-              this.log(`Vite proxy request: ${req.url} → ${proxyReq.path}`);
+            proxy.on('proxyReq', (_proxyReq, req) => {
+              this.log(`Vite proxy request: ${(req as { url?: string })?.url}`);
             });
             proxy.on('proxyRes', (proxyRes, req) => {
-              this.log(`Vite proxy response: ${proxyRes.statusCode} for ${req.url}`);
+              this.log(`Vite proxy response: ${(proxyRes as { statusCode?: number })?.statusCode} for ${(req as { url?: string })?.url}`);
             });
           }
         },
@@ -134,23 +206,24 @@ export class UnifiedProxyConfig {
 
   /**
    * Create a Next.js rewrite configuration
-   * @returns {Object} Next.js config object
+   * @returns Next.js config object
    */
-  toNextConfig() {
+  toNextConfig(): NextConfig {
+    const self = this;
     return {
-      async rewrites() {
+      async rewrites(): Promise<NextRewrite[]> {
         return [
           {
-            source: `${this.mediaUrlPrefix}:path*`,
-            destination: `${this.r2Url}/projects/${this.projectId}/_shared/medias/:path*`,
+            source: `${self.mediaUrlPrefix}:path*`,
+            destination: `${self.r2Url}/projects/${self.projectId}/_shared/medias/:path*`,
           },
         ];
       },
-      async headers() {
+      async headers(): Promise<NextHeadersConfig[]> {
         return [
           {
-            source: `${this.mediaUrlPrefix}:path*`,
-            headers: Object.entries(this.getCacheHeaders()).map(([key, value]) => ({
+            source: `${self.mediaUrlPrefix}:path*`,
+            headers: Object.entries(self.getCacheHeaders()).map(([key, value]) => ({
               key,
               value: String(value),
             })),
@@ -162,12 +235,12 @@ export class UnifiedProxyConfig {
 
   /**
    * Create a Remix loader configuration
-   * @returns {Function} Remix loader function
+   * @returns Remix loader function
    */
-  toRemixLoader() {
-    return async ({ request }) => {
+  toRemixLoader(): RemixLoader {
+    return async ({ request }: RemixLoaderContext): Promise<Response | null> => {
       const url = new URL(request.url);
-      
+
       if (!url.pathname.startsWith(this.mediaUrlPrefix)) {
         return null;
       }
@@ -184,7 +257,7 @@ export class UnifiedProxyConfig {
         });
 
         const headers = new Headers(response.headers);
-        
+
         if (response.ok) {
           for (const [key, value] of Object.entries(this.getCacheHeaders())) {
             headers.set(key, value);
@@ -204,10 +277,10 @@ export class UnifiedProxyConfig {
         if (this.debug) {
           console.error(`${prefix} Remix proxy error:`, error);
         }
-        
+
         const headers = new Headers(this.getErrorCacheHeaders());
         headers.set('Content-Type', 'text/plain');
-        
+
         return new Response('Proxy error', {
           status: 502,
           headers,
@@ -218,11 +291,11 @@ export class UnifiedProxyConfig {
 
   /**
    * Get generic framework configuration instructions
-   * @param {string} framework - The framework name
-   * @returns {string} Configuration instructions
+   * @param framework - The framework name
+   * @returns Configuration instructions
    */
-  getFrameworkInstructions(framework) {
-    const instructions = {
+  getFrameworkInstructions(framework: string): string {
+    const instructions: Record<string, string> = {
       vite: `// vite.config.js
 import { defineConfig } from 'vite';
 import { RepoMD } from 'repo-md';
@@ -273,9 +346,9 @@ module.exports = {
 
 /**
  * Factory function to create a unified proxy configuration
- * @param {Object} config - Configuration options
- * @returns {UnifiedProxyConfig} Configured proxy instance
+ * @param config - Configuration options
+ * @returns Configured proxy instance
  */
-export function createUnifiedProxyConfig(config) {
+export function createUnifiedProxyConfig(config: ProxyConfigOptions): UnifiedProxyConfig {
   return new UnifiedProxyConfig(config);
 }

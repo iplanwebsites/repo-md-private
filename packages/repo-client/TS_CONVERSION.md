@@ -143,27 +143,27 @@
 
 ---
 
-### Phase 6: Framework Integrations ⬜
+### Phase 6: Framework Integrations ✅
 > Next.js, Express, Cloudflare, etc.
 
 | File | Status | Notes |
 |------|--------|-------|
-| `integrations/index.js` → `.ts` | ⬜ | 179 LOC |
-| `integrations/nextjs.js` → `.ts` | ⬜ | 104 LOC |
-| `integrations/express.js` → `.ts` | ⬜ | 113 LOC |
-| `integrations/cloudflare.js` → `.ts` | ⬜ | 103 LOC |
-| `integrations/astro.js` → `.ts` | ⬜ | 147 LOC |
-| `integrations/nuxt.js` → `.ts` | ⬜ | 134 LOC |
-| `integrations/sveltekit.js` → `.ts` | ⬜ | 127 LOC |
-| `integrations/fastify.js` → `.ts` | ⬜ | 143 LOC |
-| `integrations/koa.js` → `.ts` | ⬜ | 180 LOC |
-| `integrations/remix.js` → `.ts` | ⬜ | ~100 LOC |
-| `integrations/vite.js` → `.ts` | ⬜ | ~100 LOC |
-| `proxy/UnifiedProxyConfig.js` → `.ts` | ⬜ | 280 LOC |
-| `proxy/nodeUtils.js` → `.ts` | ⬜ | 169 LOC |
-| `middleware/RepoNextMiddleware.js` → `.ts` | ⬜ | 96 LOC |
+| `proxy/nodeUtils.js` → `.ts` | ✅ | Added `HeaderMap`, `ProxyFetchOptions`, `StreamTarget`, `ProxyErrorResponse` |
+| `proxy/UnifiedProxyConfig.js` → `.ts` | ✅ | Added `ProxyConfigOptions`, `ViteProxyConfig`, `NextConfig`, `RemixLoader` |
+| `middleware/RepoNextMiddleware.js` → `.ts` | ✅ | Added `NextRequest`, `NextMiddlewareHandler` |
+| `integrations/index.js` → `.ts` | ✅ | Added `DetectedFramework`, `RepoMdProxyOptions`, `ProxyResult` |
+| `integrations/nextjs.js` → `.ts` | ✅ | Added `NextRepoMdOptions`, `NextMiddlewareResult`, `MergedNextConfig` |
+| `integrations/express.js` → `.ts` | ✅ | Added `ExpressRequest`, `ExpressResponse`, `ExpressMiddleware` |
+| `integrations/cloudflare.js` → `.ts` | ✅ | Added `CloudflareEnv`, `CloudflareWorker`, `CloudflarePagesFunction` |
+| `integrations/astro.js` → `.ts` | ✅ | Added `AstroContext`, `AstroMiddleware`, `AstroIntegration` |
+| `integrations/nuxt.js` → `.ts` | ✅ | Added `NitroApp`, `NuxtPlugin`, `CachedHandlerResult` |
+| `integrations/sveltekit.js` → `.ts` | ✅ | Added `SvelteKitEvent`, `SvelteKitHandle` |
+| `integrations/fastify.js` → `.ts` | ✅ | Added `FastifyRequest`, `FastifyReply`, `FastifyPlugin` |
+| `integrations/koa.js` → `.ts` | ✅ | Added `KoaContext`, `KoaMiddleware` |
+| `integrations/remix.js` → `.ts` | ✅ | Added `RemixAction`, `RemixRouteModule` |
+| `integrations/vite.js` → `.ts` | ✅ | Added `ViteRepoMdOptions`, `VitePlugin`, `VitePluginConfig` |
 
-**Estimated effort**: 2 days
+**Completed**: 2024-11-26
 
 ---
 
@@ -281,6 +281,7 @@ export interface CacheManager {
 
 | Date | Phase | Files Converted | Notes |
 |------|-------|-----------------|-------|
+| 2024-11-26 | 6 | 14 | Phase 6 complete - Framework integrations (proxy, middleware, integrations) |
 | 2024-11-26 | 5 | 4 | Phase 5 complete - OpenAI integration (handler, spec, staticexample, index) |
 | 2024-11-26 | 4 | 10 | Phase 4 complete - Domain modules (posts, media, files, project) |
 | 2024-11-26 | 3 | 5 | Phase 3 complete - Schemas & validation (schemas, types, validator, index, test-schema-coverage) |
