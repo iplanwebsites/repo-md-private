@@ -105,28 +105,18 @@ export function createPathVariations(
     withoutLeadingSlash.toLowerCase(),
   ];
   
-  // If we have a current file path and the target contains relative path indicators
-  if (currentFilePath && (normalizedPath.includes('../') || normalizedPath.includes('./'))) {
-    const currentDir = path.dirname(currentFilePath);
-    const resolvedPath = path.join(currentDir, normalizedPath).replace(/\\/g, '/');
-    const normalizedResolved = path.normalize(resolvedPath).replace(/\\/g, '/');
-    
-    // Add resolved path variations at the beginning (highest priority)
-    variations.unshift(
-      normalizedResolved,
-      normalizedResolved.toLowerCase()
-    );
-  }
-  
-  // If we have a current file path and the target doesn't include a path separator,
-  // try resolving relative to current directory
-  if (currentFilePath && !normalizedPath.includes('/')) {
+  // If we have a current file path and the target is a relative path (doesn't start with /),
+  // resolve it relative to the current file's directory
+  if (currentFilePath && !normalizedPath.startsWith('/')) {
     const currentDir = path.dirname(currentFilePath);
     if (currentDir && currentDir !== '.') {
-      const inCurrentDir = path.join(currentDir, normalizedPath).replace(/\\/g, '/');
+      const resolvedPath = path.join(currentDir, normalizedPath).replace(/\\/g, '/');
+      const normalizedResolved = path.normalize(resolvedPath).replace(/\\/g, '/');
+
+      // Add resolved path variations at the beginning (highest priority)
       variations.unshift(
-        inCurrentDir,
-        inCurrentDir.toLowerCase()
+        normalizedResolved,
+        normalizedResolved.toLowerCase()
       );
     }
   }

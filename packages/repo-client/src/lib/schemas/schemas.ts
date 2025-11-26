@@ -1,4 +1,5 @@
-// zod-metadata must be registered before using .meta() on zod schemas
+// Type augmentation for .meta() - must be imported before using .meta() on zod schemas
+/// <reference path="./_zod.d.ts" />
 import { z, type ZodTypeAny } from "zod";
 
 // Inline zod-metadata register to avoid CJS interop issues in Vite dev mode
