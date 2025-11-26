@@ -4,19 +4,12 @@
  */
 
 import { LOG_PREFIXES } from '../logger.js';
+import type { Post } from '../types/post.js';
+
+// Re-export Post type for backward compatibility
+export type { Post } from '../types/post.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
-
-/** Post object type */
-export interface Post {
-  hash: string;
-  slug: string;
-  title?: string;
-  date?: string;
-  path?: string;
-  content?: string;
-  [key: string]: unknown;
-}
 
 /** Stats tracking for post operations */
 export interface PostStats {

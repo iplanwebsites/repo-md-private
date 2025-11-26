@@ -5,7 +5,7 @@
 import MiniSearch from "minisearch";
 import { cosineSimilarity } from "../vector.js";
 import { computeTextEmbedding, computeClipTextEmbedding, computeClipImageEmbedding } from "../inference.js";
-import type { Post } from './retrieval.js';
+import type { Post } from '../types/post.js';
 
 /** Media item type */
 export interface Media {

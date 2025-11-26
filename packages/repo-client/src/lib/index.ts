@@ -127,6 +127,25 @@ export type {
   PostRetrievalService,
 } from './posts/retrieval.js';
 
+// Post-related types
+export type {
+  TocItem,
+  PostFrontmatter,
+} from './types/post.js';
+
+// Type guards
+export {
+  isPost,
+  hasHtmlContent,
+  hasPlainContent,
+  hasFrontmatter,
+  hasToc,
+  hasLinks,
+  hasCoverImage,
+  getCoverImage,
+  isTocItem,
+} from './types/guards.js';
+
 export type {
   SearchResult,
   SearchParams,
