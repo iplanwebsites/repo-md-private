@@ -12,14 +12,11 @@ import {
   debugLog,
   type HeaderMap,
 } from '../proxy/nodeUtils.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Koa options configuration */
-export interface KoaRepoMdOptions {
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
-  projectPathPrefix?: string;
+/** Koa options configuration - extends base proxy options */
+export interface KoaRepoMdOptions extends BaseProxyOptions {
+  // Koa-specific options can be added here
 }
 
 /** Koa context interface */

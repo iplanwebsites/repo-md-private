@@ -11,14 +11,11 @@ import {
   createResponseHeaders,
   debugLog,
 } from '../proxy/nodeUtils.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** SvelteKit options configuration */
-export interface SvelteKitRepoMdOptions {
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
-  projectPathPrefix?: string;
+/** SvelteKit options configuration - extends base proxy options */
+export interface SvelteKitRepoMdOptions extends BaseProxyOptions {
+  // SvelteKit-specific options can be added here
 }
 
 /** SvelteKit event interface */

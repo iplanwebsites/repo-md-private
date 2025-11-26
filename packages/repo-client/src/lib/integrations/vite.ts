@@ -5,15 +5,11 @@
 
 import { UnifiedProxyConfig, type ViteProxyConfig } from '../proxy/UnifiedProxyConfig.js';
 import { getProjectIdFromEnv } from '../utils/env.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Vite plugin options */
-export interface ViteRepoMdOptions {
-  projectId?: string;
-  route?: string;
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
+/** Vite plugin options - extends base proxy options */
+export interface ViteRepoMdOptions extends BaseProxyOptions {
+  // Vite-specific options can be added here
 }
 
 /** Vite server configuration for plugins */

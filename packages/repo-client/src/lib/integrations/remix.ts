@@ -5,15 +5,11 @@
 
 import { UnifiedProxyConfig, type RemixLoader } from '../proxy/UnifiedProxyConfig.js';
 import { getProjectIdFromEnv } from '../utils/env.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Remix options configuration */
-export interface RemixRepoMdOptions {
-  projectId?: string;
-  route?: string;
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
+/** Remix options configuration - extends base proxy options */
+export interface RemixRepoMdOptions extends BaseProxyOptions {
+  // Remix-specific options can be added here
 }
 
 /** Remix action context */

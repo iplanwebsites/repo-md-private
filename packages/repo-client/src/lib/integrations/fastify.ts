@@ -12,15 +12,12 @@ import {
   debugLog,
   type HeaderMap,
 } from '../proxy/nodeUtils.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Fastify plugin options */
-export interface FastifyRepoMdOptions {
+/** Fastify plugin options - extends base proxy options */
+export interface FastifyRepoMdOptions extends BaseProxyOptions {
+  /** Project ID (required for Fastify plugin) */
   projectId: string;
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
-  projectPathPrefix?: string;
 }
 
 /** Fastify request interface */

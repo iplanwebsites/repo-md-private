@@ -5,13 +5,11 @@
 
 import { RepoMD } from '../RepoMd.js';
 import { getProjectIdFromEnv } from '../utils/env.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Cloudflare options configuration */
-export interface CloudflareRepoMdOptions {
-  projectId?: string;
-  route?: string;
-  mediaUrlPrefix?: string;
-  debug?: boolean;
+/** Cloudflare options configuration - extends base proxy options */
+export interface CloudflareRepoMdOptions extends BaseProxyOptions {
+  /** Return null for non-media requests (default: false) */
   returnNull?: boolean;
 }
 

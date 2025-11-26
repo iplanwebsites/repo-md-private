@@ -6,15 +6,11 @@
 import { UnifiedProxyConfig, type NextConfig } from '../proxy/UnifiedProxyConfig.js';
 import { RepoMD } from '../RepoMd.js';
 import { getProjectIdFromEnv } from '../utils/env.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Next.js options configuration */
-export interface NextRepoMdOptions {
-  projectId?: string;
-  route?: string;
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
+/** Next.js options configuration - extends base proxy options */
+export interface NextRepoMdOptions extends BaseProxyOptions {
+  // Next.js-specific options can be added here
 }
 
 /** Next.js middleware result */

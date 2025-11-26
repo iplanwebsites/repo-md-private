@@ -213,3 +213,30 @@ export type {
   AliasMap,
   AliasableInstance,
 } from './aliases.js';
+
+// Shared types and utilities
+export type {
+  BaseProxyOptions,
+  FetchR2JsonFn,
+  FetchMapDataFn,
+  GetActiveRevFn,
+  BaseServiceConfig,
+  FetchableServiceConfig,
+  SearchMode,
+  RevisionCacheConfig,
+} from './types/common.js';
+
+// Utility functions
+export {
+  normalizeOptions,
+  getMediaUrlPrefix,
+  resolveDebug,
+} from './utils/options.js';
+
+// Revision-aware cache utilities
+export {
+  createRevisionAwareCache,
+  createRevisionAwareMapCache,
+  type RevisionAwareCache,
+  type RevisionAwareMapCache,
+} from './core/revisionCache.js';

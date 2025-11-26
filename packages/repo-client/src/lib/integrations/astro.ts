@@ -11,14 +11,11 @@ import {
   createResponseHeaders,
   debugLog,
 } from '../proxy/nodeUtils.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Astro options configuration */
-export interface AstroRepoMdOptions {
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
-  projectPathPrefix?: string;
+/** Astro options configuration - extends base proxy options */
+export interface AstroRepoMdOptions extends BaseProxyOptions {
+  // Astro-specific options can be added here
 }
 
 /** Astro context interface */

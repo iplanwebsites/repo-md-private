@@ -12,14 +12,11 @@ import {
   debugLog,
   type HeaderMap,
 } from '../proxy/nodeUtils.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Express options configuration */
-export interface ExpressRepoMdOptions {
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
-  projectPathPrefix?: string;
+/** Express options configuration - extends base proxy options */
+export interface ExpressRepoMdOptions extends BaseProxyOptions {
+  // Express-specific options can be added here
 }
 
 /** Express request interface */

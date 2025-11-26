@@ -13,14 +13,11 @@ import {
   type HeaderMap,
   type ProxyErrorResponse,
 } from '../proxy/nodeUtils.js';
+import type { BaseProxyOptions } from '../types/common.js';
 
-/** Nuxt options configuration */
-export interface NuxtRepoMdOptions {
-  mediaUrlPrefix?: string;
-  r2Url?: string;
-  cacheMaxAge?: number;
-  debug?: boolean;
-  projectPathPrefix?: string;
+/** Nuxt options configuration - extends base proxy options */
+export interface NuxtRepoMdOptions extends BaseProxyOptions {
+  // Nuxt-specific options can be added here
 }
 
 /** Nuxt node event */
