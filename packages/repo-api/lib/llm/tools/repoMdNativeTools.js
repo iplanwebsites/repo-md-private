@@ -1,5 +1,5 @@
 import { createTool, responses } from "./baseTool.js";
-import { RepoMD } from "@repo-md/client";
+import { RepoMD } from "repo-md";
 import { db } from "../../../db.js";
 import { ObjectId } from "mongodb";
 

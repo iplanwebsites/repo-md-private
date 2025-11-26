@@ -4,7 +4,7 @@
   "version": "0.0.3",
   "scripts": {
     "ppp": "npm version patch && git push && npm publish",
-    "build": "tsup src/index.ts --dts --format esm,cjs",
+    "build": "tsup",
     "postbuild": "cp -r dist package.json ../repo-build-worker/src/modules/repo-processor/",
     "dev": "npm run build -- --watch",
     "format": "prettier --write src",

@@ -56,7 +56,8 @@
       "Bash(npm run:*)",
       "Bash(../../node_modules/.bin/tsc:*)",
       "Bash(bash -c '../../node_modules/.bin/tsc --noEmit 2>&1 | head -100')",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(node --trace-warnings -e:*)"
     ],
     "deny": []
   },

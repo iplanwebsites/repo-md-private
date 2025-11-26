@@ -4,7 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { EditorChatHandler as EditorChatHandlerVoltBasic } from "./editorChatVoltBasic.js";
 import { createProjectContentAgent } from "./agents/projectContentAgent.js";
-import RepoMD from "@repo-md/client";
+import RepoMD from "repo-md";
 
 import { voltOpsClient } from "../volt/voltAgentConfig.js";
 

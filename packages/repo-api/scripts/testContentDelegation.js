@@ -5,7 +5,7 @@
  */
 
 import { config } from 'dotenv';
-import RepoMD from '@repo-md/client';
+import RepoMD from 'repo-md';
 
 config();
 

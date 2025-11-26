@@ -1,4 +1,4 @@
-import { RepoMD } from "@repo-md/client";
+import { RepoMD } from "repo-md";
 
 // Blog content specific RepoMD instance configuration
 const ORG_SLUG = "iplanwebsites"; // Organization slug for the official blog

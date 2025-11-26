@@ -1,6 +1,9 @@
-// zod-metadata must be imported before zod to extend ZodType prototype
-import "zod-metadata/register";
+// zod-metadata must be registered before using .meta() on zod schemas
 import { z, type ZodTypeAny } from "zod";
+import { register } from "zod-metadata";
+
+// Register zod-metadata to extend ZodType prototype with .meta()
+register(z);
 
 // Base schemas for common parameter types
 const stringSchema = z.string();

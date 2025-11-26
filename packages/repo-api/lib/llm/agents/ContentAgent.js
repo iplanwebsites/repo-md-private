@@ -1,5 +1,5 @@
 import { BaseAgent } from "./BaseAgent.js";
-import RepoMD from "@repo-md/client";
+import RepoMD from "repo-md";
 import { z } from "zod";
 import { createTool } from "@voltagent/core";
 

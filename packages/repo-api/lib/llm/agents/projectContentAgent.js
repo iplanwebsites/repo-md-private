@@ -8,7 +8,7 @@ import { getRepoMdNativeTools, getRepoMdDirectHandler } from '../tools/repoMdNat
 import { exportToolDefinitions } from '../tools/catalogue.js';
 import ToolExecutor from '../toolExecutor.js';
 import { db } from '../../../db.js';
-import RepoMD from '@repo-md/client';
+import RepoMD from 'repo-md';
 
 /**
  * Create a project content agent using native RepoMD tools

@@ -2,8 +2,6 @@
   "name": "@repo-md/client",
   "version": "0.0.1",
   "type": "module",
-  "main_dist": "./dist/repomd.js",
-  "module_dist": "./dist/repomd.js",
   "main": "./src/lib/index.ts",
   "module": "./src/lib/index.ts",
   "types": "./src/lib/index.ts",
