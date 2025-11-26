@@ -4,13 +4,13 @@
   "type": "module",
   "main_dist": "./dist/repomd.js",
   "module_dist": "./dist/repomd.js",
-  "main": "./src/lib/index.js",
-  "module": "./src/lib/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/lib/index.ts",
+  "module": "./src/lib/index.ts",
+  "types": "./src/lib/index.ts",
   "exports": {
     ".": {
-      "import": "./src/lib/index.js",
-      "types": "./src/lib/index.d.ts"
+      "import": "./src/lib/index.ts",
+      "types": "./src/lib/index.ts"
     },
     "./*": "./*"
   },
