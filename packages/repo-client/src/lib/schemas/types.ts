@@ -1,4 +1,5 @@
 import { type ZodTypeAny, ZodError } from 'zod';
+import { schemas } from './schemas.js';
 
 /** Zod issue type for error handling */
 interface ZodIssueLocal {
@@ -10,7 +11,6 @@ interface ZodIssueLocal {
 interface ZodSchemaWithParse {
   parse(data: unknown): unknown;
 }
-import { schemas } from './schemas.js';
 
 // Type definitions for Zod internals
 interface ZodDef {
