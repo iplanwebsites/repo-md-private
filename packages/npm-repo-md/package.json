@@ -19,8 +19,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build && vite build --config vite.config.lite.ts && npm run copy-types",
-    "copy-types": "cp ../repo-client/src/lib/index.d.ts dist/index.d.ts",
+    "build": "vite build && vite build --config vite.config.lite.ts && npm run build:types",
+    "build:types": "dts-bundle-generator -o dist/index.d.ts ../repo-client/src/lib/index.ts --no-check",
     "prepublishOnly": "npm run build",
     "publish-npm": "npm run build && npm publish",
     "version-bump-patch": "npm version patch --no-git-tag-version",
@@ -64,6 +64,7 @@
   },
   "devDependencies": {
     "@repo-md/client": "*",
+    "dts-bundle-generator": "^9.5.0",
     "typescript": "^5.5.3",
     "vite": "^5.4.2"
   }

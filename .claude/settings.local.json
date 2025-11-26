@@ -44,7 +44,19 @@
       "Bash(npm run build:processor:*)",
       "Bash(npx turbo run build --filter=@repo-md/worker)",
       "Bash(lsof:*)",
-      "Bash(xargs kill -9)"
+      "Bash(xargs kill -9)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm ls:*)",
+      "Bash(cat:*)",
+      "Bash(/Users/felix/web/git/repo-md/repo-monorepo/packages/npm-repo-md/node_modules/.bin/tsc:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(/Users/felix/web/git/repo-md/repo-monorepo/node_modules/.bin/tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(../../node_modules/.bin/tsc:*)",
+      "Bash(bash -c '../../node_modules/.bin/tsc --noEmit 2>&1 | head -100')",
+      "Bash(echo:*)"
     ],
     "deny": []
   },

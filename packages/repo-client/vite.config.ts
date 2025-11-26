@@ -18,14 +18,24 @@ export default {
   },
   build: {
     lib: {
-      entry: 'src/lib/index.js',
+      entry: 'src/lib/index.ts',
       name: 'RepoMD',
       fileName: 'repo-md'
     },
     rollupOptions: {
       external,
       output: {
-        exports: 'named'
+        exports: 'named',
+        // Global variable names for UMD build
+        globals: {
+          'quick-lru': 'QuickLRU',
+          'envizion': 'envizion',
+          'compute-cosine-similarity': 'computeCosineSimilarity',
+          'minisearch': 'MiniSearch',
+          'zod': 'zod',
+          'zod-metadata': 'zodMetadata',
+          'zod-metadata/register': 'zodMetadataRegister'
+        }
       }
     },
     // Disable minification for standard builds - the minified version will be created separately

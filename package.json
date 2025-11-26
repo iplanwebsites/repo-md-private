@@ -10,6 +10,7 @@
   "scripts": {
     "build": "turbo run build --filter=!@repo-md/cli",
     "build:client": "turbo run build --filter=@repo-md/client",
+    "build:npm-repo-md": "turbo run build --filter=./packages/npm-repo-md",
     "build:processor": "turbo run build --filter=@repo-md/processor",
     "build:api": "turbo run build --filter=@repo-md/api",
     "build:app": "turbo run build --filter=@repo-md/app",

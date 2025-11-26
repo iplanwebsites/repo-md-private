@@ -328,7 +328,7 @@ export default defineConfig(async ({ command, mode }) => {
 		alias: {
 			"@": resolve(getCurrentDir(), "./src"),
 			// Resolve workspace package for Vercel builds where symlinks don't work
-			"@repo-md/client": resolve(getCurrentDir(), "../repo-client/src/lib/index.js"),
+			"@repo-md/client": resolve(getCurrentDir(), "../repo-client/src/lib/index.ts"),
 		},
 	},
 

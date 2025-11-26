@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
-import { mkdirSync, rmSync, cpSync, renameSync, readFileSync, writeFileSync } from 'fs';
+import { mkdirSync, rmSync, cpSync } from 'fs';
 import { createInterface } from 'readline';
 
 // Default template URL if none provided
