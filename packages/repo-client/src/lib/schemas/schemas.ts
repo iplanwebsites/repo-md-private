@@ -82,11 +82,10 @@ export interface MethodMeta {
   readonly?: boolean;
 }
 
-/** Schema with metadata type */
+/** Schema with metadata type - uses intersection for compatibility with Zod's internal types */
 export type SchemaWithMeta = ZodTypeAny & {
   _def: {
     meta?: MethodMeta;
-    [key: string]: unknown;
   };
 };
 
