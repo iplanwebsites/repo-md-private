@@ -1,15 +1,15 @@
 import { defineConfig } from 'vite';
 
+// Full build - includes everything (minisearch bundled)
 export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.ts',
       name: 'RepoMD',
       fileName: 'repo-md',
-      formats: ['es', 'umd']
+      formats: ['es']
     },
     rollupOptions: {
-      // Don't externalize @repo-md/client - we want it bundled
       external: [
         /^node:.*/
       ],

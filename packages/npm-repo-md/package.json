@@ -8,7 +8,10 @@
   "exports": {
     ".": {
       "import": "./dist/repo-md.js",
-      "require": "./dist/repo-md.umd.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./lite": {
+      "import": "./dist/repo-md-lite.js",
       "types": "./dist/index.d.ts"
     }
   },
@@ -16,7 +19,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build && npm run copy-types",
+    "build": "vite build && vite build --config vite.config.lite.ts && npm run copy-types",
     "copy-types": "cp ../repo-client/src/lib/index.d.ts dist/index.d.ts",
     "prepublishOnly": "npm run build",
     "publish-npm": "npm run build && npm publish",
@@ -47,6 +50,18 @@
     "url": "https://github.com/repo-md/repo-md/issues"
   },
   "sideEffects": false,
+  "peerDependencies": {
+    "minisearch": "^6.3.0",
+    "zod": "^3.24.0"
+  },
+  "peerDependenciesMeta": {
+    "minisearch": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@repo-md/client": "*",
     "typescript": "^5.5.3",
