@@ -36,7 +36,9 @@
     "format": "turbo run format",
     "vercel:build": "vercel build",
     "vercel:dev": "vercel dev",
-    "vercel:pull": "vercel pull"
+    "vercel:pull": "vercel pull",
+    "dokku": "git push dokku main:master",
+    "push:api": "git push dokku main:master"
   },
   "dependencies": {
     "envizion": "0.0.3",
