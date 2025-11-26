@@ -5,14 +5,13 @@
   "private": true,
   "author": "felixmenard",
   "scripts": {
-    "dev": "npm run up && vite --port 5177",
+    "dev": "vite --port 5177",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "lintf": "eslint . --fix",
     "tree": "tree -f ./public",
     "cloc": "find src app lib -type f | grep -v 'components/ui' | grep -v 'node_modules' | grep -v 'dist' | grep -v 'build' | grep -v 'components_DEV' | grep -v '.git' | grep -v '.cache' | grep -v 'coverage' | xargs npx cloc --by-file-by-lang",
-    "up": "npm i repo-md@latest",
     "vcb": "vercel build --prod"
   },
   "dependencies": {
@@ -64,7 +63,6 @@
     "pinia-plugin-persistedstate": "^4.2.0",
     "quick-lru": "^6.1.1",
     "reka-ui": "^2.4.0",
-    "repo-md": "0.0.32",
     "seedrandom": "^3.0.5",
     "simple-icons": "^14.12.3",
     "sql.js": "^1.13.0",
