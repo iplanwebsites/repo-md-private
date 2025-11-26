@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with this monorepo.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -8,23 +8,22 @@ This file provides guidance to Claude Code when working with this monorepo.
 
 ## Monorepo Structure
 
-This is a Turborepo monorepo using npm workspaces. All packages live in `packages/`:
+Turborepo monorepo using npm workspaces. All packages live in `packages/`:
 
-```
-packages/
-├── repo-client/      # @repo-md/client - JS SDK
-├── repo-processor/   # @repo-md/processor - Markdown processor
-├── repo-api/         # @repo-md/api - Express API server
-├── repo-app/         # @repo-md/app - Vue.js frontend
-├── repo-build-worker/# @repo-md/worker - Async build worker
-├── repo-cli/         # @repo-md/cli - CLI tool
-├── repo-mcp-server/  # @repo-md/mcp-server - MCP Cloudflare Worker
-├── repo-mcp-npm/     # @repo-md/mcp - MCP npm package
-├── repo-npm-server/  # @repo-md/npm-server - Dynamic npm server
-├── repo-sites-server/# @repo-md/sites-server - Multi-tenant sites
-├── repo-cname/       # @repo-md/cname - Custom domain worker
-└── repo-static/      # @repo-md/static - Static CDN worker
-```
+| Package             | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `repo-client`       | @repo-md/client - JavaScript SDK for consuming content           |
+| `repo-processor`    | @repo-md/processor - Markdown processor (Obsidian to JSON)       |
+| `repo-api`          | @repo-md/api - Express API server with tRPC                      |
+| `repo-app`          | @repo-md/app - Vue.js frontend                                   |
+| `repo-build-worker` | @repo-md/worker - Async build worker (Cloud Run / CF Containers) |
+| `repo-cli`          | @repo-md/cli - CLI tool - not in use - placeholder for future    |
+| `repo-mcp-server`   | @repo-md/mcp-server - MCP Cloudflare Worker                      |
+| `repo-mcp-npm`      | @repo-md/mcp - MCP npm package                                   |
+| `repo-npm-server`   | @repo-md/npm-server - Dynamic npm server                         |
+| `repo-sites-server` | @repo-md/sites-server - Multi-tenant sites                       |
+| `repo-cname`        | @repo-md/cname - Custom domain worker                            |
+| `repo-static`       | @repo-md/static - Static asset CDN worker                        |
 
 ## Commands
 
@@ -36,51 +35,64 @@ npm install
 npm run dev
 
 # Run specific package
-npm run dev:app         # Vue frontend
-npm run dev:api         # API server
-npm run dev:processor   # Processor watch
-npm run dev:client      # Client SDK watch
+npm run dev:app           # Vue frontend
+npm run dev:api           # API server
+npm run dev:processor     # Processor watch
+npm run dev:client        # Client SDK watch
+npm run dev:worker        # Build worker
+npm run dev:mcp-server    # MCP server
+npm run dev:sites-server  # Sites server
 
 # Build
-npm run build           # Build all
-npm run build:app       # Build specific
+npm run build             # Build all packages
+npm run build:app         # Build specific package
+npm run build:client
+npm run build:processor
 
 # Quality
 npm run lint
 npm run test
 npm run typecheck
+npm run format
+
+# Utilities
+npm run clean             # Clean all build artifacts and node_modules
 ```
+
+## Architecture
+
+```
+User pushes markdown to Git
+        │
+        ▼
+  GitHub Webhook ──▶ @repo-md/api (Express + tRPC + MongoDB)
+        │
+        ▼
+  @repo-md/worker (processes with @repo-md/processor)
+        │
+        ▼
+  Cloudflare R2 Storage
+        │
+        ▼
+  @repo-md/static (CDN) ──▶ User's website
+```
+
+**Key flows:**
+
+- **API** receives webhooks, creates jobs, dispatches to worker
+- **Worker** clones repos, processes markdown, generates embeddings, deploys to R2
+- **Processor** converts Obsidian-style markdown to structured JSON with media handling
+- **Client SDK** consumed by end users to fetch processed content
 
 ## Code Philosophy
 
-### 1. Functional Programming First
+### Functional First
 
-- Prefer pure functions over classes
-- Use composition over inheritance
-- Avoid mutations; create new objects/arrays instead
-- Use `map`, `filter`, `reduce` over imperative loops
+Prefer pure functions, composition, and immutability. Use `map`/`filter`/`reduce` over imperative loops.
 
-```javascript
-// Preferred
-const processed = items.map(transform).filter(isValid)
-
-// Avoid
-const processed = []
-for (const item of items) {
-  const result = transform(item)
-  if (isValid(result)) processed.push(result)
-}
-```
-
-### 2. DRY (Don't Repeat Yourself)
-
-- Extract shared logic into utility functions
-- Use workspace dependencies for cross-package code sharing
-- Consolidate types and interfaces in shared locations
-- If you write similar code twice, consider abstracting it
+### DRY with Workspace Dependencies
 
 ```json
-// Reference workspace packages
 {
   "dependencies": {
     "@repo-md/processor": "workspace:*"
@@ -88,95 +100,37 @@ for (const item of items) {
 }
 ```
 
-### 3. Compatibility & Portability
+### Compatibility
 
-- Target Node.js 18+ (ES modules)
-- Write code that works in browser and Node when possible
-- Use standard APIs over platform-specific ones
-- Ensure Cloudflare Worker compatibility for edge packages
+- Node.js 22.x (ES modules)
+- Browser + Node compatibility where possible
+- Cloudflare Worker compatibility for edge packages
 
-### 4. TypeScript Guidelines
+### TypeScript
 
-- Use strict typing; avoid `any`
-- Prefer `unknown` over `any` when type is uncertain
-- Use interfaces for object shapes, types for unions/aliases
-- Export types alongside implementations
+- Strict typing; avoid `any`, prefer `unknown`
+- Interfaces for object shapes, types for unions
 
-```typescript
-// Preferred
-function process(data: unknown): Result {
-  if (isValidInput(data)) {
-    return transform(data)
-  }
-  throw new Error('Invalid input')
-}
+### Error Handling
 
-// Avoid
-function process(data: any): any {
-  return transform(data)
-}
-```
-
-### 5. Error Handling
-
-- Use try/catch only when necessary (at boundaries)
-- Let errors bubble up unless you can meaningfully handle them
-- Provide clear, actionable error messages
-- Don't catch errors just to log and rethrow
-
-### 6. Simplicity Over Cleverness
-
-- Write readable code over "smart" code
-- Avoid premature optimization
-- Don't add abstractions until you need them
-- Three similar lines is better than a premature abstraction
-
-### 7. Module Design
-
-- Use ES modules (`import`/`export`)
-- Export only public API; unexported = private
-- Keep modules focused and single-purpose
-- Avoid circular dependencies
+Use try/catch only at boundaries. Let errors bubble unless you can meaningfully handle them.
 
 ## Package-Specific Notes
 
-Each package has its own `CLAUDE.md` with specific guidance. Key packages:
+Each package has its own `CLAUDE.md` with detailed guidance:
 
-- **@repo-md/processor**: Core markdown processing pipeline using unified.js
-- **@repo-md/client**: SDK consumed by users, must be browser-compatible
-- **@repo-md/api**: Express server with tRPC, MongoDB
-- **@repo-md/app**: Vue 3 with Composition API, Pinia, Tailwind
-- **@repo-md/worker**: Heavy processing, runs on Cloud Run / CF Containers
+- **@repo-md/processor**: unified.js pipeline, Sharp for images, wiki-link resolution
+- **@repo-md/client**: Browser-compatible SDK, don't run demos (user tests manually)
+- **@repo-md/api**: Express + tRPC, MongoDB, GitHub webhooks, job queue pattern
+- **@repo-md/app**: Vue 3 Composition API, Pinia, Tailwind, Supabase Auth
+- **@repo-md/worker**: Cloud Run / CF Containers, embeddings, SQLite vector search
+- **@repo-md/mcp-server**: MCP protocol, Cloudflare Workers, Zod validation
 
 ## Testing
 
-- Use Vitest for unit tests
-- Co-locate test files with source (`*.test.ts`)
-- Test public APIs, not implementation details
-- Mock external services, not internal modules
-
-## Git Workflow
-
-- Main branch: `main`
-- Feature branches for new work
-- Run `npm run lint && npm run typecheck` before committing
-- Keep commits focused and atomic
-
-## Dependencies Between Packages
-
-```
-@repo-md/client ──────────────────────────────────┐
-                                                  │
-@repo-md/processor ───────────────────────────────┼──> @repo-md/worker
-                                                  │
-@repo-md/api ─────────────────────────────────────┘
-     │
-     └──> @repo-md/app (via tRPC)
-```
-
-## Environment Variables
-
-Each package has its own `.env` requirements. See individual package READMEs for specifics. Never commit secrets.
+- Vitest for unit tests, co-located with source (`*.test.ts`)
+- Worker uses integration test scripts: `npm run testFullWorkflow`
+- No formal test suite in some packages - use dedicated scripts
 
 ## Common Issues
 
