@@ -1,6 +1,6 @@
 {
   "name": "@repo-md/client",
-  "version": "0.0.33",
+  "version": "0.0.1",
   "type": "module",
   "main_dist": "./dist/repomd.js",
   "module_dist": "./dist/repomd.js",
@@ -9,8 +9,9 @@
   "types": "./src/lib/index.ts",
   "exports": {
     ".": {
+      "types": "./src/lib/index.ts",
       "import": "./src/lib/index.ts",
-      "types": "./src/lib/index.ts"
+      "default": "./src/lib/index.ts"
     },
     "./*": "./*"
   },

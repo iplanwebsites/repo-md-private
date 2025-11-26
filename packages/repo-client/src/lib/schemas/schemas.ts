@@ -1,7 +1,5 @@
+// zod-metadata must be imported before zod to extend ZodType prototype
 import "zod-metadata/register";
-import { register } from "zod-metadata";
-import zod from "zod";
-register(zod);
 import { z, type ZodTypeAny } from "zod";
 
 // Base schemas for common parameter types
