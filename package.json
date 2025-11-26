@@ -38,7 +38,8 @@
     "vercel:dev": "vercel dev",
     "vercel:pull": "vercel pull",
     "dokku": "git push dokku main:master",
-    "push:api": "git push dokku main:master"
+    "deploy:api": "git push dokku main:master",
+    "push": "npm run push:api"
   },
   "dependencies": {
     "envizion": "0.0.3",
