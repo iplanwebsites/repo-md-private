@@ -78,19 +78,19 @@
 
 ---
 
-### Phase 2: Core Infrastructure ⬜
+### Phase 2: Core Infrastructure ✅
 > URL generation, API client, utilities
 
 | File | Status | Notes |
 |------|--------|-------|
-| `core/urls.js` → `core/urls.ts` | ⬜ | 364 LOC, URL factory |
-| `core/api.js` → `core/api.ts` | ⬜ | 305 LOC, API client |
-| `core/logger-wrapper.js` → `core/logger-wrapper.ts` | ⬜ | 558 LOC, complex |
-| `utils.js` → `utils.ts` | ⬜ | 315 LOC |
-| `inference.js` → `inference.ts` | ⬜ | 135 LOC |
-| `mediaProxy.js` → `mediaProxy.ts` | ⬜ | 223 LOC |
+| `core/urls.js` → `core/urls.ts` | ✅ | Added `UrlGenerator`, `UrlGeneratorConfig`, `RevisionCacheStats` |
+| `core/api.js` → `core/api.ts` | ✅ | Added `ApiClient`, `ApiClientConfig`, `ProjectDetails` |
+| `core/logger-wrapper.js` → `core/logger-wrapper.ts` | ✅ | Added typed formatters, `AnyFunction`, `LoggableObject` |
+| `utils.js` → `utils.ts` | ✅ | Added `FetchJsonOptions`, `FetchErrorResponse` |
+| `inference.js` → `inference.ts` | ✅ | Added `EmbeddingData`, inference payload types |
+| `mediaProxy.js` → `mediaProxy.ts` | ✅ | Added `GetR2MediaUrlFn`, MIME type mapping |
 
-**Estimated effort**: 2 days
+**Completed**: 2024-11-26
 
 ---
 
@@ -280,6 +280,7 @@ export interface CacheManager {
 
 | Date | Phase | Files Converted | Notes |
 |------|-------|-----------------|-------|
+| 2024-11-26 | 2 | 6 | Phase 2 complete - Core infrastructure (urls, api, utils, inference, mediaProxy, logger-wrapper) |
 | 2024-11-26 | 1 | 8 | Phase 1 complete - Foundation files converted |
 | 2024-11-26 | - | 0 | Plan created, vitest plugin for .js→.ts resolution |
 

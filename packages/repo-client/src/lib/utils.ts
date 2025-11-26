@@ -1,14 +1,25 @@
+/**
+ * Utility functions for RepoMD
+ * Handles HTTP fetching with caching and error handling
+ */
+
 import QuickLRU from "quick-lru";
 import { LOG_PREFIXES } from "./logger.js";
 
+/** Extended QuickLRU interface with properties we use */
+interface QuickLRUCache<K, V> extends Map<K, V> {
+  maxSize: number;
+  maxAge: number;
+}
+
 // Global cache instance that persists across requests
 const lru = new QuickLRU({
-  maxSize: 1000, ///tweak depending on worker
+  maxSize: 1000, // tweak depending on worker
   maxAge: 60000 * 60, // 1h
-});
+}) as unknown as QuickLRUCache<string, unknown>;
 
 // Cache for active fetch promises to prevent duplicate requests
-const promiseCache = new Map();
+const promiseCache = new Map<string, Promise<unknown>>();
 
 const prefix = LOG_PREFIXES.UTILS;
 
@@ -20,8 +31,10 @@ const TRUSTED_REPOMD_DOMAINS = ['api.repo.md', 'static.repo.md', 'repo.md'];
 
 /**
  * Check if URL is a trusted repo.md domain
+ * @param url - URL to check
+ * @returns Whether the URL is a trusted domain
  */
-function isTrustedRepoMdDomain(url) {
+function isTrustedRepoMdDomain(url: string): boolean {
   try {
     const urlObj = new URL(url);
     return TRUSTED_REPOMD_DOMAINS.includes(urlObj.hostname);
@@ -33,22 +46,26 @@ function isTrustedRepoMdDomain(url) {
 /**
  * Enhanced fetch wrapper that handles SSL certificate issues gracefully
  * For trusted repo.md domains, uses environment variable override if available
+ * @param url - URL to fetch
+ * @param options - Fetch options
+ * @returns Fetch response
  */
-async function robustFetch(url, options) {
+async function robustFetch(url: string, options?: RequestInit): Promise<Response> {
   try {
     // Use native fetch (available in Node 18+, all browsers)
     return await globalThis.fetch(url, options);
   } catch (error) {
+    const err = error as Error;
     // Check if this is an SSL/network error
-    const isSSLOrNetworkError = error.message && (
-      error.message.includes('certificate') ||
-      error.message.includes('SSL') ||
-      error.message.includes('TLS') ||
-      error.message.includes('self signed') ||
-      error.message.includes('unable to verify') ||
-      error.message.includes('fetch failed') ||
-      error.message.includes('ECONNREFUSED') ||
-      error.message.includes('ETIMEDOUT')
+    const isSSLOrNetworkError = err.message && (
+      err.message.includes('certificate') ||
+      err.message.includes('SSL') ||
+      err.message.includes('TLS') ||
+      err.message.includes('self signed') ||
+      err.message.includes('unable to verify') ||
+      err.message.includes('fetch failed') ||
+      err.message.includes('ECONNREFUSED') ||
+      err.message.includes('ETIMEDOUT')
     );
 
     if (isSSLOrNetworkError && isNodeEnv) {
@@ -58,7 +75,7 @@ async function robustFetch(url, options) {
       // Log the error
       console.error(
         `${prefix} ⚠️  Network/SSL error accessing ${urlObj.hostname}:`,
-        error.message
+        err.message
       );
 
       // Provide helpful guidance
@@ -83,13 +100,13 @@ async function robustFetch(url, options) {
 
 /**
  * Clear a URL from both the data cache and promise cache
- * @param {string} url - The URL to clear from caches
- * @param {boolean} debug - Whether to log debug information
- * @returns {boolean} - Whether the URL was found in either cache
+ * @param url - The URL to clear from caches
+ * @param debug - Whether to log debug information
+ * @returns Whether the URL was found in either cache
  */
-export function clearUrlFromCache(url, debug = false) {
+export function clearUrlFromCache(url: string, debug = false): boolean {
   let found = false;
-  
+
   if (lru && lru.has(url)) {
     lru.delete(url);
     found = true;
@@ -97,7 +114,7 @@ export function clearUrlFromCache(url, debug = false) {
       console.log(`${prefix} 🗑️ Cleared URL from data cache: ${url}`);
     }
   }
-  
+
   if (promiseCache.has(url)) {
     promiseCache.delete(url);
     found = true;
@@ -105,12 +122,47 @@ export function clearUrlFromCache(url, debug = false) {
       console.log(`${prefix} 🗑️ Cleared URL from promise cache: ${url}`);
     }
   }
-  
+
   return found;
 }
 
-// Helper function to fetch JSON with error handling and duration measurement
-export async function fetchJson(url, opts = {}, debug = false) {
+/** Options for fetchJson function */
+export interface FetchJsonOptions {
+  /** Error message to display on failure */
+  errorMessage?: string;
+  /** Default value to return on error */
+  defaultValue?: unknown;
+  /** Whether to use LRU cache */
+  useCache?: boolean;
+  /** HTTP method */
+  method?: string;
+  /** Request headers */
+  headers?: Record<string, string>;
+  /** Request body */
+  body?: string | null;
+  /** Return error object instead of throwing */
+  returnErrorObject?: boolean;
+}
+
+/** Error response object */
+export interface FetchErrorResponse {
+  success: false;
+  error: string;
+  data: unknown;
+}
+
+/**
+ * Fetch JSON with error handling and duration measurement
+ * @param url - URL to fetch
+ * @param opts - Fetch options
+ * @param debug - Whether to log debug information
+ * @returns Parsed JSON data or default value on error
+ */
+export async function fetchJson<T = unknown>(
+  url: string,
+  opts: FetchJsonOptions = {},
+  debug = false
+): Promise<T | FetchErrorResponse | null> {
   // Deconstruct options with sensible defaults
   const {
     errorMessage = "Error fetching data",
@@ -119,10 +171,11 @@ export async function fetchJson(url, opts = {}, debug = false) {
     method = "GET",
     headers = {},
     body = null,
+    returnErrorObject = false,
   } = opts;
 
   // Create fetch options
-  const fetchOptions = {
+  const fetchOptions: RequestInit = {
     method,
     headers: {
       ...headers,
@@ -139,7 +192,7 @@ export async function fetchJson(url, opts = {}, debug = false) {
 
   // Track start time for duration calculation
   const startTime = performance.now();
-  
+
   try {
     if (debug) {
       console.log(`${prefix} 🌐 Fetching JSON from: ${url} (${method})`);
@@ -150,7 +203,7 @@ export async function fetchJson(url, opts = {}, debug = false) {
 
     // Check cache first if provided (only for GET requests)
     if (shouldUseCache && lru && lru.has(url)) {
-      const cachedData = lru.get(url);
+      const cachedData = lru.get(url) as T;
       const duration = (performance.now() - startTime).toFixed(2);
       if (debug) {
         console.log(`${prefix} ✨ Cache hit for: ${url} (${duration}ms)`);
@@ -163,31 +216,31 @@ export async function fetchJson(url, opts = {}, debug = false) {
       if (debug) {
         console.log(`${prefix} 🔄 Reusing in-flight request for: ${url}`);
       }
-      return promiseCache.get(url);
+      return promiseCache.get(url) as Promise<T>;
     }
 
     // Create and store the promise for this request
-    const fetchPromise = (async () => {
+    const fetchPromise = (async (): Promise<T> => {
       try {
         const response = await robustFetch(url, fetchOptions);
-        
+
         // Log the full response for debugging
         if (debug) {
           console.log(`${prefix} 📡 Response status: ${response.status} ${response.statusText}`);
           console.log(`${prefix} 🔍 Response URL: ${response.url}`);
-          
+
           // Log response headers
-          const headers = {};
+          const headersObj: Record<string, string> = {};
           response.headers.forEach((value, key) => {
-            headers[key] = value;
+            headersObj[key] = value;
           });
-          console.log(`${prefix} 📝 Response headers:`, headers);
+          console.log(`${prefix} 📝 Response headers:`, headersObj);
         }
-        
+
         // Handle different HTTP error status codes with specific messages
         if (!response.ok) {
-          let userMessage;
-          
+          let userMessage: string;
+
           switch (response.status) {
             case 404:
               userMessage = `Resource not found (404): ${url.split('/').slice(-2).join('/')}`;
@@ -210,25 +263,26 @@ export async function fetchJson(url, opts = {}, debug = false) {
             default:
               userMessage = `${errorMessage}: ${response.statusText} (${response.status})`;
           }
-          
+
           if (debug) {
             console.error(`${prefix} ❌ ${userMessage}`);
           }
-          
+
           throw new Error(userMessage);
         }
 
         // First clone the response since we might need to read the body twice
         const clonedResponse = response.clone();
-        
+
         // Parse JSON safely
-        let data;
+        let data: T;
         try {
-          data = await response.json();
-          
+          data = await response.json() as T;
+
           // Log the parsed response data when in debug mode
           if (debug) {
-            console.log(`${prefix} 📦 Response data:`, JSON.stringify(data, null, 2).substring(0, 500) + (JSON.stringify(data, null, 2).length > 500 ? '...' : ''));
+            const jsonStr = JSON.stringify(data, null, 2);
+            console.log(`${prefix} 📦 Response data:`, jsonStr.substring(0, 500) + (jsonStr.length > 500 ? '...' : ''));
           }
         } catch (jsonError) {
           // In case of a JSON parsing error, try to get the raw text to help with debugging
@@ -244,12 +298,12 @@ export async function fetchJson(url, opts = {}, debug = false) {
               console.error(`${prefix} ❌ Also failed to read raw response text:`, textError);
             }
           }
-          
-          throw new Error(`Invalid JSON response from ${url}: ${jsonError.message}`);
+
+          throw new Error(`Invalid JSON response from ${url}: ${(jsonError as Error).message}`);
         }
-        
+
         const duration = (performance.now() - startTime).toFixed(2);
-        
+
         // Log the fetch duration
         if (debug) {
           console.log(`${prefix} ⏱️ Fetched data in ${duration}ms: ${url}`);
@@ -276,7 +330,7 @@ export async function fetchJson(url, opts = {}, debug = false) {
         }
       }
     })();
-    
+
     // Store the promise in the cache
     if (shouldUseCache) {
       promiseCache.set(url, fetchPromise);
@@ -284,7 +338,7 @@ export async function fetchJson(url, opts = {}, debug = false) {
         console.log(`${prefix} 📥 Cached promise for: ${url}`);
       }
     }
-    
+
     return fetchPromise;
   } catch (error) {
     const duration = (performance.now() - startTime).toFixed(2);
@@ -292,7 +346,7 @@ export async function fetchJson(url, opts = {}, debug = false) {
       console.error(`${prefix} ⚠️ Error fetching: ${url} (${duration}ms)`);
       console.error(`${prefix} ⚠️ ${errorMessage}:`, error);
     }
-    
+
     // Clean up the promise cache if there was an error outside of the fetch operation
     if (shouldUseCache && promiseCache.has(url)) {
       promiseCache.delete(url);
@@ -300,16 +354,16 @@ export async function fetchJson(url, opts = {}, debug = false) {
         console.log(`${prefix} 🧹 Removed failed promise from cache: ${url}`);
       }
     }
-    
+
     // Return a more structured error object that can be checked
-    if (opts.returnErrorObject) {
+    if (returnErrorObject) {
       return {
         success: false,
-        error: error.message || "Unknown error",
+        error: (error as Error).message || "Unknown error",
         data: defaultValue
       };
     }
-    
-    return defaultValue;
+
+    return defaultValue as T | null;
   }
 }

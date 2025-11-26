@@ -7,58 +7,69 @@ const MEDIA_URL_PREFIX = "/_repo/medias/";
 const DEBUG = true;
 const prefix = LOG_PREFIXES.MEDIA;
 
-// Helper function to find probable MIME type from file path
-function findProbableMimeType(path) {
-  const ext = path.split(".").pop().toLowerCase();
+/** MIME type mapping by file extension */
+const mimeTypes: Record<string, string> = {
+  // Images
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  ico: "image/x-icon",
+  bmp: "image/bmp",
+  tiff: "image/tiff",
+  tif: "image/tiff",
+
+  // Videos
+  mp4: "video/mp4",
+  webm: "video/webm",
+  ogg: "video/ogg",
+  mov: "video/quicktime",
+
+  // Audio
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  oga: "audio/ogg",
+  m4a: "audio/mp4",
+
+  // Documents
+  pdf: "application/pdf",
+  json: "application/json",
+  xml: "application/xml",
+  txt: "text/plain",
+  html: "text/html",
+  css: "text/css",
+  js: "application/javascript",
+
+  // Archives
+  zip: "application/zip",
+  rar: "application/x-rar-compressed",
+  "7z": "application/x-7z-compressed",
+  tar: "application/x-tar",
+  gz: "application/gzip",
+};
+
+/**
+ * Find probable MIME type from file path
+ * @param path - File path
+ * @returns MIME type string
+ */
+function findProbableMimeType(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() || "";
   if (DEBUG)
     console.log(`${prefix} 📎 Extracted extension: ${ext} from path: ${path}`);
-  const mimeTypes = {
-    // Images
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    gif: "image/gif",
-    webp: "image/webp",
-    svg: "image/svg+xml",
-    ico: "image/x-icon",
-    bmp: "image/bmp",
-    tiff: "image/tiff",
-    tif: "image/tiff",
-
-    // Videos
-    mp4: "video/mp4",
-    webm: "video/webm",
-    ogg: "video/ogg",
-    mov: "video/quicktime",
-
-    // Audio
-    mp3: "audio/mpeg",
-    wav: "audio/wav",
-    oga: "audio/ogg",
-    m4a: "audio/mp4",
-
-    // Documents
-    pdf: "application/pdf",
-    json: "application/json",
-    xml: "application/xml",
-    txt: "text/plain",
-    html: "text/html",
-    css: "text/css",
-    js: "application/javascript",
-
-    // Archives
-    zip: "application/zip",
-    rar: "application/x-rar-compressed",
-    "7z": "application/x-7z-compressed",
-    tar: "application/x-tar",
-    gz: "application/gzip",
-  };
 
   return mimeTypes[ext] || "application/octet-stream";
 }
 
-// Helper function to create browser-friendly headers
-function createBrowserFriendlyHeaders(originalHeaders, mediaPath) {
+/**
+ * Create browser-friendly headers for media responses
+ * @param originalHeaders - Original response headers
+ * @param mediaPath - Path to the media file
+ * @returns Modified headers
+ */
+function createBrowserFriendlyHeaders(originalHeaders: Headers, mediaPath: string): Headers {
   const newHeaders = new Headers(originalHeaders);
 
   // Get content type from original headers or determine from file extension
@@ -79,14 +90,6 @@ function createBrowserFriendlyHeaders(originalHeaders, mediaPath) {
   // Remove or set Content-Disposition to inline for browser display
   newHeaders.delete("Content-Disposition");
 
-  // For certain file types, you might want to force download
-  // Uncomment if needed:
-  // const forceDownloadTypes = ['zip', 'rar', '7z', 'tar', 'gz'];
-  // const ext = mediaPath.split('.').pop().toLowerCase();
-  // if (forceDownloadTypes.includes(ext)) {
-  //   newHeaders.set('Content-Disposition', 'attachment');
-  // }
-
   // Set cache control for immutable R2 URLs
   // R2 URLs are immutable, so we can cache them for a very long time
   const oneYear = 31536000; // seconds in a year
@@ -100,9 +103,19 @@ function createBrowserFriendlyHeaders(originalHeaders, mediaPath) {
   return newHeaders;
 }
 
-// Unified handler for Cloudflare requests - NOT used in static.repo.md worker
+/** Function type for getting R2 media URL */
+export type GetR2MediaUrlFn = (mediaPath: string) => Promise<string> | string;
 
-export async function handleCloudflareRequest(request, getR2MediaUrl) {
+/**
+ * Handle Cloudflare requests for media assets
+ * @param request - Incoming request
+ * @param getR2MediaUrl - Function to get the R2 URL for a media path
+ * @returns Response or null if not a media request
+ */
+export async function handleCloudflareRequest(
+  request: Request,
+  getR2MediaUrl: GetR2MediaUrlFn
+): Promise<Response | null> {
   const startTime = performance.now();
 
   if (DEBUG) {

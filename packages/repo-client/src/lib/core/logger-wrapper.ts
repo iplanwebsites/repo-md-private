@@ -7,11 +7,10 @@
 
 import { LOG_PREFIXES } from "../logger.js";
 import { schemas } from "../schemas/schemas.js";
-import { validateFunctionParams } from "../schemas/types.js";
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
-// ANSI color codes for terminal coloring
+/** ANSI color codes for terminal coloring */
 const colors = {
   reset: "\x1b[0m",
   bright: "\x1b[1m",
@@ -38,17 +37,17 @@ const colors = {
   bgMagenta: "\x1b[45m",
   bgCyan: "\x1b[46m",
   bgWhite: "\x1b[47m",
-};
+} as const;
 
-// Emoji indicators for different log types
+/** Emoji indicators for different log types */
 const emoji = {
   call: "📣",
   success: "✅",
   error: "❌",
   arrow: "➡️",
-};
+} as const;
 
-// CSS styles for console logs
+/** CSS styles for console logs */
 const styles = {
   methodCall: 'color: white; background: #4a69bd; padding: 2px 6px; border-radius: 4px; font-weight: bold;',
   methodSuccess: 'color: white; background: #78e08f; padding: 2px 6px; border-radius: 4px; font-weight: bold;',
@@ -58,22 +57,22 @@ const styles = {
   duration: 'color: #ffa801; font-weight: bold;',
   group: 'color: #4a69bd; font-weight: bold; font-size: 12px;',
   arrow: 'color: #01a3a4; font-weight: bold;',
-};
+} as const;
 
 // Flag to track whether we're inside an SDK method call
 let isInsideSDKCall = false;
 
 // Keep track of active method call groups to properly close them
-let activeMethodGroups = new Set();
+const activeMethodGroups = new Set<string>();
 
 /**
  * Format parameter values for logging in a clean, readable way
- * @param {any} value - The parameter value to format
- * @param {number} [maxLength=50] - Maximum string length before truncation
- * @param {number} [maxDepth=1] - Maximum depth for object inspection
- * @returns {string} Formatted parameter value
+ * @param value - The parameter value to format
+ * @param maxLength - Maximum string length before truncation
+ * @param maxDepth - Maximum depth for object inspection
+ * @returns Formatted parameter value
  */
-function formatParamValue(value, maxLength = 50, maxDepth = 1) {
+function formatParamValue(value: unknown, maxLength = 50, maxDepth = 1): string {
   // Handle null and undefined
   if (value === null) return "null";
   if (value === undefined) return "undefined";
@@ -98,7 +97,7 @@ function formatParamValue(value, maxLength = 50, maxDepth = 1) {
 
     try {
       // Try to get keys for formatting
-      const keys = Object.keys(value);
+      const keys = Object.keys(value as object);
       if (keys.length === 0) return "{}";
 
       // Format first few keys with reduced depth
@@ -107,7 +106,7 @@ function formatParamValue(value, maxLength = 50, maxDepth = 1) {
         .map(
           (key) =>
             `${key}: ${formatParamValue(
-              value[key],
+              (value as Record<string, unknown>)[key],
               maxLength / 2,
               maxDepth - 1
             )}`
@@ -119,7 +118,7 @@ function formatParamValue(value, maxLength = 50, maxDepth = 1) {
         : `{${entries}${
             keys.length > 3 ? `, ...${keys.length - 3} more` : ""
           }}`;
-    } catch (e) {
+    } catch {
       return "{...}";
     }
   }
@@ -141,16 +140,16 @@ function formatParamValue(value, maxLength = 50, maxDepth = 1) {
 
 /**
  * Format method parameters for logging
- * @param {string} methodName - The name of the method
- * @param {Array} args - The arguments passed to the method
- * @returns {string} Formatted parameter string
+ * @param methodName - The name of the method
+ * @param args - The arguments passed to the method
+ * @returns Formatted parameter string
  */
-function formatMethodParams(methodName, args) {
+function formatMethodParams(methodName: string, args: unknown[]): string {
   // Handle methods with no parameters
   if (!args || args.length === 0) return "";
 
   // Check if we have a schema for this method
-  const hasSchema = !!schemas[methodName];
+  const hasSchema = !!(schemas as Record<string, unknown>)[methodName];
 
   // If no schema or empty args, format normally
   if (!hasSchema) {
@@ -160,11 +159,11 @@ function formatMethodParams(methodName, args) {
   // For methods with schemas, we can use the schema to identify parameters
   try {
     // Convert args to parameter object format if needed
-    let paramsObj = {};
+    let paramsObj: Record<string, unknown> = {};
 
     if (args.length === 1 && args[0] !== null && typeof args[0] === "object") {
       // Already an object - might be params object style
-      paramsObj = args[0];
+      paramsObj = args[0] as Record<string, unknown>;
     } else {
       // This is where we would convert positional parameters to named ones
       // We'd need similar logic to what's in validator.js
@@ -178,7 +177,7 @@ function formatMethodParams(methodName, args) {
     return entries
       .map(([key, value]) => `${key}: ${formatParamValue(value)}`)
       .join(", ");
-  } catch (error) {
+  } catch {
     // Fallback to basic formatting if schema processing fails
     return args.map((arg) => formatParamValue(arg)).join(", ");
   }
@@ -186,10 +185,10 @@ function formatMethodParams(methodName, args) {
 
 /**
  * Format a result value for logging
- * @param {any} result - The result to format
- * @returns {string} Formatted result string
+ * @param result - The result to format
+ * @returns Formatted result string
  */
-function formatResultValue(result) {
+function formatResultValue(result: unknown): string {
   if (result === null) return "null";
   if (result === undefined) return "undefined";
 
@@ -203,7 +202,7 @@ function formatResultValue(result) {
       return `Object{${keys.slice(0, 3).join(", ")}${
         keys.length > 3 ? "..." : ""
       }}`;
-    } catch (e) {
+    } catch {
       return "Object";
     }
   }
@@ -217,19 +216,22 @@ function formatResultValue(result) {
   return String(result);
 }
 
+/** Generic function type */
+type AnyFunction = (...args: unknown[]) => unknown;
+
 /**
  * Creates a logger-wrapped function with CSS styled console grouping
- * @param {string} methodName - The name of the method being wrapped
- * @param {Function} originalMethod - The original method to wrap
- * @param {boolean} debug - Whether to log debug info
- * @returns {Function} - Wrapped function with styled logging
+ * @param methodName - The name of the method being wrapped
+ * @param originalMethod - The original method to wrap
+ * @param debug - Whether to log debug info
+ * @returns Wrapped function with styled logging
  */
-export function createLoggerFunction(
-  methodName,
-  originalMethod,
+export function createLoggerFunction<T extends AnyFunction>(
+  methodName: string,
+  originalMethod: T,
   debug = false
-) {
-  return function (...args) {
+): T {
+  const wrappedFunction = function (this: unknown, ...args: unknown[]): unknown {
     if (!debug) {
       // If debug is disabled, just call the original method
       return originalMethod.apply(this, args);
@@ -237,13 +239,13 @@ export function createLoggerFunction(
 
     // Check if we're already inside an SDK method call
     const wasInsideSDKCall = isInsideSDKCall;
-    
+
     // Format parameters for display
     const formattedParams = formatMethodParams(methodName, args);
-    
+
     // Create group ID for this method call to ensure we close the right group
     const groupId = `${methodName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     if (!wasInsideSDKCall) {
       // This is a top-level call - create a styled console group
       console.groupCollapsed(
@@ -255,17 +257,17 @@ export function createLoggerFunction(
         styles.params,                         // parameters style
         'color: black;'                        // closing parenthesis style
       );
-      
+
       // Add this group to our active groups set
       activeMethodGroups.add(groupId);
     }
 
+    // Start timing only for top-level calls
+    const startTime = wasInsideSDKCall ? 0 : performance.now();
+
     try {
       // Set the flag to indicate we're inside an SDK method
       isInsideSDKCall = true;
-
-      // Start timing only for top-level calls
-      const startTime = wasInsideSDKCall ? 0 : performance.now();
 
       // Call the original method
       const result = originalMethod.apply(this, args);
@@ -292,7 +294,7 @@ export function createLoggerFunction(
                 styles.duration,                       // duration style
                 'color: black;'                        // closing parenthesis style
               );
-              
+
               // Close the console group
               if (activeMethodGroups.has(groupId)) {
                 console.groupEnd();
@@ -307,7 +309,7 @@ export function createLoggerFunction(
 
             return asyncResult;
           })
-          .catch((error) => {
+          .catch((error: Error) => {
             // Only log for top-level calls
             if (!wasInsideSDKCall) {
               const duration = (performance.now() - startTime).toFixed(2);
@@ -324,7 +326,7 @@ export function createLoggerFunction(
                 styles.duration,                       // duration style
                 'color: black;'                        // closing parenthesis style
               );
-              
+
               // Close the console group
               if (activeMethodGroups.has(groupId)) {
                 console.groupEnd();
@@ -356,7 +358,7 @@ export function createLoggerFunction(
             styles.duration,                       // duration style
             'color: black;'                        // closing parenthesis style
           );
-          
+
           // Close the console group
           if (activeMethodGroups.has(groupId)) {
             console.groupEnd();
@@ -378,7 +380,7 @@ export function createLoggerFunction(
 
         // Log the error with styling
         console.error(
-          `%c${prefix}%c ${emoji.error} %c${methodName}%c ${emoji.arrow} %c${error.message}%c (%c${duration}ms%c)`,
+          `%c${prefix}%c ${emoji.error} %c${methodName}%c ${emoji.arrow} %c${(error as Error).message}%c (%c${duration}ms%c)`,
           'color: #6ab04c; font-weight: bold;',  // prefix style
           'color: black;',                       // emoji style
           styles.methodError,                    // method name style
@@ -388,7 +390,7 @@ export function createLoggerFunction(
           styles.duration,                       // duration style
           'color: black;'                        // closing parenthesis style
         );
-        
+
         // Close the console group
         if (activeMethodGroups.has(groupId)) {
           console.groupEnd();
@@ -407,7 +409,7 @@ export function createLoggerFunction(
       // If this was the outermost call, ensure we reset the flag
       if (!wasInsideSDKCall) {
         isInsideSDKCall = false;
-        
+
         // Safety check to close any remaining groups
         if (activeMethodGroups.has(groupId)) {
           console.groupEnd();
@@ -416,25 +418,27 @@ export function createLoggerFunction(
       }
     }
   };
+
+  return wrappedFunction as T;
 }
 
 /**
  * Creates a function that combines validation and logging with styled output
- * @param {string} methodName - The name of the method to wrap
- * @param {Function} originalMethod - The original method to wrap
- * @param {boolean} debug - Whether to log debug info
- * @returns {Function} - Wrapped function with validation and logging
+ * @param methodName - The name of the method to wrap
+ * @param originalMethod - The original method to wrap
+ * @param debug - Whether to log debug info
+ * @returns Wrapped function with validation and logging
  */
-export function createValidatedLoggerFunction(
-  methodName,
-  originalMethod,
+export function createValidatedLoggerFunction<T extends AnyFunction>(
+  methodName: string,
+  originalMethod: T,
   debug = false
-) {
+): T {
   // If debug is disabled, only do validation, no logging
   if (!debug) {
-    return function (...args) {
+    const validatedFunction = function (this: unknown, ...args: unknown[]): unknown {
       // Check if we have a schema for this function
-      const hasSchema = !!schemas[methodName];
+      const hasSchema = !!(schemas as Record<string, unknown>)[methodName];
 
       // If no schema exists, just call the original method
       if (!hasSchema) {
@@ -442,8 +446,7 @@ export function createValidatedLoggerFunction(
       }
 
       // For methods that expect positional parameters, convert them to an object
-      let paramsObj = {};
-      let validatedArgs = args;
+      const validatedArgs = args;
 
       try {
         // Apply validation logic similar to validator.js
@@ -453,28 +456,35 @@ export function createValidatedLoggerFunction(
       } catch (error) {
         console.log("xxxxx params passed: ", args);
         throw new Error(
-          `Parameter validation failed for ${methodName}: ${error.message}`
+          `Parameter validation failed for ${methodName}: ${(error as Error).message}`
         );
       }
     };
+
+    return validatedFunction as T;
   }
 
   // If debug is enabled, add both validation and colored logging
   return createLoggerFunction(methodName, originalMethod, debug);
 }
 
+/** Object with methods that can have logging applied */
+interface LoggableObject {
+  [key: string]: unknown;
+}
+
 /**
  * Apply logger wrapper to all methods on an object
- * @param {Object} object - The object to apply logging to
- * @param {boolean} debug - Whether to log debug info
- * @param {string} contextName - Optional context name for the methods (for nested services)
- * @returns {number} - Number of wrapped methods
+ * @param object - The object to apply logging to
+ * @param debug - Whether to log debug info
+ * @param contextName - Optional context name for the methods (for nested services)
+ * @returns Number of wrapped methods
  */
-function applyLoggingToObject(object, debug = false, contextName = '') {
+function applyLoggingToObject(object: LoggableObject | null, debug = false, contextName = ''): number {
   if (!object || typeof object !== 'object') return 0;
-  
+
   let wrappedCount = 0;
-  
+
   // Get all methods to wrap
   for (const methodName of Object.keys(object)) {
     // Skip non-function properties and private methods
@@ -484,45 +494,45 @@ function applyLoggingToObject(object, debug = false, contextName = '') {
     ) {
       continue;
     }
-    
+
     // Skip constructor and known internal methods
     if (methodName === "constructor" || methodName === "destroy") {
       continue;
     }
-    
+
     // Create a full method name with context if needed
-    const fullMethodName = contextName 
-      ? `${contextName}.${methodName}` 
+    const fullMethodName = contextName
+      ? `${contextName}.${methodName}`
       : methodName;
-    
+
     // Create a logger wrapped function
-    const originalMethod = object[methodName];
-    
+    const originalMethod = object[methodName] as AnyFunction;
+
     // Use the standard logger function
     object[methodName] = createLoggerFunction(
       fullMethodName,
       originalMethod,
       debug
     );
-    
+
     wrappedCount++;
   }
-  
+
   return wrappedCount;
 }
 
 /**
  * Applies logger wrappers to RepoMD methods including all service modules
- * @param {Object} instance - The RepoMD instance to apply logging to
- * @param {boolean} debug - Whether to log debug info
+ * @param instance - The RepoMD instance to apply logging to
+ * @param debug - Whether to log debug info
  */
-export function applyLogging(instance, debug = false) {
+export function applyLogging(instance: LoggableObject | null, debug = false): void {
   // If debug is disabled, do nothing
   if (!debug) return;
-  
+
   // First wrap all main methods
   let totalWrappedCount = applyLoggingToObject(instance, debug);
-  
+
   // Known service modules in RepoMD
   const serviceModules = [
     'posts',
@@ -533,19 +543,19 @@ export function applyLogging(instance, debug = false) {
     'urls',
     'api'
   ];
-  
+
   // Apply logging to all service modules
   for (const moduleName of serviceModules) {
-    if (instance[moduleName] && typeof instance[moduleName] === 'object') {
+    if (instance && instance[moduleName] && typeof instance[moduleName] === 'object') {
       const moduleWrappedCount = applyLoggingToObject(
-        instance[moduleName],
+        instance[moduleName] as LoggableObject,
         debug,
         moduleName
       );
       totalWrappedCount += moduleWrappedCount;
     }
   }
-  
+
   if (debug) {
     // Log with styled output
     console.log(
@@ -557,3 +567,6 @@ export function applyLogging(instance, debug = false) {
     );
   }
 }
+
+// Export colors for potential external use
+export { colors, emoji, styles };
