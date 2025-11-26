@@ -37,7 +37,6 @@ import { createOpenAiSpecs, type OpenAiSpecs, type CreateOpenAiSpecsOptions } fr
 import { applyAliases } from "./aliases.js";
 import {
   applyValidation,
-  repoMdOptionsSchema,
   getMethodDescription,
   getAllMethodDescriptions,
   getMethodsByCategory,

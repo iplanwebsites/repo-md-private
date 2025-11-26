@@ -1,4 +1,4 @@
-import { schemas, getMethodsByMode, type SchemaWithMeta, type MethodMode } from "../schemas/schemas.js";
+import { getMethodsByMode, type SchemaWithMeta, type MethodMode } from "../schemas/schemas.js";
 import { type ZodTypeAny } from "zod";
 
 /** OpenAI parameter property type */

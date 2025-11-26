@@ -6,7 +6,6 @@
 import computeCosineSimilarityPkg from "compute-cosine-similarity";
 const computeCosineSimilarity = computeCosineSimilarityPkg as unknown as (a: number[], b: number[]) => number;
 import { LOG_PREFIXES } from "../logger.js";
-import cache from "../core/cache.js";
 import type { Media } from '../posts/search.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
@@ -38,7 +37,6 @@ export interface MediaSimilarityService {
  */
 export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimilarityService {
   const {
-    fetchR2Json,
     _fetchMapData,
     getAllMedia,
     debug = false,

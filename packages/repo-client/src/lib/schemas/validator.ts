@@ -1,5 +1,5 @@
 import { validateFunctionParams, extractParamMetadata, type ParamMetadata } from './types.js';
-import { schemas, type SchemaWithMeta } from './schemas.js';
+import { schemas } from './schemas.js';
 
 // Cache for parameter metadata to avoid repeated schema introspection
 const parameterMetadataCache = new Map<string, ParamMetadata[]>();

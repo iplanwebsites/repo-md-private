@@ -3,7 +3,7 @@
  * Eliminates duplicate cache invalidation patterns across 4+ service files
  */
 
-import type { GetActiveRevFn, RevisionCacheConfig } from '../types/common.js';
+import type { RevisionCacheConfig } from '../types/common.js';
 
 /**
  * Creates a revision-aware cache that automatically invalidates when revision changes

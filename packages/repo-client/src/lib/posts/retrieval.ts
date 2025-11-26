@@ -4,7 +4,6 @@
  */
 
 import { LOG_PREFIXES } from '../logger.js';
-import cache from '../core/cache.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
@@ -76,7 +75,7 @@ export interface PostRetrievalService {
  * @returns Post retrieval functions
  */
 export function createPostRetrieval(config: PostRetrievalConfig): PostRetrievalService {
-  const { getRevisionUrl, getProjectUrl, getSharedFolderUrl, fetchR2Json, fetchJson, _fetchMapData, stats, debug = false, getActiveRev = null } = config;
+  const { getSharedFolderUrl, fetchR2Json, fetchJson, _fetchMapData, stats, debug = false, getActiveRev = null } = config;
 
   // Local post cache reference with revision tracking
   let postsCache: Post[] | null = null;

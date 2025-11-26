@@ -6,7 +6,6 @@
 import computeCosineSimilarityPkg from "compute-cosine-similarity";
 const computeCosineSimilarity = computeCosineSimilarityPkg as unknown as (a: number[], b: number[]) => number;
 import { LOG_PREFIXES } from "../logger.js";
-import cache from "../core/cache.js";
 import type { Post, AugmentOptions } from './retrieval.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
@@ -42,7 +41,6 @@ export interface PostSimilarityService {
  */
 export function createPostSimilarity(config: PostSimilarityConfig): PostSimilarityService {
   const {
-    fetchR2Json,
     _fetchMapData,
     getRecentPosts,
     getPostBySlug,

@@ -41,7 +41,6 @@ export function createMediaHandler(config: MediaHandlerConfig): MediaHandlerServ
   const {
     fetchR2Json,
     getProjectUrl,
-    getRevisionUrl,
     debug = false
   } = config;
 

@@ -62,17 +62,12 @@ export function cloudflareRepoMdHandler(options: CloudflareRepoMdOptions | strin
     throw new Error('projectId is required for Cloudflare Workers');
   }
 
-  // If route is provided, construct the mediaUrlPrefix from it
-  const _mediaUrlPrefix = config.route
-    ? `/${config.route}/medias`
-    : config.mediaUrlPrefix;
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const repo = new (RepoMD as any)({
     projectId,
     debug: config.debug,
-    // Note: mediaUrlPrefix is not currently supported by RepoMD for Cloudflare
-    // This is here for future compatibility when it's implemented
+    // Note: mediaUrlPrefix is not currently used by RepoMD for Cloudflare
+    // route and mediaUrlPrefix options will be used when RepoMD supports them
   });
 
   // Return a handler function that Cloudflare Workers can use

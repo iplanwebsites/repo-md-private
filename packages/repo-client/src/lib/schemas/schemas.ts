@@ -7,9 +7,7 @@ import { z, type ZodTypeAny } from "zod";
 // Base schemas for common parameter types
 const stringSchema = z.string();
 const booleanSchema = z.boolean().optional().default(true);
-const booleanSchemaTrue = booleanSchema;
 const booleanSchemaFalse = z.boolean().optional().default(false);
-const numberSchema = z.number().nonnegative().optional();
 const optionsSchema = z.record(z.any()).optional().default({});
 
 // Common limit schemas
@@ -17,7 +15,6 @@ const limit10Schema = z.number().nonnegative().optional().default(10);
 const limit20Schema = z.number().nonnegative().optional().default(20);
 const limit3Schema = z.number().nonnegative().optional().default(3);
 const limit5Schema = z.number().nonnegative().optional().default(5);
-const limit50Schema = z.number().nonnegative().optional().default(50);
 
 // Additional shortcut schemas for repetitive params
 const hashSchema = stringSchema

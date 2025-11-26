@@ -74,7 +74,7 @@ export function remixRepoMdAction(options: RemixRepoMdOptions | string = {}): Re
     : options;
 
   // Validate project ID even though we don't use it yet
-  const _projectId = getProjectIdFromEnv(config.projectId, 'Remix action');
+  getProjectIdFromEnv(config.projectId, 'Remix action');
 
   return async (_context: RemixActionContext): Promise<Response> => {
     // For now, just return method not allowed
