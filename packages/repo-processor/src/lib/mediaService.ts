@@ -237,12 +237,12 @@ export class MediaService {
   /**
    * Finds the best media path from different lookup sources
    */
-  public findBestMediaPath(pathVariations: string[]): { 
-    found: boolean; 
-    path?: string; 
-    lookupType?: 'best-path' | 'mapped' 
+  public findBestMediaPath(pathVariations: string[]): {
+    found: boolean;
+    path?: string;
+    lookupType?: 'best-path' | 'mapped'
   } {
-    // PRIORITY 1: Check if we have a match in bestPathLookup
+    // PRIORITY 1: Check if we have a match in bestPathLookup (case-sensitive first, then case-insensitive)
     for (const pathVar of pathVariations) {
       if (this.bestPathLookup.has(pathVar)) {
         return {
@@ -251,9 +251,18 @@ export class MediaService {
           lookupType: 'best-path'
         };
       }
+      // Also try lowercase version
+      const lowerPathVar = pathVar.toLowerCase();
+      if (lowerPathVar !== pathVar && this.bestPathLookup.has(lowerPathVar)) {
+        return {
+          found: true,
+          path: this.bestPathLookup.get(lowerPathVar)!,
+          lookupType: 'best-path'
+        };
+      }
     }
-    
-    // PRIORITY 2: Check the mediaPathMap if not found in bestPathLookup
+
+    // PRIORITY 2: Check the mediaPathMap if not found in bestPathLookup (case-sensitive)
     for (const pathVar of pathVariations) {
       if (this.mediaPathMap[pathVar]) {
         return {
@@ -261,6 +270,22 @@ export class MediaService {
           path: this.mediaPathMap[pathVar],
           lookupType: 'mapped'
         };
+      }
+    }
+
+    // PRIORITY 3: Case-insensitive fallback for mediaPathMap
+    // Build a lowercase map of mediaPathMap keys for comparison
+    const mediaPathMapKeys = Object.keys(this.mediaPathMap);
+    for (const pathVar of pathVariations) {
+      const lowerPathVar = pathVar.toLowerCase();
+      for (const mapKey of mediaPathMapKeys) {
+        if (mapKey.toLowerCase() === lowerPathVar) {
+          return {
+            found: true,
+            path: this.mediaPathMap[mapKey],
+            lookupType: 'mapped'
+          };
+        }
       }
     }
 

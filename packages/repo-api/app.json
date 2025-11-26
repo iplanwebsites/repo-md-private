@@ -18,9 +18,9 @@
         "name": "web check",
         "description": "Checking if the web server is up and responding",
         "path": "/",
-        "attempts": 3,
-        "timeout": 5,
-        "wait": 5
+        "attempts": 5,
+        "timeout": 60,
+        "wait": 10
       }
     ]
   }

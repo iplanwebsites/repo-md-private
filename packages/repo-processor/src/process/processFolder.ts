@@ -277,8 +277,21 @@ function resolveFrontmatterWikiLinks(
 
   // Helper function to resolve a media link and return the path with size variants
   const resolveMediaLink = (link: string, fieldPath: string[]): string | null => {
+    // Trim whitespace from the link
+    const trimmedLink = link.trim();
+
     // Create path variations for matching
-    const pathVariations = mediaService.createPathVariations(link, currentFilePath);
+    // Include variations both relative to current file AND relative to project root
+    const pathVariations = mediaService.createPathVariations(trimmedLink, currentFilePath);
+
+    // Also add the original link as-is (in case it's meant to be root-relative)
+    const normalizedLink = trimmedLink.replace(/\\/g, '/');
+    if (!pathVariations.includes(normalizedLink)) {
+      pathVariations.push(normalizedLink);
+    }
+    if (!pathVariations.includes(normalizedLink.toLowerCase())) {
+      pathVariations.push(normalizedLink.toLowerCase());
+    }
 
     // PRIORITY 1: Try to find via mediaService.findBestMediaPath() which uses mediaPathMap
     // This map contains the properly prefixed paths (e.g., with domain like https://static.repo.md/...)
@@ -287,11 +300,12 @@ function resolveFrontmatterWikiLinks(
     // Try to find exact path match in media data for size variants
     let mediaItem: MediaFileData | undefined = undefined;
     for (const variation of pathVariations) {
-      // Check all media items for exact path match
+      // Check all media items for exact path match (case-insensitive)
+      const lowerVariation = variation.toLowerCase();
       for (const media of mediaData) {
-        if (media.originalPath?.toLowerCase() === variation ||
-            media.effectivePath?.toLowerCase() === variation ||
-            media.hashPath?.toLowerCase() === variation) {
+        if (media.originalPath?.toLowerCase() === lowerVariation ||
+            media.effectivePath?.toLowerCase() === lowerVariation ||
+            media.hashPath?.toLowerCase() === lowerVariation) {
           mediaItem = media;
           break;
         }
@@ -299,7 +313,7 @@ function resolveFrontmatterWikiLinks(
       if (mediaItem) break;
     }
 
-    if (mediaItem && mediaItem.sizes) {
+    if (mediaItem && mediaItem.sizes && Object.keys(mediaItem.sizes).length > 0) {
       // For top-level fields, we'll add size variants
       const isTopLevel = fieldPath.length === 1;
       let defaultImagePath: string | null = null;
@@ -338,6 +352,18 @@ function resolveFrontmatterWikiLinks(
     // If no media item found but we have a best path from mediaPathMap, use that
     if (bestPathResult.found && bestPathResult.path) {
       return bestPathResult.path;
+    }
+
+    // FALLBACK: If we found a mediaItem but couldn't get a path from sizes,
+    // return the effectivePath or originalPath (this handles cases where optimization was skipped)
+    if (mediaItem) {
+      // Prefer effectivePath (which may include hash), otherwise use originalPath
+      const fallbackPath = mediaItem.effectivePath || mediaItem.originalPath;
+      if (fallbackPath) {
+        // If we have a domain configured in mediaService options, prefix with it
+        // Otherwise just return the path as-is (it should still be valid relative path)
+        return fallbackPath;
+      }
     }
 
     // No media found
