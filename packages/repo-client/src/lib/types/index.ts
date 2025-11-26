@@ -3,3 +3,5 @@
  */
 
 export * from './common.js';
+export * from './post.js';
+export * from './guards.js';
