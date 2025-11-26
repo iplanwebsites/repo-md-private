@@ -220,7 +220,7 @@ export function repoMdProxy(options: RepoMdProxyOptions | string = {}): ProxyRes
  * @returns Configured RepoMD instance
  */
 export function createRepoMd(options: CreateRepoMdOptions = {}): RepoMD {
-  const projectId = options.projectId || getProjectIdFromEnv();
+  const projectId = options.projectId || getProjectIdFromEnv() || undefined;
 
   return new RepoMD({
     projectId,

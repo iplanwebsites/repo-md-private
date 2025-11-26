@@ -7,6 +7,9 @@ import { LOG_PREFIXES } from '../logger.js';
 import { handleCloudflareRequest as handleMediaRequest } from '../mediaProxy.js';
 import type { Media } from '../posts/search.js';
 
+/** Media item type (alias for Media) */
+export type MediaItem = Media;
+
 const prefix = LOG_PREFIXES.REPO_MD;
 
 /** Request-like type for Cloudflare (same as standard Request) */
