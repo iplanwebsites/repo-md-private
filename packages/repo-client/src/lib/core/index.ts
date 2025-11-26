@@ -15,3 +15,12 @@ export {
   LOG_PREFIXES,
   fetchJson,
 };
+
+// Re-export types from cache
+export type {
+  CacheConfig,
+  CacheNamespaceStats,
+  CacheStats,
+  CacheNamespace,
+  CacheManager,
+} from './cache.js';
