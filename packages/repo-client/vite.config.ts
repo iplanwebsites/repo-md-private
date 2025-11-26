@@ -18,7 +18,7 @@ export default {
   },
   build: {
     lib: {
-      entry: 'src/lib/index.js',
+      entry: 'src/lib/index.ts',
       name: 'RepoMD',
       fileName: 'repo-md'
     },
