@@ -3,8 +3,19 @@
  * This file defines the tool specifications in OpenAI's format for the RepoMD API client
  */
 
+import type { OpenAiSpecs, OpenAiFunction } from './OpenAiToolSpec.js';
+
+/** Tool spec with individual function wrapper */
+export interface ToolSpecWrapper {
+  type: "function";
+  function: OpenAiFunction;
+}
+
+/** Individual tool specs map */
+export type ToolSpecsMap = Record<string, ToolSpecWrapper>;
+
 // Define the OpenAI Tool Specifications
-export const OpenAiToolSpec = {
+export const OpenAiToolSpec: OpenAiSpecs = {
   type: "function",
   functions: [
     {
@@ -146,7 +157,7 @@ export const OpenAiToolSpec = {
 };
 
 // Export individual tool specs for potential separate usage
-export const toolSpecs = OpenAiToolSpec.functions.reduce((acc, tool) => {
+export const toolSpecs: ToolSpecsMap = OpenAiToolSpec.functions.reduce<ToolSpecsMap>((acc, tool) => {
   acc[tool.name] = {
     type: "function",
     function: tool,
