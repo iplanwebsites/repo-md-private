@@ -1,0 +1,262 @@
+{
+  "metadata": {
+    "project_name": "WeirdPressPhoto",
+    "processed_date": "2023-10-05T14:30:00Z",
+    "spec_version": "1.0"
+  },
+  "summary": {
+    "description": "WeirdPressPhoto is an AI-generated photojournalism exhibition platform that creates fictional award-winning photo series addressing global issues, modeled after World Press Photo standards. It produces comprehensive visual narratives, including series with 7 images, photographer bios, and professional presentation, aiming to showcase powerful stories with journalistic integrity and artistic vision.",
+    "quality_score": 8,
+    "original": "# WeirdPressPhoto Repo.md Specification\n\n## 1. Summary\n\n**AI-generated photojournalism exhibition platform** - WeirdPressPhoto showcases powerful visual narratives addressing global issues through the lens of contemporary photojournalism. Modeled after World Press Photo standards, the project creates fictional award-winning photo series that explore real-world events with artistic vision and journalistic integrity. Each series features 7 images with comprehensive storytelling, photographer bios, and professional presentation."
+  },
+  "content_strategy": {
+    "voice": {
+      "description": "Professional photojournalism narrative—authoritative yet accessible, balancing emotional impact with factual accuracy. Series statements contextualize without editorializing; captions are precise and informative. Avoid formulaic descriptions; each series demands its own narrative approach. Maintain dignity when depicting suffering and complexity when addressing issues.",
+      "quality_score": 8,
+      "details": {
+        "tone": "Authoritative, respectful, informative",
+        "style": "Journalistic, narrative-driven, emotionally balanced",
+        "principles": [
+          "Accuracy",
+          "Dignity",
+          "Clarity",
+          "Distinctiveness"
+        ]
+      },
+      "original": "**Content Voice**\n\n**Professional photojournalism narrative** - Authoritative yet accessible, balancing emotional impact with factual accuracy. Write series statements that contextualize without editorializing. Captions should be precise and informative. Avoid formulaic descriptions - each series demands its own narrative approach. Maintain dignity when depicting suffering and complexity when addressing global issues."
+    },
+    "structure": {
+      "description": "Clear separation between research and final exhibition content. Internal research resides in `/internal/year/` with themes, concepts, and judge evaluations. Final exhibition resides in `/year/` with polished series and assets. File naming and folder structure are standardized to support organized workflows.",
+      "quality_score": 8,
+      "content_types": [
+        {
+          "name": "Theme Research Documents",
+          "path": "/internal/year/themes-list.md",
+          "includes": [
+            "themes-list.md"
+          ]
+        },
+        {
+          "name": "Creative Concepts and Judging Files",
+          "path": "/internal/year/themes/",
+          "includes": [
+            "[num]-[theme-name].md"
+          ]
+        },
+        {
+          "name": "Final Series Files",
+          "path": "/year/series/",
+          "includes": [
+            "[num]-[series-slug].md"
+          ]
+        },
+        {
+          "name": "Assets (Photos and Portraits)",
+          "path": "/assets/[num]-[series-slug]/",
+          "includes": [
+            "photo-1.png",
+            "photographer-portrait.png"
+          ]
+        }
+      ],
+      "original": "**Content Structure**\n\n**Clear separation between research and final exhibition content**:\n\n**Internal Research** (`/internal/year/`):\n\n- **Theme Research**: `themes-list.md` - Initial compilation of 50+ events into 30 themes\n- **Creative Development**: `/themes/[num]-[theme-name].md` - 3 concepts per theme with judge evaluations\n- **Selection Notes**: `selected-concepts.md` - Final decisions and rationale\n\n**Published Exhibition** (`/year/`):\n\n- **Photo Series**: `/series/[num]-[series-slug].md` - Final polished series with statement, bio, captions\n- **Series Assets**: `/assets/[num]-[series-slug]/` - 7 photos + photographer portrait\n\nThe internal folder contains all working documents, research, brainstorming, and judge discussions. The published folders contain only the final, exhibition-ready content that viewers would see."
+    },
+    "visual_style": {
+      "description": "Images adhere to award-winning photojournalism standards, maintaining consistent visual language while exploring diverse approaches (documentary, artistic, long-term). Predominantly landscape format with strategic use of square/portrait orientations. Include technical specs (camera, lens, settings) and quality markers such as 'World Press Photo winner' or 'award-winning photojournalism'. No captions on images; text is separate.",
+      "quality_score": 8,
+      "details": {
+        "formats": [
+          "landscape",
+          "square",
+          "portrait"
+        ],
+        "technical_requirements": [
+          "Camera and lens specifications",
+          "Lighting conditions",
+          "Composition techniques"
+        ],
+        "prompt_structure": [
+          "Subject and action with specific details",
+          "Exact location (city, country)",
+          "Camera angle and framing",
+          "Technical specs (e.g., \"Canon EOS 5D Mark IV, 85mm f/1.4\")",
+          "Lighting and compositional techniques",
+          "Mood and atmosphere",
+          "Award-winning keywords"
+        ]
+      },
+      "original": "**Visual Style**\n\n**Award-winning photojournalism standards** - Each series maintains consistent visual language while exploring unique approaches (documentary, artistic, long-term projects). Images predominantly landscape format with strategic use of square/portrait. Always include technical specifications (camera, lens, settings) and quality markers (\"World Press Photo winner\", \"award-winning photojournalism\"). No captions rendered on images - text separate."
+    }
+  },
+  "actions": [
+    {
+      "title": "Produce Annual Exhibition",
+      "summary": "Create a complete photojournalism exhibition for the year through research, development, and production phases.",
+      "detailed_description": "Phase 1 involves extensive web search for significant global events, grouping into themes, and writing descriptive summaries. Phase 2 develops creative concepts per theme with detailed brainstorming, including fictional photographers and judge evaluations. Final selection focuses on focused, impactful stories. Phase 3 involves producing final series, generating 7 images per series with detailed prompts, and organizing assets for presentation.",
+      "quality_score": 8,
+      "phases": [
+        {
+          "name": "Research",
+          "tasks": [
+            "Web search for 50+ significant events across categories",
+            "Compile themes into themes-list.md",
+            "Write descriptive summaries for each theme"
+          ],
+          "output": "/internal/year/themes-list.md"
+        },
+        {
+          "name": "Creative Development",
+          "tasks": [
+            "Create 3 distinct series concepts per theme with detailed elements",
+            "Conduct judge evaluations on concepts",
+            "Select strongest concept for each theme"
+          ],
+          "output": "/internal/year/themes/[num]-[theme-name].md"
+        },
+        {
+          "name": "Production",
+          "tasks": [
+            "Write complete series documentation",
+            "Generate 7 images for each series with detailed prompts",
+            "Organize assets in structured folders"
+          ],
+          "output": "/year/series/[num]-[series-slug].md"
+        }
+      ],
+      "original": "**Produce Annual Exhibition**\n\n**Creates complete photojournalism exhibition through three phases**:\n\n**Phase 1 - Research**:\n\n- Web search for 50+ significant events across categories:\n  - Science & Technology breakthroughs\n  - Political developments & elections\n  - Environmental crises & climate events\n  - Social movements & protests\n  - Sports & cultural milestones\n  - Health & pandemic developments\n  - Economic shifts & labor movements\n  - Migration & displacement patterns\n- Run multiple searches per category to dig deeper than surface-level news\n- Compile into 30 major themes (group by category, include misc for outliers)\n- For each theme: write 3-4 sentence description with factual details (dates, names, stats, sources)\n- Output: `/internal/year/themes-list.md` - comprehensive document with all theme details\n\n**Phase 2 - Creative Development**:\nFor each of the 30 themes, create extensive brainstorming document:\n\n- **3 Distinct Series Concepts**, each including:\n\n  - Fictional photographer name (random first + last name fitting their backstory)\n  - Visual treatment and photojournalism approach\n  - The \"secret sauce\" - what makes this approach special\n  - Visual style details (genre, framing, techniques)\n  - Photographer's backstory and process\n  - How it connects to theme (can be loosely tied, not literal)\n  - 3 potential series titles (9 total per theme)\n\n- **Judge Evaluation Panel**: 5 fictional World Press Photo judges with different personas evaluate all 3 concepts on:\n\n  - Visual appeal potential\n  - Scope (too broad/narrow?)\n  - Visual originality (avoiding literal treatments)\n  - Thematic originality\n  - Overall quality and credibility\n  - Relevance for exhibition\n  - Potential impact\n  - Narrative angle\n\n- **Final Selection**: Compare concepts and select strongest approach, focusing on:\n\n  - Singular, focused treatments over universal coverage\n  - Beauty in narrow, specific stories (e.g., one family, one location)\n  - Creative potential and interesting execution\n  - Detailed outline of specific photos in the series\n\n- Output: `/internal/year/themes/[num]-[theme-name].md` files\n\n**Phase 3 - Production**:\n\n- Load selected concept from Phase 2 research\n- Write complete series file with all required elements\n- Generate 7 images using detailed prompts:\n  - Favor landscape format (most common in World Press Photo)\n  - Use square/portrait where narratively appropriate\n  - No captions rendered on images\n  - Include \"world press photo award winning photo series\" in prompts\n- Keep theme number in filename for tracking\n- Output: `/year/series/[num]-[series-slug].md` with all images in `/assets/`"
+    }
+  ],
+  "tools": {
+    "description": "Utilize web_search for researching global events, image_generation for creating photos, file_operations for managing project structure and assets, and trend_analysis for identifying emerging issues. Heavy reliance on web_search, supplemented by image generation and file management.",
+    "quality_score": 8,
+    "primary_tools": [
+      {
+        "name": "web_search",
+        "usage": "Research real-world events, verify facts, gather detailed context"
+      },
+      {
+        "name": "image_generation",
+        "usage": "Create professional photojournalism images matching prompts"
+      },
+      {
+        "name": "file_operations",
+        "usage": "Organize folders, manage assets, and structure project files"
+      },
+      {
+        "name": "trend_analysis",
+        "usage": "Identify significant global issues and emerging stories"
+      }
+    ],
+    "original": "**Agent Tools**\n\n- **web_search**: Research real-world events, verify facts, find detailed context\n- **image_generation**: Create professional photojournalism images (landscape/portrait/square)\n- **file_operations**: Manage complex project structure and asset organization\n- **trend_analysis**: Identify significant global events and emerging issues\n\n_Primary tools for this project: web_search (heavy use), image_generation, file_operations_"
+  },
+  "automation": {
+    "description": "Annual exhibition production is manually triggered once per year, executing the 'Produce Annual Exhibition' action. News stories are generated randomly on a daily basis with a 1/7 chance, executing the 'Create News Story' action. The agent operates only upon these triggers, ensuring controlled, scheduled operation.",
+    "quality_score": 8,
+    "patterns": [
+      {
+        "name": "Annual Exhibition Trigger",
+        "trigger": "Manual trigger once per year",
+        "action": "Produce Annual Exhibition",
+        "output": "30 complete photo series for the year's exhibition"
+      },
+      {
+        "name": "News Story Trigger",
+        "trigger": "Daily random check (1/7 chance)",
+        "action": "Create News Story",
+        "output": "Single timely photojournalism story in `/year/news/`"
+      }
+    ],
+    "original": "**Execution triggers**:\n\n**Annual Exhibition**:\n\n- Manually triggered once per year\n- Executes \"Produce Annual Exhibition\" action\n- Generates 30 complete photo series for that year's exhibition\n\n**News Stories**:\n\n- Daily random check (1/7 chance)\n- When triggered, executes \"Create News Story\" action\n- Produces single photo story in `/year/news/`\n\nThe agent operates only when triggered - either manually for annual exhibitions or through random daily activation for news stories."
+  },
+  "public_persona": {
+    "personality": {
+      "description": "The exhibition curator is knowledgeable, respectful, and passionate about photojournalism's capacity to inspire change. When discussing series, emphasizes human stories behind global issues, explains photographic techniques, historical context, and fictional photographers' approaches. Maintains a professional yet approachable museum-guide tone.",
+      "quality_score": 8,
+      "traits": [
+        "Knowledgeable",
+        "Respectful",
+        "Passionate",
+        "Educational",
+        "Approachable"
+      ],
+      "example_responses": [
+        "This series captures the complexity of climate migration through one family's journey. The photographer spent months building trust to document these intimate moments.",
+        "The technical choice of using a wide-angle lens here emphasizes the scale of destruction while keeping the human element central to the frame."
+      ]
+    },
+    "boundaries": {
+      "handles": [
+        "Questions about specific photo series and their context",
+        "Technical photography discussions",
+        "Global issues depicted in the exhibitions",
+        "Artistic choices behind each series",
+        "Historical photojournalism references"
+      ],
+      "deflects": [
+        "Requests to generate graphic violence or exploitative content",
+        "Political opinions beyond factual context",
+        "Claims that fictional series are real events",
+        "Commercial licensing of images",
+        "Speculation about real photographers' work"
+      ],
+      "quality_score": 8
+    },
+    "system_prompt": "You are an exhibition curator specializing in photojournalism. Speak knowledgeably and respectfully about series, techniques, and themes. Emphasize human stories and artistic integrity while maintaining a professional tone. Handle inquiries about specific series and technical details, and politely deflect inappropriate or speculative questions.",
+    "original": "**The exhibition curator** - Knowledgeable, respectful, and passionate about photojournalism's power to create change. When discussing series, emphasize the human stories behind global issues. Happy to explain photographic techniques, historical context, or the fictional photographers' approaches. Maintains professional museum-guide tone while being approachable.\n\nExample interactions:\n\n- \"This series captures the complexity of climate migration through one family's journey. The photographer spent months building trust to document these intimate moments.\"\n- \"The technical choice of using a wide-angle lens here emphasizes the scale of destruction while keeping the human element central to the frame.\""
+  },
+  "validation": {
+    "overall_quality": 8,
+    "section_scores": {
+      "summary": 8,
+      "content_strategy": 8,
+      "actions": 8,
+      "tools": 8,
+      "automation": 8,
+      "public_persona": 8
+    },
+    "strengths": [
+      "Comprehensive description of project goals and standards",
+      "Clear workflow for research, development, and production",
+      "Detailed persona with defined boundaries",
+      "Well-structured folder organization and file naming conventions",
+      "Explicit triggers for controlled operation"
+    ],
+    "missing_elements": [
+      "Specific templates or examples for series storytelling structure",
+      "Explicit technical specs template for images",
+      "Criteria for judging the quality of generated images",
+      "More explicit mention of data storage or version control practices"
+    ]
+  },
+  "feedback": {
+    "recommendations": [
+      {
+        "section": "Content Strategy",
+        "issue": "While narrative tone and structure are described, specific templates or examples for series storytelling and technical specs are lacking.",
+        "suggestion": "Include sample templates for series descriptions, shot list structures, and technical specification formatting to guide consistent content creation."
+      },
+      {
+        "section": "Actions",
+        "issue": "Workflow phases are well outlined but lack detailed checklists or templates for each step, especially for creative concepts and judge evaluations.",
+        "suggestion": "Provide sample templates or checklists for concept development, judge scoring, and final series documentation to ensure consistency."
+      },
+      {
+        "section": "Visual Style",
+        "issue": "Prompt construction guidelines are provided, but technical specifications for image quality markers (resolution, color profile) are not explicit.",
+        "suggestion": "Add explicit standards for image technical quality (e.g., resolution, color grading) and example prompts for generating award-worthy images."
+      },
+      {
+        "section": "Validation",
+        "issue": "While scores are assigned, there's limited guidance on how to improve sections based on feedback.",
+        "suggestion": "Include suggestions or best practices for addressing low-scoring areas, and consider iterative review steps."
+      }
+    ],
+    "overall_feedback": "The specification is detailed and well-structured, providing a solid foundation for developing an AI agent to manage a photojournalism exhibition project. To enhance clarity and consistency, adding specific templates, exemplars, and technical standards will facilitate more uniform content creation and evaluation. Regular iterative reviews will help maintain high quality across all sections."
+  },
+  "_metadata": {
+    "generatedAt": "2025-10-10T16:26:56.068Z",
+    "generatedBy": "repo-build-worker",
+    "model": "gpt-4.1-nano"
+  },
+  "original": "# WeirdPressPhoto Repo.md Specification\n\n## 1. Summary\n\n**AI-generated photojournalism exhibition platform** - WeirdPressPhoto showcases powerful visual narratives addressing global issues through the lens of contemporary photojournalism. Modeled after World Press Photo standards, the project creates fictional award-winning photo series that explore real-world events with artistic vision and journalistic integrity. Each series features 7 images with comprehensive storytelling, photographer bios, and professional presentation.\n\n## 2. Content\n\n### Content Voice\n\n**Professional photojournalism narrative** - Authoritative yet accessible, balancing emotional impact with factual accuracy. Write series statements that contextualize without editorializing. Captions should be precise and informative. Avoid formulaic descriptions - each series demands its own narrative approach. Maintain dignity when depicting suffering and complexity when addressing global issues.\n\n### Content Structure\n\n**Clear separation between research and final exhibition content**:\n\n**Internal Research** (`/internal/year/`):\n\n- **Theme Research**: `themes-list.md` - Initial compilation of 50+ events into 30 themes\n- **Creative Development**: `/themes/[num]-[theme-name].md` - 3 concepts per theme with judge evaluations\n- **Selection Notes**: `selected-concepts.md` - Final decisions and rationale\n\n**Published Exhibition** (`/year/`):\n\n- **Photo Series**: `/series/[num]-[series-slug].md` - Final polished series with statement, bio, captions\n- **Series Assets**: `/assets/[num]-[series-slug]/` - 7 photos + photographer portrait\n\nThe internal folder contains all working documents, research, brainstorming, and judge discussions. The published folders contain only the final, exhibition-ready content that viewers would see.\n\n**File Structure Example**:\n\n```\n/project-root/\n  /internal/\n    /2024/\n      themes-list.md\n      /themes/\n        1-climate-crisis.md (research + 3 concepts + judges)\n        2-digital-rights.md\n      selected-concepts.md\n  /2024/\n    /series/\n      1-rising-tides-maldives.md (final series)\n      2-silicon-shadows.md\n    /assets/\n      /1-rising-tides-maldives/\n        photo-1.png through photo-7.png\n        photographer-portrait.png\n```\n\n### Visual Style\n\n**Award-winning photojournalism standards** - Each series maintains consistent visual language while exploring unique approaches (documentary, artistic, long-term projects). Images predominantly landscape format with strategic use of square/portrait. Always include technical specifications (camera, lens, settings) and quality markers (\"World Press Photo winner\", \"award-winning photojournalism\"). No captions rendered on images - text separate.\n\n**Prompt Construction**:\n\n1. Subject and action with specific details\n2. Exact location (city, country)\n3. Camera angle and framing\n4. Technical specs (e.g., \"Canon EOS 5D Mark IV, 85mm f/1.4\")\n5. Lighting and compositional techniques\n6. Mood and atmosphere\n7. Award-winning keywords\n\n## 3. Agent Actions\n\n### Produce Annual Exhibition\n\n**Creates complete photojournalism exhibition through three phases**:\n\n**Phase 1 - Research**:\n\n- Web search for 50+ significant events across categories:\n  - Science & Technology breakthroughs\n  - Political developments & elections\n  - Environmental crises & climate events\n  - Social movements & protests\n  - Sports & cultural milestones\n  - Health & pandemic developments\n  - Economic shifts & labor movements\n  - Migration & displacement patterns\n- Run multiple searches per category to dig deeper than surface-level news\n- Compile into 30 major themes (group by category, include misc for outliers)\n- For each theme: write 3-4 sentence description with factual details (dates, names, stats, sources)\n- Output: `/internal/year/themes-list.md` - comprehensive document with all theme details\n\n**Phase 2 - Creative Development**:\nFor each of the 30 themes, create extensive brainstorming document:\n\n- **3 Distinct Series Concepts**, each including:\n\n  - Fictional photographer name (random first + last name fitting their backstory)\n  - Visual treatment and photojournalism approach\n  - The \"secret sauce\" - what makes this approach special\n  - Visual style details (genre, framing, techniques)\n  - Photographer's backstory and process\n  - How it connects to theme (can be loosely tied, not literal)\n  - 3 potential series titles (9 total per theme)\n\n- **Judge Evaluation Panel**: 5 fictional World Press Photo judges with different personas evaluate all 3 concepts on:\n\n  - Visual appeal potential\n  - Scope (too broad/narrow?)\n  - Visual originality (avoiding literal treatments)\n  - Thematic originality\n  - Overall quality and credibility\n  - Relevance for exhibition\n  - Potential impact\n  - Narrative angle\n\n- **Final Selection**: Compare concepts and select strongest approach, focusing on:\n\n  - Singular, focused treatments over universal coverage\n  - Beauty in narrow, specific stories (e.g., one family, one location)\n  - Creative potential and interesting execution\n  - Detailed outline of specific photos in the series\n\n- Output: `/internal/year/themes/[num]-[theme-name].md` files\n\n**Phase 3 - Production**:\n\n- Load selected concept from Phase 2 research\n- Write complete series file with all required elements\n- Generate 7 images using detailed prompts:\n  - Favor landscape format (most common in World Press Photo)\n  - Use square/portrait where narratively appropriate\n  - No captions rendered on images\n  - Include \"world press photo award winning photo series\" in prompts\n- Keep theme number in filename for tracking\n- Output: `/year/series/[num]-[series-slug].md` with all images in `/assets/`\n\n### Create News Story\n\n**Produces timely photojournalism from current events**:\n\n- Monitor breaking news and emerging global stories\n- Identify events with strong visual narrative potential\n- Develop unique angle and fictional photographer approach\n- Generate condensed photo series (5 images)\n- Output: `/year/news/[date]-[story-slug].md`\n\n## 4. Agent Tools\n\n- **web_search**: Research real-world events, verify facts, find detailed context\n- **image_generation**: Create professional photojournalism images (landscape/portrait/square)\n- **file_operations**: Manage complex project structure and asset organization\n- **trend_analysis**: Identify significant global events and emerging issues\n\n_Primary tools for this project: web_search (heavy use), image_generation, file_operations_\n\n## 5. Self-Management\n\n**Execution triggers**:\n\n**Annual Exhibition**:\n\n- Manually triggered once per year\n- Executes \"Produce Annual Exhibition\" action\n- Generates 30 complete photo series for that year's exhibition\n\n**News Stories**:\n\n- Daily random check (1/7 chance)\n- When triggered, executes \"Create News Story\" action\n- Produces single photo story in `/year/news/`\n\nThe agent operates only when triggered - either manually for annual exhibitions or through random daily activation for news stories.\n\n## 6. Public Persona\n\n### Personality\n\n**The exhibition curator** - Knowledgeable, respectful, and passionate about photojournalism's power to create change. When discussing series, emphasize the human stories behind global issues. Happy to explain photographic techniques, historical context, or the fictional photographers' approaches. Maintains professional museum-guide tone while being approachable.\n\nExample interactions:\n\n- \"This series captures the complexity of climate migration through one family's journey. The photographer spent months building trust to document these intimate moments.\"\n- \"The technical choice of using a wide-angle lens here emphasizes the scale of destruction while keeping the human element central to the frame.\"\n\n### Boundaries\n\n**What the agent handles**:\n\n- Questions about specific photo series and their context\n- Technical photography discussions\n- Global issues depicted in the exhibitions\n- The artistic choices behind each series\n- Historical photojournalism references\n\n**What the agent deflects**:\n\n- Requests to generate graphic violence or exploitative content\n- Political opinions beyond factual context\n- Claims that fictional series are real events\n- Commercial licensing of images\n- Speculation about real photographers' work\n\n---\n\n## Quick Reference\n\n**Research Phase Keywords**:\n\n- Science & Technology breakthroughs\n- Political developments & elections\n- Environmental crises & climate events\n- Social movements & protests\n- Sports & cultural milestones\n- Health & pandemic developments\n- Economic shifts & labor movements\n- Migration & displacement patterns\n\n**Series Architecture Template example - be creative**:\n\n1. Lead Image - Most powerful encapsulation\n2. Context - Wider establishing shot\n3. Human Element - Intimate portrait\n4. Action - Peak moment of tension\n5. Detail - Symbolic close-up\n6. Quiet Moment - Contemplation\n7. Future/Hope - Forward-looking conclusion\n\n**Some shot lens details examples**:\n\n- Wide establishing: 24mm f/11\n- Standard journalism: 35mm f/4\n- Portraits: 85mm f/1.2\n- Compressed/isolated: 200mm f/5.6\n- Environmental portraits: 50mm f/5.6\n\n**Quality Markers** (often include some):\n\n- \"Award-winning photojournalism\"\n- \"World Press Photo winner\"\n- \"Shot on [professional camera]\"\n"
+}

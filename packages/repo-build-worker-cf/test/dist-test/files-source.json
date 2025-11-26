@@ -1,0 +1,20 @@
+[
+  {
+    "path": "images/test.png",
+    "filename": "test.png",
+    "extension": "png",
+    "size": 70,
+    "folder": [
+      "images"
+    ]
+  },
+  {
+    "path": "posts/test.md",
+    "filename": "test.md",
+    "extension": "md",
+    "size": 180,
+    "folder": [
+      "posts"
+    ]
+  }
+]

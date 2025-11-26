@@ -1,0 +1,43 @@
+# GitLab CI/CD Pipeline for Repo Worker
+
+stages:
+  - build
+  - deploy
+
+variables:
+  GCP_PROJECT_ID: "your-gcp-project-id"
+  SERVICE_NAME: "repo-worker"
+  REGION: "us-central1"
+
+build:
+  stage: build
+  image: google/cloud-sdk:latest
+  script:
+    - echo "Building Docker image..."
+    - gcloud auth activate-service-account --key-file=$GCP_SERVICE_ACCOUNT
+    - gcloud config set project $GCP_PROJECT_ID
+    - gcloud builds submit --tag gcr.io/$GCP_PROJECT_ID/$SERVICE_NAME
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  script:
+    - echo "Deploying to Cloud Run..."
+    - gcloud auth activate-service-account --key-file=$GCP_SERVICE_ACCOUNT
+    - gcloud config set project $GCP_PROJECT_ID
+    - >
+      gcloud run deploy $SERVICE_NAME
+      --image gcr.io/$GCP_PROJECT_ID/$SERVICE_NAME
+      --platform managed
+      --region $REGION
+      --allow-unauthenticated
+      --memory 512M
+      --cpu 1
+      --concurrency 80
+      --timeout 5m
+  environment:
+    name: production
+  only:
+    - main

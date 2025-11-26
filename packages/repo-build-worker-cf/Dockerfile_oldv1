@@ -1,0 +1,53 @@
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN apk add --no-cache python3 make g++ vips-dev
+RUN npm ci --omit=dev
+
+# Install specific AI packages
+RUN npm install @xenova/transformers sharp
+
+# Production stage
+FROM node:20-alpine
+WORKDIR /app
+
+# Install runtime dependencies for Sharp and AI libraries
+RUN apk add --no-cache vips-dev
+
+# Copy node modules from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5522
+ENV TRANSFORMERS_CACHE="/app/models"
+
+# Create directory for models
+RUN mkdir -p /app/models
+
+# Create a startup script to handle model downloads
+RUN echo '#!/bin/sh\n\
+    # Check if models need to be downloaded\n\
+    if [ ! -f /app/models/.downloaded ]; then\n\
+    echo "Downloading AI models..."\n\
+    npx --yes @xenova/transformers download XENOVA/DISTILBERT-BASE-UNCASED-FINETUNED-SST-2-ENGLISH\n\
+    npx --yes @xenova/transformers download XENOVA/ALL-MINILM-L6-V2\n\
+    touch /app/models/.downloaded\n\
+    echo "Models downloaded successfully"\n\
+    else\n\
+    echo "Using cached AI models"\n\
+    fi\n\
+    # Start the application\n\
+    exec npm run start' > /app/start.sh
+
+RUN chmod +x /app/start.sh
+
+# Expose port
+EXPOSE 5522
+
+# Start using the script
+CMD ["/app/start.sh"]

@@ -1,0 +1,60 @@
+{
+  "name": "@repo-md/worker-cf",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/worker.js",
+  "scripts": {
+    "start": "node src/worker.js",
+    "dev": "nodemon src/worker.js",
+    "preload-models": "node scripts/preload-models.js",
+    "docker:build": "docker build -f Dockerfile -t repo-worker-cf:local .",
+    "docker:build:no-cache": "docker build --no-cache -f Dockerfile -t repo-worker-cf:local .",
+    "docker:run": "docker run -p 8080:8080 --env-file .env repo-worker-cf:local",
+    "docker:test": "docker run --rm repo-worker-cf:local node scripts/test-embeddings.js",
+    "cf:deploy": "npx wrangler deploy",
+    "cf:dev": "npx wrangler dev",
+    "cf:login": "npx wrangler login"
+  },
+  "keywords": [
+    "worker",
+    "cloudflare",
+    "containers",
+    "embeddings",
+    "transformers"
+  ],
+  "author": "",
+  "private": true,
+  "description": "Cloudflare Containers worker with transformer.js embeddings support",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.24",
+    "@aws-sdk/client-s3": "^3.802.0",
+    "@aws-sdk/s3-request-presigner": "^3.802.0",
+    "@huggingface/transformers": "^3.5.0",
+    "ask-secret": "^1.0.2",
+    "better-sqlite3": "^12.4.1",
+    "compute-cosine-similarity": "^1.1.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "glob": "^10.4.5",
+    "graphology": "^0.26.0",
+    "ignore": "^7.0.5",
+    "obsidian-parser-prod-NOTNEEDED": "github:iplanwebsites/obsidian-parser",
+    "octokit": "^4.1.3",
+    "openai": "^5.8.2",
+    "rehype-mermaid": "^3.0.0",
+    "@repo-md/processor": "file:../repo-processor",
+    "sqlite-vec": "^0.1.7-alpha.2",
+    "vectra": "^0.11.0",
+    "wink-bm25-text-search": "^3.1.2",
+    "wordpress-export-to-markdown": "^3.0.4",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "miniflare": "^4.20250428.0",
+    "nodemon": "^3.1.0",
+    "wrangler": "^4.45.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

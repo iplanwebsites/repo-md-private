@@ -1,0 +1,79 @@
+# Cloudflare Containers Configuration - Embeddings Enabled
+# https://developers.cloudflare.com/containers/
+#
+# This version uses pre-loaded transformer.js models for embeddings
+
+name = "repo-build-worker-cf"
+main = "src/cf-worker.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Account details (configure with: wrangler login)
+# account_id will be set automatically after login
+
+# Container Configuration
+# Using Dockerfile with pre-loaded models
+# https://developers.cloudflare.com/containers/configuration/
+[[containers]]
+max_instances = 5
+class_name = "RepoBuildContainer"
+image = "./Dockerfile"
+
+# Container resource limits - increased for transformer.js
+# Note: CF Containers have memory limits, adjust based on testing
+# memory = "2GB"  # Uncomment if supported
+
+# Durable Object Bindings for Container Management
+[[durable_objects.bindings]]
+name = "BUILD_CONTAINER"
+class_name = "RepoBuildContainer"
+
+# Migrations for Durable Objects
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RepoBuildContainer"]
+
+# Environment Variables
+[vars]
+# IMPORTANT: Embeddings ENABLED - models are pre-loaded in Docker image
+SKIP_EMBEDDINGS = "false"
+NODE_ENV = "production"
+PORT = "8080"
+# Enable offline mode to use cached models
+TRANSFORMERS_OFFLINE = "1"
+HF_HUB_OFFLINE = "1"
+
+# Secrets (set with: wrangler secret put <NAME>)
+# wrangler secret put GITHUB_TOKEN
+# wrangler secret put OPENAI_API_KEY
+# wrangler secret put R2_ACCESS_KEY_ID
+# wrangler secret put R2_SECRET_ACCESS_KEY
+# wrangler secret put R2_ACCOUNT_ID
+# wrangler secret put R2_BUCKET_NAME
+
+# KV Namespaces for State Management
+# Create with: wrangler kv:namespace create "JOB_STATE"
+# [[kv_namespaces]]
+# binding = "JOB_STATE"
+# id = "YOUR_KV_NAMESPACE_ID"
+
+# R2 Bucket Bindings (for asset storage)
+# [[r2_buckets]]
+# binding = "ASSETS_BUCKET"
+# bucket_name = "repo-build-assets"
+
+# D1 Database (alternative to SQLite)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "repo_build_db"
+# database_id = "YOUR_D1_DATABASE_ID"
+
+# Build Configuration
+[build]
+command = ""
+watch_dirs = ["src"]
+
+# Development Configuration
+[dev]
+port = 5522
+local_protocol = "http"
