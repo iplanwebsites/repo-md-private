@@ -1,0 +1,25 @@
+{
+  "name": "@repo-md/embedding-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "download-models": "node scripts/download-models.js",
+    "test": "node scripts/test-embeddings.js",
+    "docker:build": "docker build -t repo-embedding-worker .",
+    "docker:run": "docker run -p 8787:8787 repo-embedding-worker",
+    "docker:test": "docker run --rm repo-embedding-worker node scripts/test-embeddings.js",
+    "cf:deploy": "npx wrangler deploy"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.5.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
