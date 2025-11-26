@@ -9,6 +9,40 @@ import loggerService from "./services/loggerService.js";
 const router = express.Router();
 const systemLogger = loggerService.getLogger("system");
 
+// Authentication middleware for inference endpoints
+function authenticateRequest(req, res, next) {
+  const workerSecret = process.env.WORKER_SECRET;
+
+  // If no secret is configured, skip auth (development mode)
+  if (!workerSecret) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({
+      status: "error",
+      message: "Missing Authorization header",
+    });
+  }
+
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader;
+
+  if (token !== workerSecret) {
+    return res.status(403).json({
+      status: "error",
+      message: "Invalid authorization token",
+    });
+  }
+
+  next();
+}
+
+// Apply auth to all inference routes
+router.use(authenticateRequest);
+
 // CLIP text embedding endpoint
 router.post("/clip-by-text", async (req, res) => {
   const { text } = req.body;

@@ -44,6 +44,10 @@ TRANSFORMERS_OFFLINE = "1"
 HF_HUB_OFFLINE = "1"
 
 # Secrets (set with: wrangler secret put <NAME>)
+# REQUIRED: Authentication secret for /process and /inference endpoints
+# wrangler secret put WORKER_SECRET
+#
+# Other secrets:
 # wrangler secret put GITHUB_TOKEN
 # wrangler secret put OPENAI_API_KEY
 # wrangler secret put R2_ACCESS_KEY_ID

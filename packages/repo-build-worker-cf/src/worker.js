@@ -75,16 +75,51 @@ async function cleanupTempFolder(tempFolderPath, jobId, logger) {
 // Health check endpoint
 
 app.get("/", (req, res) => {
-  systemLogger.log("❤️ Health check");
-  res.json({ status: "healthy ❤️", msg: "This is a build worker for repo.md" });
+  systemLogger.log("Health check");
+  res.json({ status: "healthy", msg: "This is a build worker for repo.md" });
 });
 
 app.get("/health", (req, res) => {
-  systemLogger.log("❤️ Health check");
+  systemLogger.log("Health check");
   res.json({ status: "healthy", timestamp: new Date().toISOString() });
 });
 
-app.post("/process", async (req, res) => {
+// Authentication middleware for /process endpoint
+function authenticateRequest(req, res, next) {
+  const workerSecret = process.env.WORKER_SECRET;
+
+  // If no secret is configured, skip auth (development mode)
+  if (!workerSecret) {
+    systemLogger.log("Warning: WORKER_SECRET not configured, skipping auth");
+    return next();
+  }
+
+  // Check Authorization header
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({
+      status: "error",
+      message: "Missing Authorization header",
+    });
+  }
+
+  // Support both "Bearer <token>" and raw token
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader;
+
+  if (token !== workerSecret) {
+    systemLogger.log("Auth failed: invalid token");
+    return res.status(403).json({
+      status: "error",
+      message: "Invalid authorization token",
+    });
+  }
+
+  next();
+}
+
+app.post("/process", authenticateRequest, async (req, res) => {
   const { jobId, task, data, callbackUrl } = req.body;
 
   // Get a logger for this job
