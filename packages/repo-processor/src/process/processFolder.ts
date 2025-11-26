@@ -226,7 +226,12 @@ class SlugManager {
 }
 
 /**
- * Extract and resolve wiki-style links from ANY frontmatter field
+ * Extract and resolve wiki-style links AND plain relative image paths from ANY frontmatter field
+ * Works with:
+ * - Wiki-style link syntax: ![[image.jpg]] or ![[path/to/media.png]]
+ * - Plain relative paths: "media/image.jpg" or "path/to/image.png"
+ * For top-level fields, also generates size variants (cover-sm, cover-md, cover-lg, etc.)
+ *
  * @param frontmatter The frontmatter object to process
  * @param mediaService MediaService instance for resolving image paths
  * @param mediaData Array of media data for strict path matching
@@ -235,7 +240,7 @@ class SlugManager {
  * @returns The resolved frontmatter with resolved URLs
  */
 function resolveFrontmatterWikiLinks(
-  frontmatter: Record<string, any>, 
+  frontmatter: Record<string, any>,
   mediaService: MediaService,
   mediaData: MediaFileData[],
   currentFilePath: string,
@@ -244,91 +249,123 @@ function resolveFrontmatterWikiLinks(
   const resolvedFrontmatter = { ...frontmatter };
   const defaultImageSize = 'lg';
   const allSizes = ['xs', 'sm', 'md', 'lg', 'xl'] as const;
-  
+
+  // Supported image extensions
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.svg'];
+
   // Helper function to check if value contains wiki-style link
   const isWikiLink = (value: string): boolean => {
     return /^!\[\[([^\]]+)\]\]$/.test(value);
   };
-  
+
   // Helper function to extract link from wiki-style format
   const extractWikiLink = (fieldValue: string): string | null => {
     const match = fieldValue.match(/^!\[\[([^\]]+)\]\]$/);
     return match ? match[1] : null;
   };
-  
+
+  // Helper function to check if a string is a potential image path
+  const isImagePath = (value: string): boolean => {
+    if (!value || typeof value !== 'string') return false;
+    // Skip if it's already an absolute URL or starts with # or /
+    if (value.startsWith('http://') || value.startsWith('https://') ||
+        value.startsWith('#') || value.startsWith('/')) return false;
+    // Check if it ends with an image extension
+    const lowerValue = value.toLowerCase();
+    return imageExtensions.some(ext => lowerValue.endsWith(ext));
+  };
+
+  // Helper function to resolve a media link and return the path with size variants
+  const resolveMediaLink = (link: string, fieldPath: string[]): string | null => {
+    // Create path variations for matching
+    const pathVariations = mediaService.createPathVariations(link, currentFilePath);
+
+    // PRIORITY 1: Try to find via mediaService.findBestMediaPath() which uses mediaPathMap
+    // This map contains the properly prefixed paths (e.g., with domain like https://static.repo.md/...)
+    const bestPathResult = mediaService.findBestMediaPath(pathVariations);
+
+    // Try to find exact path match in media data for size variants
+    let mediaItem: MediaFileData | undefined = undefined;
+    for (const variation of pathVariations) {
+      // Check all media items for exact path match
+      for (const media of mediaData) {
+        if (media.originalPath?.toLowerCase() === variation ||
+            media.effectivePath?.toLowerCase() === variation ||
+            media.hashPath?.toLowerCase() === variation) {
+          mediaItem = media;
+          break;
+        }
+      }
+      if (mediaItem) break;
+    }
+
+    if (mediaItem && mediaItem.sizes) {
+      // For top-level fields, we'll add size variants
+      const isTopLevel = fieldPath.length === 1;
+      let defaultImagePath: string | null = null;
+
+      // Generate URLs for all available sizes
+      for (const size of allSizes) {
+        const sizeData = mediaItem.sizes[size];
+        if (sizeData && sizeData.length > 0) {
+          // Find the best format (prefer webp)
+          const webpFormat = sizeData.find((s: { format: string }) => s.format === 'webp');
+          const avifFormat = sizeData.find((s: { format: string }) => s.format === 'avif');
+          const jpegFormat = sizeData.find((s: { format: string }) => s.format === 'jpeg' || s.format === 'jpg');
+          const bestFormat = webpFormat || avifFormat || jpegFormat || sizeData[0];
+
+          // Use absolute path if available (this includes the domain prefix)
+          const imagePath = bestFormat.absolutePublicPath || bestFormat.publicPath;
+
+          if (size === defaultImageSize) {
+            defaultImagePath = imagePath;
+          }
+
+          // Add size variants for top-level fields
+          if (isTopLevel) {
+            const fieldName = fieldPath[0];
+            resolvedFrontmatter[`${fieldName}-${size}`] = imagePath;
+          }
+        }
+      }
+
+      // Return the default size path
+      if (defaultImagePath) {
+        return defaultImagePath;
+      }
+    }
+
+    // If no media item found but we have a best path from mediaPathMap, use that
+    if (bestPathResult.found && bestPathResult.path) {
+      return bestPathResult.path;
+    }
+
+    // No media found
+    return null;
+  };
+
   // Recursive function to process all fields
   const processField = (obj: any, fieldPath: string[] = []): any => {
-    if (typeof obj === 'string' && isWikiLink(obj)) {
-      // This is a wiki-style link, resolve it
-      const link = extractWikiLink(obj);
+    if (typeof obj === 'string') {
+      let link: string | null = null;
+
+      // Check for wiki-style link first
+      if (isWikiLink(obj)) {
+        link = extractWikiLink(obj);
+      }
+      // Check for plain relative image path
+      else if (isImagePath(obj)) {
+        link = obj;
+      }
+
       if (link) {
-        // For frontmatter, we want STRICT path matching to avoid wrong image resolution
-        // We'll create path variations and check them directly against media data
-        const pathVariations = mediaService.createPathVariations(link, currentFilePath);
-        
-        // Try to find exact path match in media data
-        let mediaItem: MediaFileData | undefined = undefined;
-        for (const variation of pathVariations) {
-          // Check all media items for exact path match
-          for (const media of mediaData) {
-            if (media.originalPath?.toLowerCase() === variation || 
-                media.effectivePath?.toLowerCase() === variation ||
-                media.hashPath?.toLowerCase() === variation) {
-              mediaItem = media;
-              break;
-            }
-          }
-          if (mediaItem) break;
+        const resolvedPath = resolveMediaLink(link, fieldPath);
+
+        if (resolvedPath) {
+          return resolvedPath;
         }
-        
-        if (mediaItem && mediaItem.sizes) {
-          // For top-level fields, we'll add size variants
-          const isTopLevel = fieldPath.length === 1;
-          let defaultImagePath: string | null = null;
-          
-          // Generate URLs for all available sizes
-          for (const size of allSizes) {
-            const sizeData = mediaItem.sizes[size];
-            if (sizeData && sizeData.length > 0) {
-              // Find the best format (prefer webp)
-              const webpFormat = sizeData.find((s: { format: string }) => s.format === 'webp');
-              const avifFormat = sizeData.find((s: { format: string }) => s.format === 'avif');
-              const jpegFormat = sizeData.find((s: { format: string }) => s.format === 'jpeg' || s.format === 'jpg');
-              const bestFormat = webpFormat || avifFormat || jpegFormat || sizeData[0];
-              
-              // Use absolute path if requested and available
-              const imagePath = bestFormat.absolutePublicPath || bestFormat.publicPath;
-              
-              if (size === defaultImageSize) {
-                defaultImagePath = imagePath;
-              }
-              
-              // Add size variants for top-level fields
-              if (isTopLevel) {
-                const fieldName = fieldPath[0];
-                resolvedFrontmatter[`${fieldName}-${size}`] = imagePath;
-              }
-            }
-          }
-          
-          // Return the default size path
-          if (!defaultImagePath) {
-            // Track broken link
-            if (issueCollector) {
-              issueCollector.addMissingMedia({
-                filePath: currentFilePath,
-                mediaPath: link,
-                referencedFrom: 'frontmatter',
-                originalReference: obj,
-                module: 'embed-media'
-              });
-            }
-            return `#broken-link-${link}`;
-          }
-          return defaultImagePath;
-        }
-        
-        // No media found - return broken link indicator
+
+        // No media found - track as broken link and return original or broken indicator
         if (issueCollector) {
           issueCollector.addMissingMedia({
             filePath: currentFilePath,
@@ -338,7 +375,9 @@ function resolveFrontmatterWikiLinks(
             module: 'embed-media'
           });
         }
-        return `#broken-link-${link}`;
+        // For plain paths, return the original value (might be intentionally external)
+        // For wiki-style links, return broken link indicator
+        return isWikiLink(obj) ? `#broken-link-${link}` : obj;
       }
     } else if (Array.isArray(obj)) {
       // Process arrays recursively
@@ -358,12 +397,12 @@ function resolveFrontmatterWikiLinks(
     // Return unchanged for other types
     return obj;
   };
-  
+
   // Process the entire frontmatter object
   for (const [key, value] of Object.entries(resolvedFrontmatter)) {
     resolvedFrontmatter[key] = processField(value, [key]);
   }
-  
+
   return resolvedFrontmatter;
 }
 

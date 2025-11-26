@@ -396,6 +396,11 @@ Available actions: create_content, update_content, delete_content, trigger_build
       throw new Error("No GitHub token available for deployment");
     }
 
+    // Build the static domain URL for absolute paths
+    const projectSlugValue = project.slug || project.name;
+    const orgSlugValue = project.orgId || "_unknown-org-slug";
+    const staticDomain = `https://static.repo.md/${orgSlugValue}/${projectSlugValue}`;
+
     // Create deployment job
     const deploymentData = {
       projectId: project._id.toString(),
@@ -404,12 +409,16 @@ Available actions: create_content, update_content, delete_content, trigger_build
       branch: branch,
       gitToken: gitToken,
       repoUrl: project.repoUrl,
-      projectSlug: project.slug || project.name,
-      orgSlug: project.orgId || "_unknown-org-slug",
+      projectSlug: projectSlugValue,
+      orgSlug: orgSlugValue,
       orgId: project.orgId,
       // Build settings from project settings
       repositoryFolder: project.settings?.build?.repositoryFolder || "",
       ignoreFiles: project.settings?.build?.ignoreFiles || "",
+      // Formatting settings for media/link paths
+      notePrefix: project.formatting?.pageLinkPrefix || "",
+      mediaPrefix: project.formatting?.mediaPrefix || "/_repo/medias",
+      domain: staticDomain, // Always use absolute paths with static.repo.md
       triggeredBy: "webhook",
       webhook: {
         eventId: eventId.toString(),

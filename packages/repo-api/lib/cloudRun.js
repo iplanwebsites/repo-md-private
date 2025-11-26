@@ -290,7 +290,10 @@ function processDataForWorker(task, data) {
     workerData.branch = data.branch || "main";
     workerData.gitToken = data.gitToken;
 
-    workerData.notePrefix = data.notePrefix || "/blog"; //TODO implement link with settings.
+    // Formatting settings for media/link paths (from project.formatting)
+    workerData.notePrefix = data.notePrefix || "";
+    workerData.mediaPrefix = data.mediaPrefix || "/_repo/medias";
+    workerData.domain = data.domain || ""; // Domain for absolute URLs (e.g., https://static.repo.md/org/project)
 
     // Add project slug, org slug, and org ID if available
     if (data.projectSlug) {
@@ -867,6 +870,11 @@ async function createRepoDeployJob(projectId, ctx, commit, branch) {
       throw new Error("Repository URL not found for project");
     }
 
+    // Build the static domain URL for absolute paths
+    const projectSlugValue = project.slug || "_unknown-project-slug-" + project._id.toString();
+    const orgSlugValue = project.orgSlug || (project.orgId ? project.orgId.toString() : "_unknown-org-slug");
+    const staticDomain = `https://static.repo.md/${orgSlugValue}/${projectSlugValue}`;
+
     // Create a job to deploy the repository
     const job = await createJob("deploy-repo", {
       projectId,
@@ -875,15 +883,16 @@ async function createRepoDeployJob(projectId, ctx, commit, branch) {
       branch: branch || "main",
       repoUrl: repoUrl,
       gitToken: gitToken,
-      projectSlug:
-        project.slug || "_unknown-project-slug-" + project._id.toString(),
-      orgSlug:
-        project.orgSlug ||
-        (project.orgId ? project.orgId.toString() : "_unknown-org-slug"),
+      projectSlug: projectSlugValue,
+      orgSlug: orgSlugValue,
       orgId: project.orgId,
       // Build settings from project settings
       repositoryFolder: project.settings?.build?.repositoryFolder || "",
       ignoreFiles: project.settings?.build?.ignoreFiles || "",
+      // Formatting settings for media/link paths
+      notePrefix: project.formatting?.pageLinkPrefix || "",
+      mediaPrefix: project.formatting?.mediaPrefix || "/_repo/medias",
+      domain: staticDomain, // Always use absolute paths with static.repo.md
       commitMessage: commit === "latest" ? "Latest commit" : `Commit: ${commit}`,
       triggeredBy: ctx.user.email || ctx.user.id,
     });
