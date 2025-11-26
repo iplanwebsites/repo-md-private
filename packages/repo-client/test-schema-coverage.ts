@@ -7,7 +7,7 @@
 
 // Import schemas directly to avoid CommonJS import issues
 import { schemas } from './src/lib/schemas/schemas.js';
-import { getAllMethodDescriptions } from './src/lib/schemas/types.js';
+import { getAllMethodDescriptions, type MethodDescription } from './src/lib/schemas/types.js';
 
 // Import the RepoMD class definition to get method names
 // We'll read the index.d.ts file to get method signatures instead of importing the class
@@ -23,34 +23,43 @@ const colors = {
   bold: '\x1b[1m',
 };
 
+/** Schema with zod-style _def property */
+interface ZodLikeSchema {
+  _def: {
+    shape?: () => Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  parse: (data: unknown) => unknown;
+}
+
 /**
  * Get all public methods from RepoMD by parsing the TypeScript definition file
- * @returns {string[]} Array of method names
+ * @returns Array of method names
  */
-function getRepoMDMethods() {
+function getRepoMDMethods(): string[] {
   try {
     // Read the TypeScript definition file
     const dtsContent = readFileSync('./src/lib/index.d.ts', 'utf8');
-    
+
     // Extract method names from the RepoMD class definition
-    const methods = [];
+    const methods: string[] = [];
     const lines = dtsContent.split('\n');
     let insideRepoMDClass = false;
-    
+
     for (const line of lines) {
       const trimmedLine = line.trim();
-      
+
       // Check if we're entering the RepoMD class
       if (trimmedLine.includes('export class RepoMD') || trimmedLine.includes('class RepoMD')) {
         insideRepoMDClass = true;
         continue;
       }
-      
+
       // Check if we're exiting the class
       if (insideRepoMDClass && trimmedLine === '}') {
         break;
       }
-      
+
       // Extract method signatures inside the class
       if (insideRepoMDClass && trimmedLine.includes('(') && trimmedLine.includes(')')) {
         // Match method signatures like: methodName(...): returnType;
@@ -64,12 +73,13 @@ function getRepoMDMethods() {
         }
       }
     }
-    
+
     return methods.sort();
   } catch (error) {
-    console.warn(`Warning: Could not read TypeScript definitions: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`Warning: Could not read TypeScript definitions: ${errorMessage}`);
     console.warn('Falling back to known method list...');
-    
+
     // Fallback to a known list of methods (update this as needed)
     return [
       'fetchProjectDetails',
@@ -110,38 +120,48 @@ function getRepoMDMethods() {
 
 /**
  * Get all available schema names
- * @returns {string[]} Array of schema names
+ * @returns Array of schema names
  */
-function getSchemaNames() {
+function getSchemaNames(): string[] {
   return Object.keys(schemas).sort();
+}
+
+/** Coverage analysis result */
+interface CoverageResult {
+  passed: boolean;
+  coverage: number;
+  methodsWithoutSchemas: string[];
+  schemasWithoutMethods: string[];
+  totalMethods: number;
+  totalSchemas: number;
 }
 
 /**
  * Analyze schema coverage and report results
  */
-function analyzeSchemaProfile() {
+function analyzeSchemaProfile(): CoverageResult {
   const repoMethods = getRepoMDMethods();
   const schemaNames = getSchemaNames();
-  
+
   // Find methods without schemas
   const methodsWithoutSchemas = repoMethods.filter(method => !schemaNames.includes(method));
-  
+
   // Find schemas without corresponding methods (might be aliases or deprecated)
   const schemasWithoutMethods = schemaNames.filter(schema => !repoMethods.includes(schema));
-  
+
   // Calculate coverage percentage
   const methodsWithSchemas = repoMethods.filter(method => schemaNames.includes(method));
   const coveragePercentage = Math.round((methodsWithSchemas.length / repoMethods.length) * 100);
-  
+
   // Print results
   console.log(`${colors.bold}${colors.blue}=== RepoMD Schema Coverage Analysis ===${colors.reset}\n`);
-  
+
   console.log(`${colors.bold}Summary:${colors.reset}`);
   console.log(`  Total RepoMD methods: ${repoMethods.length}`);
   console.log(`  Total schemas: ${schemaNames.length}`);
   console.log(`  Methods with schemas: ${methodsWithSchemas.length}`);
   console.log(`  Coverage: ${coveragePercentage >= 90 ? colors.green : coveragePercentage >= 75 ? colors.yellow : colors.red}${coveragePercentage}%${colors.reset}\n`);
-  
+
   if (methodsWithoutSchemas.length > 0) {
     console.log(`${colors.red}${colors.bold}❌ Methods without schemas (${methodsWithoutSchemas.length}):${colors.reset}`);
     for (const method of methodsWithoutSchemas) {
@@ -151,7 +171,7 @@ function analyzeSchemaProfile() {
   } else {
     console.log(`${colors.green}${colors.bold}✅ All methods have schemas!${colors.reset}\n`);
   }
-  
+
   if (schemasWithoutMethods.length > 0) {
     console.log(`${colors.yellow}${colors.bold}⚠️  Schemas without corresponding methods (${schemasWithoutMethods.length}):${colors.reset}`);
     console.log(`${colors.yellow}   (These might be aliases, deprecated, or internal schemas)${colors.reset}`);
@@ -160,7 +180,7 @@ function analyzeSchemaProfile() {
     }
     console.log();
   }
-  
+
   if (methodsWithSchemas.length > 0) {
     console.log(`${colors.green}${colors.bold}✅ Methods with schemas (${methodsWithSchemas.length}):${colors.reset}`);
     for (const method of methodsWithSchemas) {
@@ -168,7 +188,7 @@ function analyzeSchemaProfile() {
     }
     console.log();
   }
-  
+
   // Return test result
   return {
     passed: methodsWithoutSchemas.length === 0,
@@ -180,27 +200,38 @@ function analyzeSchemaProfile() {
   };
 }
 
+/** Description validation result */
+interface DescriptionResult {
+  passed: boolean;
+  methodCoverage: number;
+  parameterCoverage: number;
+  methodsWithoutDescriptions: string[];
+  parametersWithoutDescriptions: string[];
+  totalMethods: number;
+  totalParameters: number;
+}
+
 /**
  * Validate that all schemas have descriptions
  */
-function validateMethodDescriptions() {
+function validateMethodDescriptions(): DescriptionResult {
   console.log(`${colors.bold}${colors.blue}=== Method Description Validation ===${colors.reset}\n`);
-  
+
   const methodDescriptions = getAllMethodDescriptions();
   const schemaNames = getSchemaNames();
-  const methodsWithoutDescriptions = [];
-  const parametersWithoutDescriptions = [];
+  const methodsWithoutDescriptions: string[] = [];
+  const parametersWithoutDescriptions: string[] = [];
   let totalParameters = 0;
   let parametersWithDescriptions = 0;
-  
+
   // Check method descriptions
   for (const schemaName of schemaNames) {
     const methodDesc = methodDescriptions[schemaName];
-    
+
     if (!methodDesc || !methodDesc.description || methodDesc.description.trim().length === 0) {
       methodsWithoutDescriptions.push(schemaName);
     }
-    
+
     // Check parameter descriptions
     if (methodDesc && methodDesc.parameters) {
       for (const param of methodDesc.parameters) {
@@ -213,14 +244,14 @@ function validateMethodDescriptions() {
       }
     }
   }
-  
+
   const methodCoverage = Math.round(((schemaNames.length - methodsWithoutDescriptions.length) / schemaNames.length) * 100);
   const parameterCoverage = totalParameters > 0 ? Math.round((parametersWithDescriptions / totalParameters) * 100) : 100;
-  
+
   console.log(`${colors.bold}Description Coverage Summary:${colors.reset}`);
   console.log(`  Methods with descriptions: ${schemaNames.length - methodsWithoutDescriptions.length}/${schemaNames.length} (${methodCoverage}%)`);
   console.log(`  Parameters with descriptions: ${parametersWithDescriptions}/${totalParameters} (${parameterCoverage}%)\n`);
-  
+
   if (methodsWithoutDescriptions.length > 0) {
     console.log(`${colors.red}${colors.bold}❌ Methods without descriptions (${methodsWithoutDescriptions.length}):${colors.reset}`);
     for (const method of methodsWithoutDescriptions) {
@@ -230,7 +261,7 @@ function validateMethodDescriptions() {
   } else {
     console.log(`${colors.green}${colors.bold}✅ All methods have descriptions!${colors.reset}\n`);
   }
-  
+
   if (parametersWithoutDescriptions.length > 0) {
     console.log(`${colors.yellow}${colors.bold}⚠️  Parameters without descriptions (${parametersWithoutDescriptions.length}):${colors.reset}`);
     for (const param of parametersWithoutDescriptions.slice(0, 10)) { // Show first 10 to avoid clutter
@@ -243,7 +274,7 @@ function validateMethodDescriptions() {
   } else {
     console.log(`${colors.green}${colors.bold}✅ All parameters have descriptions!${colors.reset}\n`);
   }
-  
+
   return {
     passed: methodsWithoutDescriptions.length === 0 && parametersWithoutDescriptions.length === 0,
     methodCoverage,
@@ -255,17 +286,23 @@ function validateMethodDescriptions() {
   };
 }
 
+/** Schema structure validation result */
+interface StructureResult {
+  passed: boolean;
+  invalidSchemas: Array<{ name: string; error: string }>;
+}
+
 /**
  * Validate that all schemas are properly formed
  */
-function validateSchemaStructure() {
+function validateSchemaStructure(): StructureResult {
   console.log(`${colors.bold}${colors.blue}=== Schema Structure Validation ===${colors.reset}\n`);
-  
+
   const schemaNames = getSchemaNames();
-  const invalidSchemas = [];
-  
+  const invalidSchemas: Array<{ name: string; error: string }> = [];
+
   for (const schemaName of schemaNames) {
-    const schema = schemas[schemaName];
+    const schema = schemas[schemaName] as ZodLikeSchema;
     try {
       // Check if schema has the expected Zod structure
       if (!schema || !schema._def || typeof schema._def.shape !== 'function') {
@@ -275,7 +312,7 @@ function validateSchemaStructure() {
         });
         continue;
       }
-      
+
       // Try to get the shape to validate it's accessible
       const shape = schema._def.shape();
       if (!shape || typeof shape !== 'object') {
@@ -285,28 +322,30 @@ function validateSchemaStructure() {
         });
         continue;
       }
-      
+
       // Test basic parsing with empty object (should either succeed or fail with validation error)
       try {
         schema.parse({});
-      } catch (error) {
+      } catch (error: unknown) {
         // This is expected for schemas with required fields
-        if (!error.name || error.name !== 'ZodError') {
+        const errorObj = error as { name?: string; message?: string };
+        if (!errorObj.name || errorObj.name !== 'ZodError') {
           invalidSchemas.push({
             name: schemaName,
-            error: `Schema parsing failed with unexpected error: ${error.message}`
+            error: `Schema parsing failed with unexpected error: ${errorObj.message || String(error)}`
           });
         }
       }
-      
-    } catch (error) {
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       invalidSchemas.push({
         name: schemaName,
-        error: `Schema validation failed: ${error.message}`
+        error: `Schema validation failed: ${errorMessage}`
       });
     }
   }
-  
+
   if (invalidSchemas.length > 0) {
     console.log(`${colors.red}${colors.bold}❌ Invalid schemas (${invalidSchemas.length}):${colors.reset}`);
     for (const { name, error } of invalidSchemas) {
@@ -316,7 +355,7 @@ function validateSchemaStructure() {
   } else {
     console.log(`${colors.green}${colors.bold}✅ All schemas are properly structured!${colors.reset}\n`);
   }
-  
+
   return {
     passed: invalidSchemas.length === 0,
     invalidSchemas
@@ -326,24 +365,24 @@ function validateSchemaStructure() {
 /**
  * Main test function
  */
-function main() {
+function main(): void {
   console.log(`${colors.bold}Running RepoMD Schema Coverage Test...${colors.reset}\n`);
-  
+
   try {
     // Run schema structure validation
     const structureResults = validateSchemaStructure();
-    
+
     // Run coverage analysis
     const coverageResults = analyzeSchemaProfile();
-    
+
     // Run description validation
     const descriptionResults = validateMethodDescriptions();
-    
+
     // Print final results
     console.log(`${colors.bold}${colors.blue}=== Test Results ===${colors.reset}`);
-    
+
     const allTestsPassed = structureResults.passed && coverageResults.passed && descriptionResults.passed;
-    
+
     if (allTestsPassed) {
       console.log(`${colors.green}${colors.bold}🎉 ALL TESTS PASSED!${colors.reset}`);
       console.log(`${colors.green}✅ Schema structure: Valid${colors.reset}`);
@@ -352,32 +391,33 @@ function main() {
       process.exit(0);
     } else {
       console.log(`${colors.red}${colors.bold}❌ TESTS FAILED!${colors.reset}`);
-      
+
       if (!structureResults.passed) {
         console.log(`${colors.red}❌ Schema structure: ${structureResults.invalidSchemas.length} invalid schemas${colors.reset}`);
       } else {
         console.log(`${colors.green}✅ Schema structure: Valid${colors.reset}`);
       }
-      
+
       if (!coverageResults.passed) {
         console.log(`${colors.red}❌ Schema coverage: ${coverageResults.coverage}% (${coverageResults.methodsWithoutSchemas.length} methods missing schemas)${colors.reset}`);
       } else {
         console.log(`${colors.green}✅ Schema coverage: 100%${colors.reset}`);
       }
-      
+
       if (!descriptionResults.passed) {
         console.log(`${colors.red}❌ Method descriptions: ${descriptionResults.methodCoverage}% methods, ${descriptionResults.parameterCoverage}% parameters${colors.reset}`);
       } else {
         console.log(`${colors.green}✅ Method descriptions: 100% methods, 100% parameters${colors.reset}`);
       }
-      
+
       process.exit(1);
     }
-    
-  } catch (error) {
+
+  } catch (error: unknown) {
+    const errorObj = error as { message?: string; stack?: string };
     console.error(`${colors.red}${colors.bold}❌ Test execution failed:${colors.reset}`);
-    console.error(`${colors.red}${error.message}${colors.reset}`);
-    console.error(error.stack);
+    console.error(`${colors.red}${errorObj.message || String(error)}${colors.reset}`);
+    console.error(errorObj.stack);
     process.exit(1);
   }
 }

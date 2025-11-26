@@ -94,17 +94,18 @@
 
 ---
 
-### Phase 3: Schemas & Validation ⬜
+### Phase 3: Schemas & Validation ✅
 > Zod schemas, type extraction, validation
 
 | File | Status | Notes |
 |------|--------|-------|
-| `schemas/schemas.js` → `schemas/schemas.ts` | ⬜ | 1,205 LOC, **largest file** |
-| `schemas/types.js` → `schemas/types.ts` | ⬜ | 164 LOC |
-| `schemas/validator.js` → `schemas/validator.ts` | ⬜ | 144 LOC |
-| `schemas/index.js` → `schemas/index.ts` | ⬜ | barrel |
+| `schemas/schemas.js` → `schemas/schemas.ts` | ✅ | 1,205 LOC, added `SchemaWithMeta`, `MethodMeta` types |
+| `schemas/types.js` → `schemas/types.ts` | ✅ | 164 LOC, added `ZodDef` helper, proper type safety |
+| `schemas/validator.js` → `schemas/validator.ts` | ✅ | 144 LOC, added `AnyFunction`, `ValidatableInstance` |
+| `schemas/index.js` → `schemas/index.ts` | ✅ | barrel |
+| `test-schema-coverage.js` → `test-schema-coverage.ts` | ✅ | Test file converted |
 
-**Estimated effort**: 2 days
+**Completed**: 2024-11-26
 
 ---
 
@@ -280,6 +281,7 @@ export interface CacheManager {
 
 | Date | Phase | Files Converted | Notes |
 |------|-------|-----------------|-------|
+| 2024-11-26 | 3 | 5 | Phase 3 complete - Schemas & validation (schemas, types, validator, index, test-schema-coverage) |
 | 2024-11-26 | 2 | 6 | Phase 2 complete - Core infrastructure (urls, api, utils, inference, mediaProxy, logger-wrapper) |
 | 2024-11-26 | 1 | 8 | Phase 1 complete - Foundation files converted |
 | 2024-11-26 | - | 0 | Plan created, vitest plugin for .js→.ts resolution |

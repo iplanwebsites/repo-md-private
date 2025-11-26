@@ -2,7 +2,7 @@ import "zod-metadata/register";
 import { register } from "zod-metadata";
 import zod from "zod";
 register(zod);
-import { z } from "zod";
+import { z, type ZodTypeAny } from "zod";
 
 // Base schemas for common parameter types
 const stringSchema = z.string();
@@ -21,19 +21,19 @@ const limit50Schema = z.number().nonnegative().optional().default(50);
 
 // Additional shortcut schemas for repetitive params
 const hashSchema = stringSchema
-  .refine((val) => val.length > 0, {
+  .refine((val: string) => val.length > 0, {
     message: "Hash is required and cannot be empty",
   })
   .describe("Unique hash identifier");
 
 const slugSchema = stringSchema
-  .refine((val) => val.length > 0, {
+  .refine((val: string) => val.length > 0, {
     message: "Slug is required and cannot be empty",
   })
   .describe("URL-friendly identifier");
 
 const pathSchema = stringSchema
-  .refine((val) => val.length > 0, {
+  .refine((val: string) => val.length > 0, {
     message: "Path is required and cannot be empty",
   })
   .describe("File path within the repository");
@@ -47,13 +47,13 @@ const forceRefreshSchema = booleanSchemaFalse.describe(
 );
 
 const searchTextSchema = stringSchema
-  .refine((val) => val.length > 0, {
+  .refine((val: string) => val.length > 0, {
     message: "Search text/query is required and cannot be empty",
   })
   .describe("Text query for search or similarity matching");
 
 const imageInputSchema = stringSchema
-  .refine((val) => val.trim().length > 0, {
+  .refine((val: string) => val.trim().length > 0, {
     message: "Image input is required and cannot be empty",
   })
   .describe("Image URL (https://...) or base64-encoded data string");
@@ -68,24 +68,36 @@ const thresholdSchema = z
 
 const requestObjectSchema = z
   .object({})
-  .refine((val) => typeof val === "object", {
+  .refine((val: Record<string, unknown>) => typeof val === "object", {
     message: "Request object is required",
   });
 
-// Metadata interface for type safety
-/* 
+/** Method metadata interface for type safety */
 export interface MethodMeta {
-  category?: string;      // Method category
-  popular?: boolean;      // Commonly used methods
-  inference?: boolean;    // AI/ML-powered methods
-  internal?: boolean;     // Internal/system methods
-  framework?: boolean;    // Framework integration methods
-  memoryHeavy?: boolean;  // Methods that consume significant memory
-  deprecated?: boolean;   // Deprecated methods
-  cacheable?: boolean;    // Methods that benefit from caching
-  readonly?: boolean;     // Methods that only read data
+  category?: string;
+  popular?: boolean;
+  inference?: boolean;
+  internal?: boolean;
+  framework?: boolean;
+  memoryHeavy?: boolean;
+  deprecated?: boolean;
+  cacheable?: boolean;
+  readonly?: boolean;
 }
-*/
+
+/** Schema with metadata type */
+export type SchemaWithMeta = ZodTypeAny & {
+  _def: {
+    meta?: MethodMeta;
+    [key: string]: unknown;
+  };
+};
+
+/** Schemas dictionary type */
+export type SchemasDict = Record<string, SchemaWithMeta>;
+
+/** Filter function type for method filtering */
+export type MetaFilter = MethodMeta | ((meta: MethodMeta) => boolean);
 
 // RepoMD Constructor Options Schema
 export const repoMdOptionsSchema = z.object({
@@ -97,8 +109,18 @@ export const repoMdOptionsSchema = z.object({
   strategy: z.enum(["auto", "browser", "server"]).optional().default("auto"),
 });
 
+/** Inferred type for RepoMD options */
+export type RepoMdOptions = {
+  projectId: string;
+  projectSlug: string;
+  rev: string;
+  secret: string | null;
+  debug: boolean;
+  strategy: "auto" | "browser" | "server";
+};
+
 // API Methods with descriptions and metadata
-export const schemas = {
+export const schemas: SchemasDict = {
   // Posts Methods
   getAllPosts: z
     .object({
@@ -866,7 +888,7 @@ export const schemas = {
     .object({
       url: z
         .string()
-        .refine((val) => val.length > 0, {
+        .refine((val: string) => val.length > 0, {
           message: "URL is required for fetchJson operation",
         })
         .describe("Complete URL to fetch JSON data from"),
@@ -1078,17 +1100,25 @@ export const schemas = {
     .meta({ category: "ai", inference: true, internal: true }),
 };
 
-// Helper function to get the schema for a given function name
-export function getSchemaForFunction(functionName) {
+/**
+ * Get the schema for a given function name
+ * @param functionName - The function name to get schema for
+ * @returns The Zod schema or undefined
+ */
+export function getSchemaForFunction(functionName: string): SchemaWithMeta | undefined {
   return schemas[functionName];
 }
 
-// Helper function to filter methods by metadata
-export function filterMethodsByMeta(filter) {
-  const filtered = {};
+/**
+ * Filter methods by metadata
+ * @param filter - Filter object or function
+ * @returns Filtered schemas dictionary
+ */
+export function filterMethodsByMeta(filter: MetaFilter): SchemasDict {
+  const filtered: SchemasDict = {};
 
   for (const [name, schema] of Object.entries(schemas)) {
-    const meta = schema._def?.meta || {};
+    const meta: MethodMeta = schema._def?.meta || {};
 
     let include = false;
 
@@ -1097,7 +1127,7 @@ export function filterMethodsByMeta(filter) {
     } else {
       // Check if all specified flags match
       include = Object.entries(filter).every(
-        ([key, value]) => meta[key] === value
+        ([key, value]) => meta[key as keyof MethodMeta] === value
       );
     }
 
@@ -1110,28 +1140,38 @@ export function filterMethodsByMeta(filter) {
 }
 
 // Helper functions for common filters
-export const getPopularMethods = () => filterMethodsByMeta({ popular: true });
-export const getInferenceMethods = () =>
-  filterMethodsByMeta({ inference: true });
-export const getPublicMethods = () =>
-  filterMethodsByMeta((meta) => !meta.internal);
-export const getFrameworkMethods = () =>
-  filterMethodsByMeta({ framework: true });
-export const getLightweightMethods = () =>
-  filterMethodsByMeta((meta) => !meta.memoryHeavy);
-export const getInternalMethods = () => filterMethodsByMeta({ internal: true });
-export const getDeprecatedMethods = () =>
-  filterMethodsByMeta({ deprecated: true });
-export const getCacheableMethods = () =>
-  filterMethodsByMeta({ cacheable: true });
-export const getReadonlyMethods = () => filterMethodsByMeta({ readonly: true });
+export const getPopularMethods = (): SchemasDict => filterMethodsByMeta({ popular: true });
+export const getInferenceMethods = (): SchemasDict => filterMethodsByMeta({ inference: true });
+export const getPublicMethods = (): SchemasDict => filterMethodsByMeta((meta) => !meta.internal);
+export const getFrameworkMethods = (): SchemasDict => filterMethodsByMeta({ framework: true });
+export const getLightweightMethods = (): SchemasDict => filterMethodsByMeta((meta) => !meta.memoryHeavy);
+export const getInternalMethods = (): SchemasDict => filterMethodsByMeta({ internal: true });
+export const getDeprecatedMethods = (): SchemasDict => filterMethodsByMeta({ deprecated: true });
+export const getCacheableMethods = (): SchemasDict => filterMethodsByMeta({ cacheable: true });
+export const getReadonlyMethods = (): SchemasDict => filterMethodsByMeta({ readonly: true });
 
-// New: Get methods for public chat (excludes internal and framework, includes popular)
-export const getPublicChatMethods = () =>
+/** Get methods for public chat (excludes internal and framework, includes popular) */
+export const getPublicChatMethods = (): SchemasDict =>
   filterMethodsByMeta((meta) => !meta.internal && !meta.framework);
 
-// New: Get methods by mode for OpenAI specs
-export function getMethodsByMode(mode = "publicChatMethods") {
+/** Available mode options for method filtering */
+export type MethodMode =
+  | "all"
+  | "publicChatMethods"
+  | "popular"
+  | "inference"
+  | "framework"
+  | "public"
+  | "lightweight"
+  | "cacheable"
+  | "readonly";
+
+/**
+ * Get methods by mode for OpenAI specs
+ * @param mode - The filter mode
+ * @returns Filtered schemas
+ */
+export function getMethodsByMode(mode: MethodMode = "publicChatMethods"): SchemasDict {
   switch (mode) {
     case "all":
       return schemas;
@@ -1152,18 +1192,25 @@ export function getMethodsByMode(mode = "publicChatMethods") {
     case "readonly":
       return getReadonlyMethods();
     default:
-      // Default to publicChatMethods
       return getPublicChatMethods();
   }
 }
 
-// Get methods by availability context (kept for backwards compatibility)
-export function getMethodsByContext(context) {
+/**
+ * Get methods by availability context (kept for backwards compatibility)
+ * @param context - The context/mode
+ * @returns Filtered schemas
+ */
+export function getMethodsByContext(context: MethodMode): SchemasDict {
   return getMethodsByMode(context);
 }
 
-// Get metadata for a specific method
-export function getMethodMeta(methodName) {
+/**
+ * Get metadata for a specific method
+ * @param methodName - The method name
+ * @returns Method metadata or null
+ */
+export function getMethodMeta(methodName: string): MethodMeta | null {
   const schema = schemas[methodName];
   if (!schema) {
     return null;
@@ -1171,9 +1218,12 @@ export function getMethodMeta(methodName) {
   return schema._def?.meta || {};
 }
 
-// Get all method metadata as a dictionary
-export function getAllMeta() {
-  const allMeta = {};
+/**
+ * Get all method metadata as a dictionary
+ * @returns All method metadata
+ */
+export function getAllMeta(): Record<string, MethodMeta> {
+  const allMeta: Record<string, MethodMeta> = {};
 
   for (const [name, schema] of Object.entries(schemas)) {
     allMeta[name] = schema._def?.meta || {};
@@ -1182,12 +1232,18 @@ export function getAllMeta() {
   return allMeta;
 }
 
-// Utility to get method categories
-export function getMethodCategories() {
-  const categories = {};
+/** Method categories dictionary type */
+export type MethodCategories = Record<string, string[]>;
+
+/**
+ * Get method categories
+ * @returns Categories with their methods
+ */
+export function getMethodCategories(): MethodCategories {
+  const categories: MethodCategories = {};
 
   for (const [name, schema] of Object.entries(schemas)) {
-    const meta = schema._def?.meta || {};
+    const meta: MethodMeta = schema._def?.meta || {};
     const category = meta.category || "uncategorized";
 
     if (!categories[category]) {
@@ -1199,7 +1255,11 @@ export function getMethodCategories() {
   return categories;
 }
 
-// Get methods by category
-export function getMethodsByCategory(category) {
+/**
+ * Get methods by category
+ * @param category - The category name
+ * @returns Filtered schemas
+ */
+export function getMethodsByCategory(category: string): SchemasDict {
   return filterMethodsByMeta({ category });
 }

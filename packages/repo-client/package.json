@@ -44,7 +44,7 @@
     "version-bump-patch": "npm version patch --no-git-tag-version && cd npm && npm version patch --no-git-tag-version && cd ..",
     "version-bump-minor": "npm version minor --no-git-tag-version && cd npm && npm version minor --no-git-tag-version && cd ..",
     "version-bump-major": "npm version major --no-git-tag-version && cd npm && npm version major --no-git-tag-version && cd ..",
-    "test:schemas": "node test-schema-coverage.js",
+    "test:schemas": "npx tsx test-schema-coverage.ts",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:coverage": "vitest run --coverage",
