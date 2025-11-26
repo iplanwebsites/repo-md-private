@@ -1,0 +1,3 @@
+This is an example text file to upload to R2 storage.
+It contains multiple lines of plain text.
+When uploaded, it will be available at the public URL.

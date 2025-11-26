@@ -1,0 +1,183 @@
+{
+  "metadata": {
+    "project_name": "WeirdPressPhoto",
+    "processed_date": "2023-10-01T12:00:00Z",
+    "spec_version": "1.0"
+  },
+  "summary": {
+    "description": "WeirdPressPhoto is an AI-generated photojournalism exhibition platform that showcases fictional award-winning photo series addressing global issues with artistic vision and journalistic integrity.",
+    "quality_score": 9,
+    "original": "WeirdPressPhoto showcases powerful visual narratives addressing global issues through the lens of contemporary photojournalism..."
+  },
+  "content_strategy": {
+    "voice": {
+      "description": "Professional photojournalism narrative that balances emotional impact with factual accuracy.",
+      "quality_score": 9,
+      "details": {
+        "tone": "Authoritative yet accessible",
+        "principles": "Maintain dignity and complexity when addressing global issues."
+      },
+      "original": "Professional photojournalism narrative - Authoritative yet accessible, balancing emotional impact with factual accuracy..."
+    },
+    "structure": {
+      "description": "Clear separation between research and final exhibition content.",
+      "quality_score": 10,
+      "details": {
+        "content_types": [
+          "Internal Research",
+          "Published Exhibition"
+        ],
+        "file_organization": "/internal/year/, /year/",
+        "templates": [
+          "themes-list.md",
+          "selected-concepts.md",
+          "series/[num]-[series-slug].md"
+        ]
+      },
+      "original": "Clear separation between research and final exhibition content: Internal Research (`/internal/year/`)..."
+    },
+    "visual_style": {
+      "description": "Award-winning photojournalism standards with consistent visual language.",
+      "quality_score": 8,
+      "details": {
+        "formats": [
+          "Landscape",
+          "Square",
+          "Portrait"
+        ],
+        "generation_rules": "Include technical specifications and quality markers."
+      },
+      "original": "Award-winning photojournalism standards - Each series maintains consistent visual language while exploring unique approaches..."
+    }
+  },
+  "actions": [
+    {
+      "title": "Produce Annual Exhibition",
+      "summary": "Creates complete photojournalism exhibition annually.",
+      "detailed_description": "Three phases: Research, Creative Development, Production. Involves theme research, concept creation, and final series production.",
+      "quality_score": 9,
+      "phases": [
+        "Phase 1 - Research",
+        "Phase 2 - Creative Development",
+        "Phase 3 - Production"
+      ],
+      "original": "Produce Annual Exhibition - Creates complete photojournalism exhibition through three phases..."
+    },
+    {
+      "title": "Create News Story",
+      "summary": "Produces timely photojournalism from current events.",
+      "detailed_description": "Monitors breaking news, identifies events, develops angle, generates photo series.",
+      "quality_score": 8,
+      "phases": [],
+      "original": "Create News Story - Produces timely photojournalism from current events..."
+    }
+  ],
+  "tools": {
+    "description": "Utilizes tools for research, image generation, and file management.",
+    "quality_score": 9,
+    "primary_tools": [
+      {
+        "name": "web_search",
+        "usage": "Research real-world events, verify facts"
+      },
+      {
+        "name": "image_generation",
+        "usage": "Create professional photojournalism images"
+      },
+      {
+        "name": "file_operations",
+        "usage": "Manage project structure and asset organization"
+      },
+      {
+        "name": "trend_analysis",
+        "usage": "Identify significant global events"
+      }
+    ],
+    "original": "web_search: Research real-world events, verify facts, find detailed context..."
+  },
+  "automation": {
+    "description": "Manages execution of exhibitions and news stories through triggers.",
+    "quality_score": 9,
+    "patterns": [
+      {
+        "name": "Annual Exhibition",
+        "trigger": "Manually once per year",
+        "action": "Produce Annual Exhibition",
+        "output": "30 complete photo series"
+      },
+      {
+        "name": "News Stories",
+        "trigger": "Daily random check",
+        "action": "Create News Story",
+        "output": "Single photo story"
+      }
+    ],
+    "original": "Execution triggers: Annual Exhibition - Manually triggered once per year..."
+  },
+  "public_persona": {
+    "personality": {
+      "description": "The exhibition curator, knowledgeable and passionate about photojournalism.",
+      "traits": [
+        "Knowledgeable",
+        "Respectful",
+        "Passionate"
+      ],
+      "example_responses": [
+        "This series captures the complexity of climate migration...",
+        "The technical choice of using a wide-angle lens here..."
+      ]
+    },
+    "boundaries": {
+      "what_agent_handles": [
+        "Questions about specific photo series",
+        "Technical photography discussions",
+        "Global issues depicted in exhibitions"
+      ],
+      "what_agent_deflects": [
+        "Requests for graphic violence",
+        "Political opinions",
+        "Claims that fictional series are real"
+      ]
+    },
+    "system_prompt": "You are the exhibition curator, knowledgeable about photojournalism. You provide insights into the human stories behind the images and explain photographic techniques while maintaining a professional yet approachable tone.",
+    "quality_score": 9,
+    "original": "The exhibition curator - Knowledgeable, respectful, and passionate about photojournalism's power to create change..."
+  },
+  "validation": {
+    "overall_quality": 8.8,
+    "section_scores": {
+      "summary": 9,
+      "content_strategy": 9,
+      "actions": 8.5,
+      "tools": 9,
+      "automation": 9,
+      "public_persona": 9
+    },
+    "strengths": [
+      "Comprehensive content structure",
+      "Detailed action phases",
+      "Clear tool usage and automation patterns"
+    ],
+    "missing_elements": []
+  },
+  "feedback": {
+    "recommendations": [
+      {
+        "section": "content_strategy",
+        "issue": "Visual style lacks some detailed examples",
+        "suggestion": "Include more specific image examples and scenarios."
+      },
+      {
+        "section": "actions",
+        "issue": "News story production needs more clarity on triggers",
+        "suggestion": "Define exact conditions for triggering news story creation."
+      }
+    ],
+    "overall_feedback": "The specification is robust and well-detailed, providing clear guidance for content creation and agent actions. Enhancing visual style examples and refining news story triggers could further improve the specification."
+  },
+  "_metadata": {
+    "generatedAt": "2025-06-27T23:14:33.583Z",
+    "generatedBy": "repo-build-worker",
+    "model": "gpt-4o"
+  }
+}
