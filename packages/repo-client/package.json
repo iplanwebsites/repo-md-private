@@ -47,6 +47,7 @@
     "test:schemas": "node test-schema-coverage.js",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test": "npm run test:unit && npm run test:schemas"
   },
   "description": "API client for consuming content from your repo.md projects",
@@ -89,6 +90,7 @@
     "@types/node": "^20.11.24",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
+    "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
