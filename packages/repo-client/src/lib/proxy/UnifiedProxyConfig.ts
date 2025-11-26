@@ -4,6 +4,10 @@
  */
 
 import { LOG_PREFIXES } from '../logger.js';
+import { type CacheHeaders } from './nodeUtils.js';
+
+// Re-export for backwards compatibility
+export type { CacheHeaders };
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
@@ -16,9 +20,6 @@ export interface ProxyConfigOptions {
   debug?: boolean;
   projectPathPrefix?: string;
 }
-
-/** Cache headers type */
-export type CacheHeaders = Record<string, string>;
 
 /** Vite proxy configuration handler */
 export interface ViteProxyHandler {

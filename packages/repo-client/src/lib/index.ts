@@ -105,15 +105,15 @@ export {
 // Re-export types from RepoMd
 export type {
   PostMethodStats,
-  PostStats,
-  RevisionCacheStats,
+  ClientPostStats,
+  ClientRevisionCacheStats,
   ClientStats,
   RepoMDStrategy,
   RepoMDOptions,
   GetOpenAiToolSpecOptions,
   UnifiedProxyOptions,
   NextMiddlewareOptions,
-  NextMiddlewareResult,
+  RepoNextMiddlewareResult,
   CloudflareHandlerOptions,
   FindOptions,
   ContentSearchResult,

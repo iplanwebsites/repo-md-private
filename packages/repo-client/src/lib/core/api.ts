@@ -5,6 +5,10 @@
 
 import { LOG_PREFIXES } from "../logger.js";
 import { fetchJson, type FetchJsonOptions } from "../utils.js";
+import { type ProjectDetails } from "../project/config.js";
+
+// Re-export for backwards compatibility
+export type { ProjectDetails };
 
 const prefix = LOG_PREFIXES.REPO_MD;
 const API_DOMAIN = "api.repo.md";
@@ -18,15 +22,6 @@ export interface ApiClientConfig {
   projectSlug?: string;
   /** Whether to log debug info */
   debug?: boolean;
-}
-
-/** Project details response */
-export interface ProjectDetails {
-  id: string;
-  slug?: string;
-  name?: string;
-  activeRev?: string;
-  [key: string]: unknown;
 }
 
 /** API response wrapper */

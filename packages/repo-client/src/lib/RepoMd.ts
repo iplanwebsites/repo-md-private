@@ -55,7 +55,7 @@ import { getProjectIdFromEnv } from "./utils/env.js";
 import { nuxtRepoMdPlugin, type NuxtPlugin } from "./integrations/nuxt.js";
 import { svelteKitRepoMdHandle, type SvelteKitHandle } from "./integrations/sveltekit.js";
 import { expressRepoMdMiddleware, type ExpressMiddleware } from "./integrations/express.js";
-import { fastifyRepoMdPlugin, type FastifyRepoMdOptions } from "./integrations/fastify.js";
+import { fastifyRepoMdPlugin, type FastifyRepoMdOptions, type FastifyInstance, type FastifyDone } from "./integrations/fastify.js";
 import { koaRepoMdMiddleware, type KoaMiddleware } from "./integrations/koa.js";
 import { astroRepoMdMiddleware, type AstroMiddleware } from "./integrations/astro.js";
 
@@ -71,8 +71,8 @@ export interface PostMethodStats {
   allPosts: number;
 }
 
-/** Post statistics tracking */
-export interface PostStats {
+/** Client post statistics tracking (different from PostStats in retrieval.ts) */
+export interface ClientPostStats {
   totalLoaded: number;
   byMethod: PostMethodStats;
   individualLoads: number;
@@ -80,8 +80,8 @@ export interface PostStats {
   lastUpdated: number;
 }
 
-/** Revision cache statistics */
-export interface RevisionCacheStats {
+/** Client revision cache statistics (different from RevisionCacheStats in urls.ts) */
+export interface ClientRevisionCacheStats {
   type: "latest" | "specific";
   expirySeconds: number;
   debugEnabled: boolean;
@@ -97,8 +97,8 @@ export interface RevisionCacheStats {
 
 /** Client statistics */
 export interface ClientStats {
-  posts: PostStats;
-  revisionCache: RevisionCacheStats;
+  posts: ClientPostStats;
+  revisionCache: ClientRevisionCacheStats;
 }
 
 /** Strategy for data fetching */
@@ -135,8 +135,8 @@ export interface NextMiddlewareOptions {
   debug?: boolean;
 }
 
-/** Result of createNextMiddleware */
-export interface NextMiddlewareResult {
+/** Result of RepoMD.createNextMiddleware */
+export interface RepoNextMiddlewareResult {
   middleware: NextMiddlewareHandler;
   config: {
     matcher: string;
@@ -165,11 +165,6 @@ export interface ContentSearchResult extends SearchResult {
 /** Augment posts options */
 export interface AugmentPostsOptions {
   useCache?: boolean;
-  [key: string]: unknown;
-}
-
-/** Fastify instance type */
-interface FastifyInstance {
   [key: string]: unknown;
 }
 
@@ -1013,7 +1008,7 @@ class RepoMD {
    * @param options - Middleware configuration options
    * @returns Object containing middleware function and config
    */
-  createNextMiddleware(options: NextMiddlewareOptions = {}): NextMiddlewareResult {
+  createNextMiddleware(options: NextMiddlewareOptions = {}): RepoNextMiddlewareResult {
     // Use the unified proxy configuration
     const config = this.getUnifiedProxyConfig(options);
     const middleware = createRepoMiddleware({
@@ -1093,12 +1088,12 @@ class RepoMD {
    * @param options - Plugin configuration options
    * @returns Fastify plugin function
    */
-  createFastifyPlugin(options: { debug?: boolean; [key: string]: unknown } = {}): (fastify: FastifyInstance, opts: FastifyRepoMdOptions, done: import("./integrations/fastify.js").FastifyDone) => Promise<void> {
+  createFastifyPlugin(options: { debug?: boolean; [key: string]: unknown } = {}): (fastify: FastifyInstance, opts: FastifyRepoMdOptions, done: FastifyDone) => Promise<void> {
     // Return a wrapped function that includes the projectId
-    return async (fastify: FastifyInstance, opts: FastifyRepoMdOptions, done: import("./integrations/fastify.js").FastifyDone): Promise<void> => {
+    return async (fastify: FastifyInstance, opts: FastifyRepoMdOptions, done: FastifyDone): Promise<void> => {
       // Spread options and opts first, then override with specific values
       const { projectId: _optsProjectId, debug: optsDebug, ...restOpts } = opts;
-      return fastifyRepoMdPlugin(fastify as unknown as import("./integrations/fastify.js").FastifyInstance, {
+      return fastifyRepoMdPlugin(fastify, {
         ...options,
         ...restOpts,
         projectId: this.projectId ?? '',
