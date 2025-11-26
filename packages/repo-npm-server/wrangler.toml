@@ -3,6 +3,12 @@ main = "worker.js"
 compatibility_date = "2024-06-27"
 compatibility_flags = ["nodejs_compat"]
 
+# Build configuration for monorepo - prevents installing entire workspace
+[build]
+command = "npm install --workspaces=false --ignore-scripts"
+cwd = "."
+watch_dir = "."
+
 [env.production]
 name = "repo-npm-instance"
 routes = [

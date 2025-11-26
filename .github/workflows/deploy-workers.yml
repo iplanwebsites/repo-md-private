@@ -1,0 +1,127 @@
+name: Deploy Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/repo-static/**'
+      - 'packages/repo-npm-server/**'
+      - 'packages/repo-cname/**'
+  workflow_dispatch:
+    inputs:
+      worker:
+        description: 'Worker to deploy (all, repo-static, repo-npm-server, repo-cname)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - repo-static
+          - repo-npm-server
+          - repo-cname
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  # Detect which packages changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      repo-static: ${{ steps.filter.outputs.repo-static }}
+      repo-npm-server: ${{ steps.filter.outputs.repo-npm-server }}
+      repo-cname: ${{ steps.filter.outputs.repo-cname }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            repo-static:
+              - 'packages/repo-static/**'
+            repo-npm-server:
+              - 'packages/repo-npm-server/**'
+            repo-cname:
+              - 'packages/repo-cname/**'
+
+  deploy-static:
+    needs: changes
+    if: |
+      (needs.changes.outputs.repo-static == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.worker == 'all' || github.event.inputs.worker == 'repo-static'))
+    runs-on: ubuntu-latest
+    name: Deploy repo-static
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (isolated)
+        working-directory: packages/repo-static
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/repo-static
+          command: deploy
+
+  deploy-npm-server:
+    needs: changes
+    if: |
+      (needs.changes.outputs.repo-npm-server == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.worker == 'all' || github.event.inputs.worker == 'repo-npm-server'))
+    runs-on: ubuntu-latest
+    name: Deploy repo-npm-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (isolated)
+        working-directory: packages/repo-npm-server
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Deploy to Cloudflare (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/repo-npm-server
+          command: deploy --env production
+
+  deploy-cname:
+    needs: changes
+    if: |
+      (needs.changes.outputs.repo-cname == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.worker == 'all' || github.event.inputs.worker == 'repo-cname'))
+    runs-on: ubuntu-latest
+    name: Deploy repo-cname
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (isolated)
+        working-directory: packages/repo-cname
+        run: npm install --workspaces=false --ignore-scripts
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/repo-cname
+          command: deploy

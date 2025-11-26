@@ -2,6 +2,12 @@ name = "repo-cname"
 main = "src/index.js"
 compatibility_date = "2023-05-03"
 
+# Build configuration for monorepo - prevents installing entire workspace
+[build]
+command = "npm install --workspaces=false --ignore-scripts"
+cwd = "."
+watch_dir = "src"
+
 [triggers]
 crons = []
 
