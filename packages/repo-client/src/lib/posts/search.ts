@@ -5,16 +5,93 @@
 import MiniSearch from "minisearch";
 import { cosineSimilarity } from "../vector.js";
 import { computeTextEmbedding, computeClipTextEmbedding, computeClipImageEmbedding } from "../inference.js";
+import type { Post } from './retrieval.js';
 
-export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia, getMediaEmbeddings, debug = false, getActiveRev = null }) {
-  let miniSearchInstance = null;
-  let indexedData = null;
-  let indexRevision = null; // Track which revision the index is for
+/** Media item type */
+export interface Media {
+  hash: string;
+  slug?: string;
+  title?: string;
+  path?: string;
+  [key: string]: unknown;
+}
+
+/** Search result type */
+export interface SearchResult {
+  id: string;
+  hash?: string;
+  score: number;
+  similarity?: number;
+  searchMode: string;
+  post?: Post | null;
+  media?: Media | null;
+  type?: 'post' | 'media';
+  terms?: string[];
+  [key: string]: unknown;
+}
+
+/** Search options */
+export interface SearchOptions {
+  limit?: number;
+  fuzzy?: number;
+  prefix?: boolean;
+  boost?: Record<string, number>;
+  threshold?: number;
+}
+
+/** Search parameters */
+export interface SearchParams {
+  text?: string;
+  image?: string;
+  props?: SearchOptions;
+  mode?: 'memory' | 'vector' | 'vector-text' | 'vector-clip-text' | 'vector-clip-image';
+}
+
+/** Post search configuration */
+export interface PostSearchConfig {
+  getAllPosts: (useCache?: boolean, forceRefresh?: boolean) => Promise<Post[]>;
+  getPostsEmbeddings?: () => Promise<Record<string, number[]>>;
+  getAllMedia?: () => Promise<Media[]>;
+  getMediaEmbeddings?: () => Promise<Record<string, number[]>>;
+  debug?: boolean;
+  getActiveRev?: (() => string | undefined) | null;
+}
+
+/** Post search service interface */
+export interface PostSearchService {
+  searchPosts: (params: SearchParams) => Promise<SearchResult[]>;
+  searchAutocomplete: (term: string, limit?: number) => Promise<string[]>;
+  refreshMemoryIndex: () => Promise<MiniSearch | null>;
+  performMemorySearch: (text: string, props: SearchOptions) => Promise<SearchResult[]>;
+  performVectorSearch: (params: { text?: string; image?: string; mode: string; props: SearchOptions }) => Promise<SearchResult[]>;
+  clearSearchIndex: () => void;
+}
+
+/** MiniSearch document type */
+interface SearchDocument {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string;
+  tags: string;
+  plain: string;
+  slug: string;
+  date?: string;
+  hash: string;
+  path?: string;
+}
+
+export function createPostSearch(config: PostSearchConfig): PostSearchService {
+  const { getAllPosts, getPostsEmbeddings, getAllMedia, getMediaEmbeddings, debug = false, getActiveRev = null } = config;
+
+  let miniSearchInstance: MiniSearch<SearchDocument> | null = null;
+  let indexedData: Post[] | null = null;
+  let indexRevision: string | null = null; // Track which revision the index is for
 
   /**
    * Clear search index (called when revision changes)
    */
-  function clearSearchIndex() {
+  function clearSearchIndex(): void {
     if (debug && (miniSearchInstance || indexedData)) {
       console.log("🔍 Clearing search index (revision changed)");
     }
@@ -26,7 +103,7 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
   /**
    * Check and invalidate index if revision changed
    */
-  function checkRevisionAndInvalidate() {
+  function checkRevisionAndInvalidate(): void {
     if (getActiveRev && indexRevision) {
       const currentRev = getActiveRev();
       if (currentRev && currentRev !== indexRevision) {
@@ -38,7 +115,7 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     }
   }
 
-  const initializeMemoryIndex = async (posts) => {
+  const initializeMemoryIndex = async (posts: Post[]): Promise<MiniSearch<SearchDocument> | null> => {
     if (!posts || posts.length === 0) {
       if (debug) {
         console.log("🔍 No posts available for search indexing");
@@ -56,7 +133,7 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     ];
     const storableFields = ["slug", "title", "excerpt", "date", "hash", "path"];
 
-    miniSearchInstance = new MiniSearch({
+    miniSearchInstance = new MiniSearch<SearchDocument>({
       fields: searchableFields,
       storeFields: storableFields,
       searchOptions: {
@@ -66,13 +143,13 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
       },
     });
 
-    const documentsToIndex = posts.map((post) => ({
+    const documentsToIndex: SearchDocument[] = posts.map((post) => ({
       id: post.hash || post.slug,
       title: post.title || "",
-      content: post.content || "",
-      excerpt: post.excerpt || "",
-      tags: Array.isArray(post.tags) ? post.tags.join(" ") : post.tags || "",
-      plain: post.plain || "",
+      content: (post.content as string) || "",
+      excerpt: (post.excerpt as string) || "",
+      tags: Array.isArray(post.tags) ? (post.tags as string[]).join(" ") : (post.tags as string) || "",
+      plain: (post.plain as string) || "",
       slug: post.slug,
       date: post.date,
       hash: post.hash,
@@ -83,7 +160,7 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     indexedData = posts;
     // Track the revision this index is for
     if (getActiveRev) {
-      indexRevision = getActiveRev();
+      indexRevision = getActiveRev() || null;
     }
 
     if (debug) {
@@ -93,7 +170,9 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     return miniSearchInstance;
   };
 
-  const searchPosts = async ({ text, image, props = {}, mode = "memory" }) => {
+  const searchPosts = async (params: SearchParams): Promise<SearchResult[]> => {
+    const { text, image, props = {}, mode = "memory" } = params;
+
     if (!text && !image) {
       throw new Error(
         "Either text or image parameter is required for search"
@@ -116,18 +195,19 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
 
     try {
       if (mode === "memory") {
-        return await performMemorySearch(text, props);
+        return await performMemorySearch(text || '', props);
       }
       return await performVectorSearch({ text, image, mode, props });
     } catch (error) {
       if (debug) {
         console.error("🔍 Search error:", error);
       }
-      throw new Error(`Search failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Search failed: ${errorMessage}`);
     }
   };
 
-  const performMemorySearch = async (text, props) => {
+  const performMemorySearch = async (text: string, props: SearchOptions): Promise<SearchResult[]> => {
     // Check if revision changed and invalidate index if needed
     checkRevisionAndInvalidate();
 
@@ -163,18 +243,19 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     return results.map((result) => ({
       ...result,
       searchMode: 'memory',
-      post: indexedData.find(
+      post: indexedData?.find(
         (post) =>
           (post.hash && post.hash === result.id) ||
           (post.slug && post.slug === result.id)
-      ),
+      ) || null,
     }));
   };
 
-  const performVectorSearch = async ({ text, image, mode, props }) => {
+  const performVectorSearch = async (params: { text?: string; image?: string; mode: string; props: SearchOptions }): Promise<SearchResult[]> => {
+    const { text, image, mode, props } = params;
     const { limit = 20, threshold = 0.1 } = props;
-    let queryEmbedding;
-    let searchType;
+    let queryEmbedding: number[] | undefined;
+    let searchType: 'text' | 'clip';
 
     try {
       // Compute query embedding based on mode
@@ -208,6 +289,8 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
         if (debug) {
           console.log("🔍 Computed CLIP image embedding for search");
         }
+      } else {
+        throw new Error(`Unknown search mode: ${mode}`);
       }
 
       if (!queryEmbedding || !Array.isArray(queryEmbedding)) {
@@ -215,9 +298,9 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
       }
 
       // Get appropriate embeddings based on search type - IMPORTANT: Only compare compatible embeddings
-      let embeddingsMap;
-      let candidateData;
-      
+      let embeddingsMap: Record<string, number[]>;
+      let candidateData: Array<(Post | Media) & { type: 'post' | 'media' }>;
+
       if (searchType === 'clip') {
         // For CLIP searches, only use CLIP embeddings (from media)
         // CLIP embeddings are only available for media items, not posts
@@ -225,9 +308,9 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
           getMediaEmbeddings ? getMediaEmbeddings() : {},
           getAllMedia ? getAllMedia() : []
         ]);
-        
+
         embeddingsMap = mediaEmbeddings;
-        candidateData = media.map(m => ({ ...m, type: 'media' }));
+        candidateData = media.map(m => ({ ...m, type: 'media' as const }));
       } else {
         // For text searches, only use text embeddings (from posts)
         // Text embeddings are available for posts
@@ -235,9 +318,9 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
           getPostsEmbeddings ? getPostsEmbeddings() : {},
           getAllPosts ? getAllPosts(true) : []
         ]);
-        
+
         embeddingsMap = postsEmbeddings;
-        candidateData = posts.map(p => ({ ...p, type: 'post' }));
+        candidateData = posts.map(p => ({ ...p, type: 'post' as const }));
       }
 
       if (!embeddingsMap || Object.keys(embeddingsMap).length === 0) {
@@ -248,13 +331,13 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
       }
 
       // Calculate similarities
-      const similarities = [];
-      
+      const similarities: SearchResult[] = [];
+
       for (const [hash, embedding] of Object.entries(embeddingsMap)) {
         if (!embedding || !Array.isArray(embedding)) continue;
-        
+
         const similarity = cosineSimilarity(queryEmbedding, embedding);
-        
+
         if (similarity >= threshold) {
           const candidateItem = candidateData.find(item => item.hash === hash);
           if (candidateItem) {
@@ -264,8 +347,8 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
               similarity,
               score: similarity,
               searchMode: mode,
-              post: candidateItem.type === 'post' ? candidateItem : null,
-              media: candidateItem.type === 'media' ? candidateItem : null,
+              post: candidateItem.type === 'post' ? candidateItem as Post : null,
+              media: candidateItem.type === 'media' ? candidateItem as Media : null,
               type: candidateItem.type
             });
           }
@@ -274,7 +357,7 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
 
       // Sort by similarity (highest first) and limit results
       const results = similarities
-        .sort((a, b) => b.similarity - a.similarity)
+        .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
         .slice(0, limit);
 
       if (debug) {
@@ -282,16 +365,17 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
       }
 
       return results;
-      
+
     } catch (error) {
       if (debug) {
         console.error(`🔍 Vector search error (${mode}):`, error);
       }
-      throw new Error(`Vector search failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Vector search failed: ${errorMessage}`);
     }
   };
 
-  const searchAutocomplete = async (term, limit = 10) => {
+  const searchAutocomplete = async (term: string, limit = 10): Promise<string[]> => {
     if (!term || typeof term !== 'string') {
       return [];
     }
@@ -325,8 +409,8 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
       const results = miniSearchInstance.search(term, searchOptions);
 
       // Extract all unique terms that start with the input term
-      const allTerms = new Set();
-      
+      const allTerms = new Set<string>();
+
       for (const result of results) {
         if (result.terms && Array.isArray(result.terms)) {
           for (const resultTerm of result.terms) {
@@ -362,7 +446,7 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     }
   };
 
-  const refreshMemoryIndex = async () => {
+  const refreshMemoryIndex = async (): Promise<MiniSearch<SearchDocument> | null> => {
     const posts = await getAllPosts(true, true); // Force refresh
     return await initializeMemoryIndex(posts);
   };

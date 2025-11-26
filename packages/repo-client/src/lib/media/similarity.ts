@@ -4,22 +4,39 @@
  */
 
 import computeCosineSimilarityPkg from "compute-cosine-similarity";
-const { similarity: computeCosineSimilarity } = computeCosineSimilarityPkg;
+const computeCosineSimilarity = computeCosineSimilarityPkg as unknown as (a: number[], b: number[]) => number;
 import { LOG_PREFIXES } from "../logger.js";
 import cache from "../core/cache.js";
+import type { Media } from '../posts/search.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
+/** Media similarity configuration */
+export interface MediaSimilarityConfig {
+  fetchR2Json: <T>(path: string, options?: { defaultValue?: T; useCache?: boolean }) => Promise<T>;
+  _fetchMapData: (path: string, defaultValue?: unknown) => Promise<Record<string, unknown> | null>;
+  getAllMedia: (useCache?: boolean) => Promise<Media[]>;
+  debug?: boolean;
+  getActiveRev?: (() => string | undefined) | null;
+}
+
+/** Media similarity service interface */
+export interface MediaSimilarityService {
+  getMediaEmbeddings: () => Promise<Record<string, number[]>>;
+  getMediaSimilarity: () => Promise<Record<string, number> | null>;
+  getMediaSimilarityByHashes: (hash1: string, hash2: string) => Promise<number>;
+  getTopSimilarMediaHashes: () => Promise<Record<string, string[]> | null>;
+  getSimilarMediaHashByHash: (hash: string, limit?: number) => Promise<string[]>;
+  getSimilarMediaByHash: (hash: string, count?: number) => Promise<Media[]>;
+  clearSimilarityCache: () => void;
+}
+
 /**
  * Create a media similarity service
- * @param {Object} config - Configuration object
- * @param {Function} config.fetchR2Json - Function to fetch JSON from R2
- * @param {Function} config._fetchMapData - Function to fetch map data
- * @param {Function} config.getAllMedia - Function to get all media
- * @param {boolean} config.debug - Whether to log debug info
- * @returns {Object} - Media similarity functions
+ * @param config - Configuration object
+ * @returns Media similarity functions
  */
-export function createMediaSimilarity(config) {
+export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimilarityService {
   const {
     fetchR2Json,
     _fetchMapData,
@@ -29,15 +46,15 @@ export function createMediaSimilarity(config) {
   } = config;
 
   // Local caches for similarity data with revision tracking
-  let similarityData = null;
-  let similarMediaHashes = null;
-  let cacheRevision = null; // Track which revision the cache is for
-  const similarityCache = {}; // Memory cache for similarity scores
+  let similarityData: Record<string, number> | null = null;
+  let similarMediaHashes: Record<string, string[]> | null = null;
+  let cacheRevision: string | null = null; // Track which revision the cache is for
+  const similarityCache: Record<string, number> = {}; // Memory cache for similarity scores
 
   /**
    * Clear similarity caches (called when revision changes)
    */
-  function clearSimilarityCache() {
+  function clearSimilarityCache(): void {
     if (debug && (similarityData || similarMediaHashes)) {
       console.log(`${prefix} 🗑️ Clearing media similarity cache (revision changed)`);
     }
@@ -53,7 +70,7 @@ export function createMediaSimilarity(config) {
   /**
    * Check and invalidate cache if revision changed
    */
-  function checkRevisionAndInvalidate() {
+  function checkRevisionAndInvalidate(): void {
     if (getActiveRev && cacheRevision) {
       const currentRev = getActiveRev();
       if (currentRev && currentRev !== cacheRevision) {
@@ -67,9 +84,9 @@ export function createMediaSimilarity(config) {
 
   /**
    * Get pre-computed media similarities
-   * @returns {Promise<Object>} - Similarity data
+   * @returns Similarity data
    */
-  async function getMediaSimilarity() {
+  async function getMediaSimilarity(): Promise<Record<string, number> | null> {
     // Check if revision changed and invalidate cache if needed
     checkRevisionAndInvalidate();
 
@@ -77,10 +94,11 @@ export function createMediaSimilarity(config) {
       if (debug) {
         console.log(`${prefix} 📡 Loading pre-computed media similarity data`);
       }
-      similarityData = await _fetchMapData("/media-similarity.json", {});
+      const data = await _fetchMapData("/media-similarity.json", {});
+      similarityData = data as Record<string, number> | null;
       // Track the revision this cache is for
       if (getActiveRev) {
-        cacheRevision = getActiveRev();
+        cacheRevision = getActiveRev() || null;
       }
     }
     return similarityData;
@@ -88,24 +106,25 @@ export function createMediaSimilarity(config) {
 
   /**
    * Get media embeddings map
-   * @returns {Promise<Object>} - Embeddings map
+   * @returns Embeddings map
    */
-  async function getMediaEmbeddings() {
+  async function getMediaEmbeddings(): Promise<Record<string, number[]>> {
     if (debug) {
       console.log(`${prefix} 📡 Fetching media embeddings map`);
     }
 
-    return await _fetchMapData("/media-embedding-hash-map.json");
+    const data = await _fetchMapData("/media-embedding-hash-map.json");
+    return (data as Record<string, number[]>) || {};
   }
 
   /**
    * Calculate similarity between two media items by hash
-   * @param {string} hash1 - First media hash
-   * @param {string} hash2 - Second media hash
-   * @returns {Promise<number>} - Similarity score (0-1)
-   * @throws {Error} - If hash parameters are missing or invalid
+   * @param hash1 - First media hash
+   * @param hash2 - Second media hash
+   * @returns Similarity score (0-1)
+   * @throws If hash parameters are missing or invalid
    */
-  async function getMediaSimilarityByHashes(hash1, hash2) {
+  async function getMediaSimilarityByHashes(hash1: string, hash2: string): Promise<number> {
     // Validate hash1 parameter
     if (!hash1) {
       throw new Error('Hash1 is required for getMediaSimilarityByHashes operation');
@@ -203,26 +222,27 @@ export function createMediaSimilarity(config) {
 
   /**
    * Get pre-computed similar media hashes
-   * @returns {Promise<Object>} - Similar media hashes map
+   * @returns Similar media hashes map
    */
-  async function getTopSimilarMediaHashes() {
+  async function getTopSimilarMediaHashes(): Promise<Record<string, string[]> | null> {
     if (!similarMediaHashes) {
       if (debug) {
         console.log(`${prefix} 📡 Loading pre-computed similar media hashes`);
       }
-      similarMediaHashes = await _fetchMapData("/media-similar-hash.json", {});
+      const data = await _fetchMapData("/media-similar-hash.json", {});
+      similarMediaHashes = data as Record<string, string[]> | null;
     }
     return similarMediaHashes;
   }
 
   /**
    * Get similar media hashes by hash
-   * @param {string} hash - Media hash
-   * @param {number} limit - Maximum number of similar hashes to return
-   * @returns {Promise<Array<string>>} - Array of similar media hashes
-   * @throws {Error} - If hash parameter is missing or invalid
+   * @param hash - Media hash
+   * @param limit - Maximum number of similar hashes to return
+   * @returns Array of similar media hashes
+   * @throws If hash parameter is missing or invalid
    */
-  async function getSimilarMediaHashByHash(hash, limit = 10) {
+  async function getSimilarMediaHashByHash(hash: string, limit = 10): Promise<string[]> {
     // Validate hash parameter
     if (!hash) {
       throw new Error('Hash is required for getSimilarMediaHashByHash operation');
@@ -285,7 +305,7 @@ export function createMediaSimilarity(config) {
     }
 
     // Calculate similarities for all media
-    const similarities = [];
+    const similarities: Array<{ hash: string; similarity: number }> = [];
 
     for (const otherHash of allHashes) {
       if (otherHash === hash) continue; // Skip the target media
@@ -307,12 +327,12 @@ export function createMediaSimilarity(config) {
 
   /**
    * Get similar media by hash
-   * @param {string} hash - Media hash
-   * @param {number} count - Maximum number of similar media to return
-   * @returns {Promise<Array<Object>>} - Array of similar media
-   * @throws {Error} - If hash parameter is missing or invalid
+   * @param hash - Media hash
+   * @param count - Maximum number of similar media to return
+   * @returns Array of similar media
+   * @throws If hash parameter is missing or invalid
    */
-  async function getSimilarMediaByHash(hash, count = 5) {
+  async function getSimilarMediaByHash(hash: string, count = 5): Promise<Media[]> {
     // Validate hash parameter
     if (!hash) {
       throw new Error('Hash is required for getSimilarMediaByHash operation');
@@ -341,7 +361,7 @@ export function createMediaSimilarity(config) {
 
     // Get all media and filter by the similar hashes
     const allMedia = await getAllMedia();
-    return allMedia.filter(media => similarHashes.includes(media.hash)).slice(0, count);
+    return allMedia.filter((media: Media) => similarHashes.includes(media.hash)).slice(0, count);
   }
 
   return {
@@ -353,4 +373,4 @@ export function createMediaSimilarity(config) {
     getSimilarMediaByHash,
     clearSimilarityCache,
   };
-} 
+}

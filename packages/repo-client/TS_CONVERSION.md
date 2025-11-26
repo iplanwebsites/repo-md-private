@@ -109,23 +109,23 @@
 
 ---
 
-### Phase 4: Domain Modules ⬜
+### Phase 4: Domain Modules ✅
 > Posts, media, files, project modules
 
 | File | Status | Notes |
 |------|--------|-------|
-| `posts/retrieval.js` → `.ts` | ⬜ | 667 LOC, caching logic |
-| `posts/search.js` → `.ts` | ⬜ | 378 LOC, MiniSearch |
-| `posts/similarity.js` → `.ts` | ⬜ | 443 LOC, vectors |
-| `posts/index.js` → `.ts` | ⬜ | barrel |
-| `media/handler.js` → `.ts` | ⬜ | 103 LOC |
-| `media/similarity.js` → `.ts` | ⬜ | 355 LOC |
-| `media/index.js` → `.ts` | ⬜ | barrel |
-| `files/index.js` → `.ts` | ⬜ | 101 LOC |
-| `project/config.js` → `.ts` | ⬜ | 86 LOC |
-| `project/index.js` → `.ts` | ⬜ | barrel |
+| `posts/retrieval.js` → `.ts` | ✅ | Added `Post`, `PostStats`, `PostRetrievalConfig`, `PostRetrievalService` |
+| `posts/search.js` → `.ts` | ✅ | Added `SearchResult`, `SearchParams`, `PostSearchConfig` |
+| `posts/similarity.js` → `.ts` | ✅ | Added `PostSimilarityConfig`, `PostSimilarityService` |
+| `posts/index.js` → `.ts` | ✅ | barrel with type re-exports |
+| `media/handler.js` → `.ts` | ✅ | Added `MediaHandlerConfig`, `MediaHandlerService` |
+| `media/similarity.js` → `.ts` | ✅ | Added `MediaSimilarityConfig`, `MediaSimilarityService` |
+| `media/index.js` → `.ts` | ✅ | barrel with type re-exports |
+| `files/index.js` → `.ts` | ✅ | Added `SourceFile`, `DistFile`, `GraphData`, `FileHandlerService` |
+| `project/config.js` → `.ts` | ✅ | Added `ReleaseInfo`, `ProjectMetadata`, `ProjectConfigService` |
+| `project/index.js` → `.ts` | ✅ | barrel with type re-exports |
 
-**Estimated effort**: 2-3 days
+**Completed**: 2024-11-26
 
 ---
 
@@ -281,6 +281,7 @@ export interface CacheManager {
 
 | Date | Phase | Files Converted | Notes |
 |------|-------|-----------------|-------|
+| 2024-11-26 | 4 | 10 | Phase 4 complete - Domain modules (posts, media, files, project) |
 | 2024-11-26 | 3 | 5 | Phase 3 complete - Schemas & validation (schemas, types, validator, index, test-schema-coverage) |
 | 2024-11-26 | 2 | 6 | Phase 2 complete - Core infrastructure (urls, api, utils, inference, mediaProxy, logger-wrapper) |
 | 2024-11-26 | 1 | 8 | Phase 1 complete - Foundation files converted |

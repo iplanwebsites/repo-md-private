@@ -4,24 +4,43 @@
  */
 
 import computeCosineSimilarityPkg from "compute-cosine-similarity";
-const { similarity: computeCosineSimilarity } = computeCosineSimilarityPkg;
+const computeCosineSimilarity = computeCosineSimilarityPkg as unknown as (a: number[], b: number[]) => number;
 import { LOG_PREFIXES } from "../logger.js";
 import cache from "../core/cache.js";
+import type { Post, AugmentOptions } from './retrieval.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
+/** Post similarity configuration */
+export interface PostSimilarityConfig {
+  fetchR2Json: <T>(path: string, options?: { defaultValue?: T; useCache?: boolean }) => Promise<T>;
+  _fetchMapData: (path: string, defaultValue?: unknown) => Promise<Record<string, unknown> | null>;
+  getRecentPosts: (count?: number) => Promise<Post[]>;
+  getPostBySlug: (slug: string) => Promise<Post | null>;
+  augmentPostsByProperty: (keys: string[], property: string, options?: AugmentOptions) => Promise<Post[]>;
+  debug?: boolean;
+  getActiveRev?: (() => string | undefined) | null;
+}
+
+/** Post similarity service interface */
+export interface PostSimilarityService {
+  getPostsEmbeddings: () => Promise<Record<string, number[]>>;
+  getPostsSimilarity: () => Promise<Record<string, number> | null>;
+  getPostsSimilarityByHashes: (hash1: string, hash2: string) => Promise<number>;
+  getTopSimilarPostsHashes: () => Promise<Record<string, string[]> | null>;
+  getSimilarPostsHashByHash: (hash: string, limit?: number) => Promise<string[]>;
+  getSimilarPostsByHash: (hash: string, count?: number, options?: AugmentOptions) => Promise<Post[]>;
+  getSimilarPostsSlugBySlug: (slug: string, limit?: number) => Promise<string[]>;
+  getSimilarPostsBySlug: (slug: string, count?: number, options?: AugmentOptions) => Promise<Post[]>;
+  clearSimilarityCache: () => void;
+}
+
 /**
  * Create a post similarity service
- * @param {Object} config - Configuration object
- * @param {Function} config.fetchR2Json - Function to fetch JSON from R2
- * @param {Function} config._fetchMapData - Function to fetch map data
- * @param {Function} config.getRecentPosts - Function to get recent posts
- * @param {Function} config.getPostBySlug - Function to get a post by slug
- * @param {Function} config.augmentPostsByProperty - Function to augment posts by property
- * @param {boolean} config.debug - Whether to log debug info
- * @returns {Object} - Post similarity functions
+ * @param config - Configuration object
+ * @returns Post similarity functions
  */
-export function createPostSimilarity(config) {
+export function createPostSimilarity(config: PostSimilarityConfig): PostSimilarityService {
   const {
     fetchR2Json,
     _fetchMapData,
@@ -33,15 +52,15 @@ export function createPostSimilarity(config) {
   } = config;
 
   // Local caches for similarity data with revision tracking
-  let similarityData = null;
-  let similarPostsHashes = null;
-  let cacheRevision = null; // Track which revision the cache is for
-  const similarityCache = {}; // Memory cache for similarity scores
+  let similarityData: Record<string, number> | null = null;
+  let similarPostsHashes: Record<string, string[]> | null = null;
+  let cacheRevision: string | null = null; // Track which revision the cache is for
+  const similarityCache: Record<string, number> = {}; // Memory cache for similarity scores
 
   /**
    * Clear similarity caches (called when revision changes)
    */
-  function clearSimilarityCache() {
+  function clearSimilarityCache(): void {
     if (debug && (similarityData || similarPostsHashes)) {
       console.log(`${prefix} 🗑️ Clearing post similarity cache (revision changed)`);
     }
@@ -56,7 +75,7 @@ export function createPostSimilarity(config) {
   /**
    * Check and invalidate cache if revision changed
    */
-  function checkRevisionAndInvalidate() {
+  function checkRevisionAndInvalidate(): void {
     if (getActiveRev && cacheRevision) {
       const currentRev = getActiveRev();
       if (currentRev && currentRev !== cacheRevision) {
@@ -70,18 +89,19 @@ export function createPostSimilarity(config) {
 
   /**
    * Get pre-computed post similarities
-   * @returns {Promise<Object>} - Similarity data
+   * @returns Similarity data
    */
-  async function getPostsSimilarity() {
+  async function getPostsSimilarity(): Promise<Record<string, number> | null> {
     checkRevisionAndInvalidate();
 
     if (!similarityData) {
       if (debug) {
         console.log(`${prefix} 📡 Loading pre-computed post similarity data`);
       }
-      similarityData = await _fetchMapData("/posts-similarity.json", {});
+      const data = await _fetchMapData("/posts-similarity.json", {});
+      similarityData = data as Record<string, number> | null;
       if (getActiveRev) {
-        cacheRevision = getActiveRev();
+        cacheRevision = getActiveRev() || null;
       }
     }
     return similarityData;
@@ -89,24 +109,25 @@ export function createPostSimilarity(config) {
 
   /**
    * Get posts embeddings map
-   * @returns {Promise<Object>} - Embeddings map
+   * @returns Embeddings map
    */
-  async function getPostsEmbeddings() {
+  async function getPostsEmbeddings(): Promise<Record<string, number[]>> {
     if (debug) {
       console.log(`${prefix} 📡 Fetching posts embeddings map`);
     }
 
-    return await _fetchMapData("/posts-embedding-hash-map.json");
+    const data = await _fetchMapData("/posts-embedding-hash-map.json");
+    return (data as Record<string, number[]>) || {};
   }
 
   /**
    * Calculate similarity between two posts by hash
-   * @param {string} hash1 - First post hash
-   * @param {string} hash2 - Second post hash
-   * @returns {Promise<number>} - Similarity score (0-1)
-   * @throws {Error} - If hash parameters are missing or invalid
+   * @param hash1 - First post hash
+   * @param hash2 - Second post hash
+   * @returns Similarity score (0-1)
+   * @throws If hash parameters are missing or invalid
    */
-  async function getPostsSimilarityByHashes(hash1, hash2) {
+  async function getPostsSimilarityByHashes(hash1: string, hash2: string): Promise<number> {
     // Validate hash1 parameter
     if (!hash1) {
       throw new Error('Hash1 is required for getPostsSimilarityByHashes operation');
@@ -204,26 +225,27 @@ export function createPostSimilarity(config) {
 
   /**
    * Get pre-computed similar post hashes
-   * @returns {Promise<Object>} - Similar posts hashes map
+   * @returns Similar posts hashes map
    */
-  async function getTopSimilarPostsHashes() {
+  async function getTopSimilarPostsHashes(): Promise<Record<string, string[]> | null> {
     if (!similarPostsHashes) {
       if (debug) {
         console.log(`${prefix} 📡 Loading pre-computed similar post hashes`);
       }
-      similarPostsHashes = await _fetchMapData("/posts-similar-hash.json", {});
+      const data = await _fetchMapData("/posts-similar-hash.json", {});
+      similarPostsHashes = data as Record<string, string[]> | null;
     }
     return similarPostsHashes;
   }
 
   /**
    * Get similar post hashes by hash
-   * @param {string} hash - Post hash
-   * @param {number} limit - Maximum number of similar hashes to return
-   * @returns {Promise<Array<string>>} - Array of similar post hashes
-   * @throws {Error} - If hash parameter is missing or invalid
+   * @param hash - Post hash
+   * @param limit - Maximum number of similar hashes to return
+   * @returns Array of similar post hashes
+   * @throws If hash parameter is missing or invalid
    */
-  async function getSimilarPostsHashByHash(hash, limit = 10) {
+  async function getSimilarPostsHashByHash(hash: string, limit = 10): Promise<string[]> {
     // Validate hash parameter
     if (!hash) {
       throw new Error('Hash is required for getSimilarPostsHashByHash operation');
@@ -286,7 +308,7 @@ export function createPostSimilarity(config) {
     }
 
     // Calculate similarities for all posts
-    const similarities = [];
+    const similarities: Array<{ hash: string; similarity: number }> = [];
 
     for (const otherHash of allHashes) {
       if (otherHash === hash) continue; // Skip the target post
@@ -308,13 +330,13 @@ export function createPostSimilarity(config) {
 
   /**
    * Get similar posts by hash
-   * @param {string} hash - Post hash
-   * @param {number} count - Maximum number of similar posts to return
-   * @param {Object} options - Options for augmentation
-   * @returns {Promise<Array<Object>>} - Array of similar posts
-   * @throws {Error} - If hash parameter is missing or invalid
+   * @param hash - Post hash
+   * @param count - Maximum number of similar posts to return
+   * @param options - Options for augmentation
+   * @returns Array of similar posts
+   * @throws If hash parameter is missing or invalid
    */
-  async function getSimilarPostsByHash(hash, count = 5, options = {}) {
+  async function getSimilarPostsByHash(hash: string, count = 5, options: AugmentOptions = {}): Promise<Post[]> {
     // Validate hash parameter
     if (!hash) {
       throw new Error('Hash is required for getSimilarPostsByHash operation');
@@ -350,11 +372,11 @@ export function createPostSimilarity(config) {
 
   /**
    * Get similar post slugs by slug
-   * @param {string} slug - Post slug
-   * @param {number} limit - Maximum number of similar slugs to return
-   * @returns {Promise<Array<string>>} - Array of similar post slugs
+   * @param slug - Post slug
+   * @param limit - Maximum number of similar slugs to return
+   * @returns Array of similar post slugs
    */
-  async function getSimilarPostsSlugBySlug(slug, limit = 10) {
+  async function getSimilarPostsSlugBySlug(slug: string, limit = 10): Promise<string[]> {
     if (debug) {
       console.log(`${prefix} 📡 Fetching similar post slugs for slug: ${slug}`);
     }
@@ -366,7 +388,7 @@ export function createPostSimilarity(config) {
       embeddingsMap[slug] &&
       Array.isArray(embeddingsMap[slug])
     ) {
-      return embeddingsMap[slug].slice(0, limit);
+      return (embeddingsMap[slug] as string[]).slice(0, limit);
     }
 
     return [];
@@ -374,13 +396,13 @@ export function createPostSimilarity(config) {
 
   /**
    * Get similar posts by slug
-   * @param {string} slug - Post slug
-   * @param {number} count - Maximum number of similar posts to return
-   * @param {Object} options - Options for augmentation
-   * @returns {Promise<Array<Object>>} - Array of similar posts
-   * @throws {Error} - If slug parameter is missing or invalid
+   * @param slug - Post slug
+   * @param count - Maximum number of similar posts to return
+   * @param options - Options for augmentation
+   * @returns Array of similar posts
+   * @throws If slug parameter is missing or invalid
    */
-  async function getSimilarPostsBySlug(slug, count = 5, options = {}) {
+  async function getSimilarPostsBySlug(slug: string, count = 5, options: AugmentOptions = {}): Promise<Post[]> {
     // Validate slug parameter
     if (!slug) {
       throw new Error('Slug is required for getSimilarPostsBySlug operation');

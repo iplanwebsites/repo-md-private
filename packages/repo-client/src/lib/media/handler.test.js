@@ -93,7 +93,7 @@ describe('Media Handler Module', () => {
       const media = await handler.getAllMedia();
 
       expect(mockFetchR2Json).toHaveBeenCalledWith('/medias.json', {
-        defaultValue: {},
+        defaultValue: [],
         useCache: true,
       });
       expect(media).toEqual(sampleMediaData);
@@ -106,7 +106,7 @@ describe('Media Handler Module', () => {
       await handler.getAllMedia(false);
 
       expect(mockFetchR2Json).toHaveBeenCalledWith('/medias.json', {
-        defaultValue: {},
+        defaultValue: [],
         useCache: false,
       });
     });
@@ -149,7 +149,7 @@ describe('Media Handler Module', () => {
       await handler.getAllMedias(false);
 
       expect(mockFetchR2Json).toHaveBeenCalledWith('/medias.json', {
-        defaultValue: {},
+        defaultValue: [],
         useCache: false,
       });
     });
@@ -172,7 +172,7 @@ describe('Media Handler Module', () => {
       await handler.getMediaItems(false);
 
       expect(mockFetchR2Json).toHaveBeenCalledWith('/medias.json', {
-        defaultValue: {},
+        defaultValue: [],
         useCache: false,
       });
     });
@@ -221,7 +221,7 @@ describe('Media Handler Module', () => {
       await handler.getAllMedia();
 
       expect(mockFetchR2Json).toHaveBeenCalledWith('/medias.json', {
-        defaultValue: {},
+        defaultValue: [],
         useCache: true,
       });
     });
@@ -233,7 +233,7 @@ describe('Media Handler Module', () => {
       await handler.getAllMedia(false);
 
       expect(mockFetchR2Json).toHaveBeenCalledWith('/medias.json', {
-        defaultValue: {},
+        defaultValue: [],
         useCache: false,
       });
     });

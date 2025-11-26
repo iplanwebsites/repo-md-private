@@ -8,55 +8,109 @@ import cache from '../core/cache.js';
 
 const prefix = LOG_PREFIXES.REPO_MD;
 
+/** Post object type */
+export interface Post {
+  hash: string;
+  slug: string;
+  title?: string;
+  date?: string;
+  path?: string;
+  content?: string;
+  [key: string]: unknown;
+}
+
+/** Stats tracking for post operations */
+export interface PostStats {
+  posts: {
+    totalLoaded: number;
+    byMethod: {
+      memoryCache: number;
+      directSlugFile: number;
+      directHashFile: number;
+      directPath: number;
+      pathMap: number;
+      allPosts: number;
+    };
+    allPostsLoaded: boolean;
+    individualLoads: number;
+    lastUpdated: number | null;
+  };
+}
+
+/** Configuration for post retrieval service */
+export interface PostRetrievalConfig {
+  getRevisionUrl: (path: string) => Promise<string>;
+  getProjectUrl: (path: string) => string;
+  getSharedFolderUrl: (path: string) => string;
+  fetchR2Json: <T>(path: string, options?: { defaultValue?: T; useCache?: boolean }) => Promise<T>;
+  fetchJson: <T>(url: string, options?: { defaultValue?: T; useCache?: boolean }) => Promise<T>;
+  _fetchMapData: (path: string) => Promise<Record<string, string> | null>;
+  stats?: PostStats;
+  debug?: boolean;
+  getActiveRev?: (() => string | undefined) | null;
+}
+
+/** Options for augmenting posts */
+export interface AugmentOptions {
+  loadIndividually?: number;
+  count?: number;
+  useCache?: boolean;
+}
+
+/** Post retrieval service interface */
+export interface PostRetrievalService {
+  getAllPosts: (useCache?: boolean, forceRefresh?: boolean) => Promise<Post[]>;
+  getPostByPath: (path: string) => Promise<Post | null>;
+  getPostBySlug: (slug: string) => Promise<Post | null>;
+  getPostByHash: (hash: string) => Promise<Post | null>;
+  augmentPostsByProperty: (keys: string[], property: string, options?: AugmentOptions) => Promise<Post[]>;
+  sortPostsByDate: (posts: Post[]) => Post[];
+  getRecentPosts: (count?: number) => Promise<Post[]>;
+  clearPostsCache: () => void;
+  _findPostByProperty: (posts: Post[] | null | undefined, property: string, value: unknown) => Post | null;
+}
+
 /**
  * Create a post retrieval service
- * @param {Object} config - Configuration object
- * @param {Function} config.getRevisionUrl - Function to get revision-specific URLs (async)
- * @param {Function} config.getProjectUrl - Function to get project URLs (not revision-specific)
- * @param {Function} config.getSharedFolderUrl - Function to get shared folder URLs
- * @param {Function} config.fetchR2Json - Function to fetch JSON from R2
- * @param {Function} config.fetchJson - Function to fetch JSON from any URL
- * @param {Function} config._fetchMapData - Function to fetch map data
- * @param {Object} config.stats - Stats object for tracking usage metrics
- * @param {boolean} config.debug - Whether to log debug info
- * @returns {Object} - Post retrieval functions
+ * @param config - Configuration object
+ * @returns Post retrieval functions
  */
-export function createPostRetrieval(config) {
+export function createPostRetrieval(config: PostRetrievalConfig): PostRetrievalService {
   const { getRevisionUrl, getProjectUrl, getSharedFolderUrl, fetchR2Json, fetchJson, _fetchMapData, stats, debug = false, getActiveRev = null } = config;
 
   // Local post cache reference with revision tracking
-  let postsCache = null;
-  let postsCacheRevision = null; // Track which revision the cache is for
+  let postsCache: Post[] | null = null;
+  let postsCacheRevision: string | null = null; // Track which revision the cache is for
 
   /**
    * Clear the posts cache (called when revision changes)
    */
-  function clearPostsCache() {
+  function clearPostsCache(): void {
     if (debug && postsCache) {
       console.log(`${prefix} 🗑️ Clearing posts cache (revision changed)`);
     }
     postsCache = null;
     postsCacheRevision = null;
   }
-  
+
   /**
    * Helper function to find post in array by property
-   * @param {Array} posts - Array of posts
-   * @param {string} property - Property name to match
-   * @param {any} value - Value to match
-   * @returns {Object|null} - Found post or null
+   * @param posts - Array of posts
+   * @param property - Property name to match
+   * @param value - Value to match
+   * @returns Found post or null
    */
-  function _findPostByProperty(posts, property, value) {
+  function _findPostByProperty(posts: Post[] | null | undefined, property: string, value: unknown): Post | null {
     return posts?.find((post) => post[property] === value) || null;
   }
-  
+
   /**
    * Get all blog posts
-   * @param {boolean} useCache - Whether to use cache
-   * @param {boolean} forceRefresh - Whether to force refresh from R2
-   * @returns {Promise<Array>} - Array of posts
+   * @param useCache - Whether to use cache
+   * @param forceRefresh - Whether to force refresh from R2
+   * @returns Array of posts
    */
-  async function getAllPosts(useCache = true, forceRefresh = false) {
+  async function getAllPosts(useCache = true, forceRefresh = false): Promise<Post[]> {
     const startTime = performance.now();
 
     // Check if revision has changed - invalidate cache if so
@@ -91,7 +145,7 @@ export function createPostRetrieval(config) {
     }
 
     // Fetch posts from R2
-    const posts = await fetchR2Json("/posts.json", {
+    const posts = await fetchR2Json<Post[]>("/posts.json", {
       defaultValue: [],
       useCache,
     });
@@ -101,7 +155,7 @@ export function createPostRetrieval(config) {
       postsCache = posts;
       // Store the revision this cache is for
       if (getActiveRev) {
-        postsCacheRevision = getActiveRev();
+        postsCacheRevision = getActiveRev() || null;
       }
       const duration = (performance.now() - startTime).toFixed(2);
       if (debug) {
@@ -124,11 +178,11 @@ export function createPostRetrieval(config) {
 
   /**
    * Get a post by its direct path
-   * @param {string} path - Post path
-   * @returns {Promise<Object|null>} - Post object or null
-   * @throws {Error} - If path parameter is missing or invalid
+   * @param path - Post path
+   * @returns Post object or null
+   * @throws If path parameter is missing or invalid
    */
-  async function getPostByPath(path) {
+  async function getPostByPath(path: string): Promise<Post | null> {
     // Validate path parameter
     if (!path) {
       throw new Error('Path is required for getPostByPath operation');
@@ -143,18 +197,18 @@ export function createPostRetrieval(config) {
     }
 
     try {
-      const post = await fetchR2Json(path, {
+      const post = await fetchR2Json<Post | null>(path, {
         defaultValue: null,
         useCache: true,
       });
-      
+
       if (post && stats) {
         stats.posts.totalLoaded++;
         stats.posts.byMethod.directPath++;
         stats.posts.individualLoads++;
         stats.posts.lastUpdated = Date.now();
       }
-      
+
       return post;
     } catch (error) {
       if (debug) {
@@ -167,11 +221,11 @@ export function createPostRetrieval(config) {
 
   /**
    * Get a single blog post by slug
-   * @param {string} slug - Post slug
-   * @returns {Promise<Object|null>} - Post object or null
-   * @throws {Error} - If slug parameter is missing or invalid
+   * @param slug - Post slug
+   * @returns Post object or null
+   * @throws If slug parameter is missing or invalid
    */
-  async function getPostBySlug(slug) {
+  async function getPostBySlug(slug: string): Promise<Post | null> {
     // Validate slug parameter
     if (!slug) {
       throw new Error('Slug is required for getPostBySlug operation');
@@ -204,13 +258,13 @@ export function createPostRetrieval(config) {
             } in ${duration}ms`
           );
         }
-        
+
         // Update stats for memory cache usage
         if (stats) {
           stats.posts.byMethod.memoryCache++;
           stats.posts.lastUpdated = Date.now();
         }
-        
+
         return post;
       }
     }
@@ -222,13 +276,13 @@ export function createPostRetrieval(config) {
         `${prefix} 🔍 Trying to load individual post file directly: ${slugPath}`
       );
     }
-    
+
     try {
-      const post = await fetchR2Json(slugPath, {
+      const post = await fetchR2Json<Post | null>(slugPath, {
         defaultValue: null,
         useCache: true,
       });
-      
+
       if (post) {
         lookupMethod = 'direct-slug-file';
         const duration = (performance.now() - startTime).toFixed(2);
@@ -237,14 +291,14 @@ export function createPostRetrieval(config) {
             `${prefix} ✅ Successfully loaded post directly from slug file in ${duration}ms`
           );
         }
-        
+
         // Update stats for direct slug file usage
         if (stats) {
           stats.posts.totalLoaded++;
           stats.posts.byMethod.directSlugFile++;
           stats.posts.individualLoads++;
           stats.posts.lastUpdated = Date.now();
-          
+
           // Check if we should side-load all posts
           if (!postsCache && stats.posts.individualLoads >= 5 && !stats.posts.allPostsLoaded) {
             if (debug) {
@@ -252,7 +306,7 @@ export function createPostRetrieval(config) {
                 `${prefix} 🔄 Individual post loads threshold reached (${stats.posts.individualLoads}), side-loading all posts for better performance`
               );
             }
-            
+
             // Side-load all posts in the background (don't await)
             getAllPosts().then(posts => {
               if (debug) {
@@ -262,20 +316,22 @@ export function createPostRetrieval(config) {
               }
             }).catch(error => {
               if (debug) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
                 console.error(
-                  `${prefix} ❌ Error side-loading all posts: ${error.message}`
+                  `${prefix} ❌ Error side-loading all posts: ${errorMessage}`
                 );
               }
             });
           }
         }
-        
+
         return post;
       }
     } catch (error) {
       if (debug) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(
-          `${prefix} ⚠️ Could not load post directly from slug file: ${error.message}`
+          `${prefix} ⚠️ Could not load post directly from slug file: ${errorMessage}`
         );
       }
       // Continue to fallback options
@@ -300,9 +356,9 @@ export function createPostRetrieval(config) {
             `${prefix} ✅ Successfully loaded post via hash from slug mapping in ${duration}ms`
           );
         }
-        
+
         // Stats are already updated by getPostByHash, no need to update here
-        
+
         return post;
       }
     }
@@ -324,7 +380,7 @@ export function createPostRetrieval(config) {
           `${prefix} ✅ Found post by slug in full posts list in ${duration}ms using ${lookupMethod}`
         );
       }
-      
+
       // Update stats for all posts usage (if not already updated by getAllPosts)
       if (stats && !stats.posts.allPostsLoaded) {
         stats.posts.byMethod.allPosts++;
@@ -344,11 +400,11 @@ export function createPostRetrieval(config) {
 
   /**
    * Get a single blog post by hash
-   * @param {string} hash - Post hash
-   * @returns {Promise<Object|null>} - Post object or null
-   * @throws {Error} - If hash parameter is missing or invalid
+   * @param hash - Post hash
+   * @returns Post object or null
+   * @throws If hash parameter is missing or invalid
    */
-  async function getPostByHash(hash) {
+  async function getPostByHash(hash: string): Promise<Post | null> {
     // Validate hash parameter
     if (!hash) {
       throw new Error('Hash is required for getPostByHash operation');
@@ -381,13 +437,13 @@ export function createPostRetrieval(config) {
             } in ${duration}ms`
           );
         }
-        
+
         // Update stats for memory cache usage
         if (stats) {
           stats.posts.byMethod.memoryCache++;
           stats.posts.lastUpdated = Date.now();
         }
-        
+
         return post;
       } else {
         if (debug) {
@@ -406,20 +462,20 @@ export function createPostRetrieval(config) {
         `${prefix} 🔍 Trying to load individual post file directly from shared folder: ${hashPath}`
       );
     }
-    
+
     try {
       // Get the URL using the shared folder URL generator
       const url = getSharedFolderUrl(hashPath);
-      
+
       if (debug) {
         console.log(`${prefix} 🔗 Loading from shared URL: ${url}`);
       }
-      
-      const post = await fetchJson(url, {
+
+      const post = await fetchJson<Post | null>(url, {
         defaultValue: null,
         useCache: true,
       });
-      
+
       if (post) {
         lookupMethod = 'direct-hash-file';
         const duration = (performance.now() - startTime).toFixed(2);
@@ -428,14 +484,14 @@ export function createPostRetrieval(config) {
             `${prefix} ✅ Successfully loaded post directly from hash file in ${duration}ms`
           );
         }
-        
+
         // Update stats for direct hash file usage
         if (stats) {
           stats.posts.totalLoaded++;
           stats.posts.byMethod.directHashFile++;
           stats.posts.individualLoads++;
           stats.posts.lastUpdated = Date.now();
-          
+
           // Check if we should side-load all posts
           if (!postsCache && stats.posts.individualLoads >= 5 && !stats.posts.allPostsLoaded) {
             if (debug) {
@@ -443,7 +499,7 @@ export function createPostRetrieval(config) {
                 `${prefix} 🔄 Individual post loads threshold reached (${stats.posts.individualLoads}), side-loading all posts for better performance`
               );
             }
-            
+
             // Side-load all posts in the background (don't await)
             getAllPosts().then(posts => {
               if (debug) {
@@ -453,20 +509,22 @@ export function createPostRetrieval(config) {
               }
             }).catch(error => {
               if (debug) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
                 console.error(
-                  `${prefix} ❌ Error side-loading all posts: ${error.message}`
+                  `${prefix} ❌ Error side-loading all posts: ${errorMessage}`
                 );
               }
             });
           }
         }
-        
+
         return post;
       }
     } catch (error) {
       if (debug) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(
-          `${prefix} ⚠️ Could not load post directly from hash file: ${error.message}`
+          `${prefix} ⚠️ Could not load post directly from hash file: ${errorMessage}`
         );
       }
       // Continue to fallback options
@@ -491,14 +549,14 @@ export function createPostRetrieval(config) {
             `${prefix} ✅ Successfully loaded post by path from hash mapping in ${duration}ms`
           );
         }
-        
+
         // Update stats for path map usage
         if (stats) {
           stats.posts.totalLoaded++;
           stats.posts.byMethod.pathMap++;
           stats.posts.lastUpdated = Date.now();
         }
-        
+
         return post;
       }
     }
@@ -522,7 +580,7 @@ export function createPostRetrieval(config) {
           } in ${duration}ms using ${lookupMethod}`
         );
       }
-      
+
       // Update stats for all posts usage (if not already updated by getAllPosts)
       if (stats && !stats.posts.allPostsLoaded) {
         stats.posts.byMethod.allPosts++;
@@ -541,12 +599,12 @@ export function createPostRetrieval(config) {
 
   /**
    * Helper to augment an array of keys with their corresponding posts
-   * @param {Array<string>} keys - Array of keys
-   * @param {string} property - Property to match (hash, slug, id)
-   * @param {Object} options - Options
-   * @returns {Promise<Array>} - Array of posts
+   * @param keys - Array of keys
+   * @param property - Property to match (hash, slug, id)
+   * @param options - Options
+   * @returns Array of posts
    */
-  async function augmentPostsByProperty(keys, property, options = {}) {
+  async function augmentPostsByProperty(keys: string[], property: string, options: AugmentOptions = {}): Promise<Post[]> {
     if (!keys || !keys.length) return [];
 
     const {
@@ -577,7 +635,7 @@ export function createPostRetrieval(config) {
           : property === 'slug'
           ? getPostBySlug
           : null;
-          
+
       // If we don't have a getter method for this property (like 'id'), use general lookup
       if (!getterMethod) {
         if (debug) {
@@ -586,7 +644,7 @@ export function createPostRetrieval(config) {
         const allPosts = await getAllPosts();
         const posts = targetKeys
           .map(key => _findPostByProperty(allPosts, property, key))
-          .filter(Boolean);
+          .filter((post): post is Post => post !== null);
         return posts;
       }
 
@@ -595,7 +653,7 @@ export function createPostRetrieval(config) {
         targetKeys.map((key) => getterMethod(key))
       );
 
-      return posts.filter(Boolean); // Filter out null values
+      return posts.filter((post): post is Post => post !== null); // Filter out null values
     }
 
     // For larger sets, check if posts are already cached
@@ -605,15 +663,16 @@ export function createPostRetrieval(config) {
       }
 
       // Create a lookup map for efficient filtering
-      const postsMap = {};
+      const postsMap: Record<string, Post> = {};
       postsCache.forEach((post) => {
-        if (post[property]) {
-          postsMap[post[property]] = post;
+        const key = post[property];
+        if (typeof key === 'string') {
+          postsMap[key] = post;
         }
       });
 
       // Map keys to full post objects
-      return targetKeys.map((key) => postsMap[key]).filter(Boolean);
+      return targetKeys.map((key) => postsMap[key]).filter((post): post is Post => post !== undefined);
     }
 
     // Otherwise load all posts and filter
@@ -622,34 +681,35 @@ export function createPostRetrieval(config) {
     }
 
     const allPosts = await getAllPosts(useCache);
-    const postsMap = {};
+    const postsMap: Record<string, Post> = {};
 
     // Create a lookup map for efficient filtering
     allPosts.forEach((post) => {
-      if (post[property]) {
-        postsMap[post[property]] = post;
+      const key = post[property];
+      if (typeof key === 'string') {
+        postsMap[key] = post;
       }
     });
 
     // Map keys to full post objects
-    return targetKeys.map((key) => postsMap[key]).filter(Boolean);
+    return targetKeys.map((key) => postsMap[key]).filter((post): post is Post => post !== undefined);
   }
 
   /**
    * Sort posts by date (newest first)
-   * @param {Array} posts - Array of posts
-   * @returns {Array} - Sorted posts
+   * @param posts - Array of posts
+   * @returns Sorted posts
    */
-  function sortPostsByDate(posts) {
-    return [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  function sortPostsByDate(posts: Post[]): Post[] {
+    return [...posts].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
   }
 
   /**
    * Get recent posts
-   * @param {number} count - Number of posts to retrieve
-   * @returns {Promise<Array>} - Array of recent posts
+   * @param count - Number of posts to retrieve
+   * @returns Array of recent posts
    */
-  async function getRecentPosts(count = 3) {
+  async function getRecentPosts(count = 3): Promise<Post[]> {
     const posts = await getAllPosts();
     return sortPostsByDate(posts).slice(0, count);
   }
