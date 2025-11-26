@@ -340,6 +340,7 @@ class RepoMD {
       _fetchMapData: this._fetchMapData,
       stats: this.stats,
       debug: this.debug,
+      getActiveRev: this.urls.getActiveRevState, // Pass revision getter for cache invalidation
     });
 
     // Initialize post similarity service
@@ -350,6 +351,7 @@ class RepoMD {
       getPostBySlug: this.getPostBySlug.bind(this),
       augmentPostsByProperty: this._augmentPostsByProperty.bind(this),
       debug: this.debug,
+      getActiveRev: this.urls.getActiveRevState, // Pass revision getter for cache invalidation
     });
 
     // Initialize post search service
@@ -359,6 +361,7 @@ class RepoMD {
       getAllMedia: this.getAllMedia.bind(this),
       getMediaEmbeddings: this.getMediaEmbeddings.bind(this),
       debug: this.debug,
+      getActiveRev: this.urls.getActiveRevState, // Pass revision getter for cache invalidation
     });
 
     // Initialize media handling service
@@ -387,6 +390,7 @@ class RepoMD {
       _fetchMapData: this._fetchMapData.bind(this),
       getAllMedia: this.getAllMedia.bind(this),
       debug: this.debug,
+      getActiveRev: this.urls.getActiveRevState, // Pass revision getter for cache invalidation
     });
 
     // Apply any configured method aliases to this instance

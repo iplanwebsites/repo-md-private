@@ -180,29 +180,40 @@ router.post("/callback", validateCallback, asyncHandler(async (req, res) => {
           await deploymentNotifier.updateDeploymentNotification(deploymentResult.insertedId, 'completed');
         }
       }
-      console.log(
-        `✅ Setting completed job ${jobId} as activeRev for project ${job.projectId}`
-      );
-      try {
-        await db.projects.updateOne(
-          { _id: new ObjectId(job.projectId) },
-          {
-            $set: {
-              activeRev: jobId,
-              updatedAt: new Date(),
-            },
-          }
-        );
+      // Only update activeRev if this job is newer than the current one (prevents race condition
+      // where an older job completing after a newer one would regress the activeRev)
+      const shouldUpdateActiveRev = !project?.activeRev ||
+        new ObjectId(jobId).getTimestamp() > new ObjectId(project.activeRev).getTimestamp();
+
+      if (shouldUpdateActiveRev) {
         console.log(
-          `✅ Project ${job.projectId} updated with activeRev=${jobId}`
+          `✅ Setting completed job ${jobId} as activeRev for project ${job.projectId}`
         );
-      } catch (err) {
-        console.error(
-          `❌ Error updating project ${job.projectId} with activeRev:`,
-          err
+        try {
+          await db.projects.updateOne(
+            { _id: new ObjectId(job.projectId) },
+            {
+              $set: {
+                activeRev: jobId,
+                updatedAt: new Date(),
+              },
+            }
+          );
+          console.log(
+            `✅ Project ${job.projectId} updated with activeRev=${jobId}`
+          );
+        } catch (err) {
+          console.error(
+            `❌ Error updating project ${job.projectId} with activeRev:`,
+            err
+          );
+          // Re-throw to let asyncHandler catch and log it properly
+          throw err;
+        }
+      } else {
+        console.log(
+          `⏭️ Skipping activeRev update for project ${job.projectId} - job ${jobId} is older than current activeRev ${project.activeRev}`
         );
-        // Re-throw to let asyncHandler catch and log it properly
-        throw err;
       }
     }
   } else if (status === "failed" || status === JobStatus.FAILED) {

@@ -25,23 +25,63 @@ export function createMediaSimilarity(config) {
     _fetchMapData,
     getAllMedia,
     debug = false,
+    getActiveRev = null, // For cache invalidation on revision change
   } = config;
 
-  // Local caches for similarity data
+  // Local caches for similarity data with revision tracking
   let similarityData = null;
   let similarMediaHashes = null;
+  let cacheRevision = null; // Track which revision the cache is for
   const similarityCache = {}; // Memory cache for similarity scores
+
+  /**
+   * Clear similarity caches (called when revision changes)
+   */
+  function clearSimilarityCache() {
+    if (debug && (similarityData || similarMediaHashes)) {
+      console.log(`${prefix} 🗑️ Clearing media similarity cache (revision changed)`);
+    }
+    similarityData = null;
+    similarMediaHashes = null;
+    cacheRevision = null;
+    // Clear the similarity cache object
+    for (const key in similarityCache) {
+      delete similarityCache[key];
+    }
+  }
+
+  /**
+   * Check and invalidate cache if revision changed
+   */
+  function checkRevisionAndInvalidate() {
+    if (getActiveRev && cacheRevision) {
+      const currentRev = getActiveRev();
+      if (currentRev && currentRev !== cacheRevision) {
+        if (debug) {
+          console.log(`${prefix} 🔄 Revision changed from ${cacheRevision} to ${currentRev}, invalidating similarity cache`);
+        }
+        clearSimilarityCache();
+      }
+    }
+  }
 
   /**
    * Get pre-computed media similarities
    * @returns {Promise<Object>} - Similarity data
    */
   async function getMediaSimilarity() {
+    // Check if revision changed and invalidate cache if needed
+    checkRevisionAndInvalidate();
+
     if (!similarityData) {
       if (debug) {
         console.log(`${prefix} 📡 Loading pre-computed media similarity data`);
       }
       similarityData = await _fetchMapData("/media-similarity.json", {});
+      // Track the revision this cache is for
+      if (getActiveRev) {
+        cacheRevision = getActiveRev();
+      }
     }
     return similarityData;
   }
@@ -311,5 +351,6 @@ export function createMediaSimilarity(config) {
     getTopSimilarMediaHashes,
     getSimilarMediaHashByHash,
     getSimilarMediaByHash,
+    clearSimilarityCache,
   };
 } 

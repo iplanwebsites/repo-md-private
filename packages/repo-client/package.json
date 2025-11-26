@@ -45,7 +45,9 @@
     "version-bump-minor": "npm version minor --no-git-tag-version && cd npm && npm version minor --no-git-tag-version && cd ..",
     "version-bump-major": "npm version major --no-git-tag-version && cd npm && npm version major --no-git-tag-version && cd ..",
     "test:schemas": "node test-schema-coverage.js",
-    "test": "npm run test:schemas && npm run lint && npm run typecheck"
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test": "npm run test:unit && npm run test:schemas"
   },
   "description": "API client for consuming content from your repo.md projects",
   "keywords": [
@@ -75,11 +77,11 @@
     "notion-to-md": "^3.1.8",
     "quick-lru": "^6.1.1",
     "rimraf": "^5.0.5",
+    "terser": "^5.39.0",
     "typescript": "^5.5.3",
     "vite": "^5.4.2",
     "zod": "^3.24.4",
-    "zod-metadata": "^1.1.2",
-    "terser": "^5.39.0"
+    "zod-metadata": "^1.1.2"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -92,6 +94,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.0.0",
     "react-syntax-highlighter": "^15.6.1",
-    "typescript-eslint": "^8.32.1"
+    "typescript-eslint": "^8.32.1",
+    "vitest": "4.0.14"
   }
 }

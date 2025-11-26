@@ -22,10 +22,22 @@ const prefix = LOG_PREFIXES.REPO_MD;
  * @returns {Object} - Post retrieval functions
  */
 export function createPostRetrieval(config) {
-  const { getRevisionUrl, getProjectUrl, getSharedFolderUrl, fetchR2Json, fetchJson, _fetchMapData, stats, debug = false } = config;
-  
-  // Local post cache reference
+  const { getRevisionUrl, getProjectUrl, getSharedFolderUrl, fetchR2Json, fetchJson, _fetchMapData, stats, debug = false, getActiveRev = null } = config;
+
+  // Local post cache reference with revision tracking
   let postsCache = null;
+  let postsCacheRevision = null; // Track which revision the cache is for
+
+  /**
+   * Clear the posts cache (called when revision changes)
+   */
+  function clearPostsCache() {
+    if (debug && postsCache) {
+      console.log(`${prefix} 🗑️ Clearing posts cache (revision changed)`);
+    }
+    postsCache = null;
+    postsCacheRevision = null;
+  }
   
   /**
    * Helper function to find post in array by property
@@ -47,6 +59,19 @@ export function createPostRetrieval(config) {
   async function getAllPosts(useCache = true, forceRefresh = false) {
     const startTime = performance.now();
 
+    // Check if revision has changed - invalidate cache if so
+    if (postsCache && getActiveRev) {
+      const currentRev = getActiveRev();
+      if (currentRev && postsCacheRevision && currentRev !== postsCacheRevision) {
+        if (debug) {
+          console.log(
+            `${prefix} 🔄 Revision changed from ${postsCacheRevision} to ${currentRev}, invalidating posts cache`
+          );
+        }
+        clearPostsCache();
+      }
+    }
+
     // Return cached posts if available and refresh not forced
     if (useCache && postsCache && !forceRefresh) {
       const duration = (performance.now() - startTime).toFixed(2);
@@ -55,13 +80,13 @@ export function createPostRetrieval(config) {
           `${prefix} 💾 Using cached posts array (${postsCache.length} posts) in ${duration}ms`
         );
       }
-      
+
       // Update stats for memory cache usage
       if (stats) {
         stats.posts.byMethod.memoryCache++;
         stats.posts.lastUpdated = Date.now();
       }
-      
+
       return postsCache;
     }
 
@@ -74,13 +99,17 @@ export function createPostRetrieval(config) {
     // Cache the posts for future use
     if (useCache) {
       postsCache = posts;
+      // Store the revision this cache is for
+      if (getActiveRev) {
+        postsCacheRevision = getActiveRev();
+      }
       const duration = (performance.now() - startTime).toFixed(2);
       if (debug) {
         console.log(
-          `${prefix} 📄 Cached ${posts.length} posts in memory in ${duration}ms`
+          `${prefix} 📄 Cached ${posts.length} posts in memory for revision ${postsCacheRevision} in ${duration}ms`
         );
       }
-      
+
       // Update stats for all posts loaded
       if (stats) {
         stats.posts.totalLoaded += posts.length;
@@ -633,6 +662,7 @@ export function createPostRetrieval(config) {
     augmentPostsByProperty,
     sortPostsByDate,
     getRecentPosts,
+    clearPostsCache,
     _findPostByProperty,
   };
 }

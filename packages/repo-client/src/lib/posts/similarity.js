@@ -29,23 +29,60 @@ export function createPostSimilarity(config) {
     getPostBySlug,
     augmentPostsByProperty,
     debug = false,
+    getActiveRev = null, // For cache invalidation on revision change
   } = config;
 
-  // Local caches for similarity data
+  // Local caches for similarity data with revision tracking
   let similarityData = null;
   let similarPostsHashes = null;
+  let cacheRevision = null; // Track which revision the cache is for
   const similarityCache = {}; // Memory cache for similarity scores
+
+  /**
+   * Clear similarity caches (called when revision changes)
+   */
+  function clearSimilarityCache() {
+    if (debug && (similarityData || similarPostsHashes)) {
+      console.log(`${prefix} 🗑️ Clearing post similarity cache (revision changed)`);
+    }
+    similarityData = null;
+    similarPostsHashes = null;
+    cacheRevision = null;
+    for (const key in similarityCache) {
+      delete similarityCache[key];
+    }
+  }
+
+  /**
+   * Check and invalidate cache if revision changed
+   */
+  function checkRevisionAndInvalidate() {
+    if (getActiveRev && cacheRevision) {
+      const currentRev = getActiveRev();
+      if (currentRev && currentRev !== cacheRevision) {
+        if (debug) {
+          console.log(`${prefix} 🔄 Revision changed from ${cacheRevision} to ${currentRev}, invalidating similarity cache`);
+        }
+        clearSimilarityCache();
+      }
+    }
+  }
 
   /**
    * Get pre-computed post similarities
    * @returns {Promise<Object>} - Similarity data
    */
   async function getPostsSimilarity() {
+    checkRevisionAndInvalidate();
+
     if (!similarityData) {
       if (debug) {
         console.log(`${prefix} 📡 Loading pre-computed post similarity data`);
       }
       similarityData = await _fetchMapData("/posts-similarity.json", {});
+      if (getActiveRev) {
+        cacheRevision = getActiveRev();
+      }
     }
     return similarityData;
   }
@@ -401,5 +438,6 @@ export function createPostSimilarity(config) {
     getSimilarPostsByHash,
     getSimilarPostsSlugBySlug,
     getSimilarPostsBySlug,
+    clearSimilarityCache,
   };
 }

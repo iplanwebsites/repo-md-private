@@ -1,0 +1,55 @@
+{
+  "name": "repo-md",
+  "version": "0.0.34",
+  "type": "module",
+  "main": "./dist/repo-md.js",
+  "module": "./dist/repo-md.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/repo-md.js",
+      "require": "./dist/repo-md.umd.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && npm run copy-types",
+    "copy-types": "cp ../repo-client/src/lib/index.d.ts dist/index.d.ts",
+    "prepublishOnly": "npm run build",
+    "publish-npm": "npm run build && npm publish",
+    "version-bump-patch": "npm version patch --no-git-tag-version",
+    "version-bump-minor": "npm version minor --no-git-tag-version",
+    "version-bump-major": "npm version major --no-git-tag-version"
+  },
+  "description": "JavaScript SDK for consuming content from repo.md - Git-based headless CMS",
+  "keywords": [
+    "repo.md",
+    "cms",
+    "headless-cms",
+    "git",
+    "markdown",
+    "content",
+    "api",
+    "sdk",
+    "typescript"
+  ],
+  "author": "repo.md",
+  "license": "MIT",
+  "homepage": "https://repo.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/repo-md/repo-md.git"
+  },
+  "bugs": {
+    "url": "https://github.com/repo-md/repo-md/issues"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@repo-md/client": "*",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.2"
+  }
+}

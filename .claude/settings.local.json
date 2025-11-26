@@ -40,7 +40,11 @@
       "Bash(node --check:*)",
       "Bash(node -e:*)",
       "Bash(git ls-tree:*)",
-      "Bash(npm run build:client:*)"
+      "Bash(npm run build:client:*)",
+      "Bash(npm run build:processor:*)",
+      "Bash(npx turbo run build --filter=@repo-md/worker)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)"
     ],
     "deny": []
   },

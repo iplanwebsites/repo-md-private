@@ -49,6 +49,6 @@ export function calculateFileHash(content: string): string {
 export function calculateFilePathHash(filePath: string): string {
   const fileBuffer = fs.readFileSync(filePath);
   const hashSum = crypto.createHash('sha256');
-  hashSum.update(fileBuffer);
+  hashSum.update(new Uint8Array(fileBuffer));
   return hashSum.digest('hex');
 }

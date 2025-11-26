@@ -6,9 +6,37 @@ import MiniSearch from "minisearch";
 import { cosineSimilarity } from "../vector.js";
 import { computeTextEmbedding, computeClipTextEmbedding, computeClipImageEmbedding } from "../inference.js";
 
-export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia, getMediaEmbeddings, debug = false }) {
+export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia, getMediaEmbeddings, debug = false, getActiveRev = null }) {
   let miniSearchInstance = null;
   let indexedData = null;
+  let indexRevision = null; // Track which revision the index is for
+
+  /**
+   * Clear search index (called when revision changes)
+   */
+  function clearSearchIndex() {
+    if (debug && (miniSearchInstance || indexedData)) {
+      console.log("🔍 Clearing search index (revision changed)");
+    }
+    miniSearchInstance = null;
+    indexedData = null;
+    indexRevision = null;
+  }
+
+  /**
+   * Check and invalidate index if revision changed
+   */
+  function checkRevisionAndInvalidate() {
+    if (getActiveRev && indexRevision) {
+      const currentRev = getActiveRev();
+      if (currentRev && currentRev !== indexRevision) {
+        if (debug) {
+          console.log(`🔍 Revision changed from ${indexRevision} to ${currentRev}, invalidating search index`);
+        }
+        clearSearchIndex();
+      }
+    }
+  }
 
   const initializeMemoryIndex = async (posts) => {
     if (!posts || posts.length === 0) {
@@ -53,9 +81,13 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
 
     miniSearchInstance.addAll(documentsToIndex);
     indexedData = posts;
+    // Track the revision this index is for
+    if (getActiveRev) {
+      indexRevision = getActiveRev();
+    }
 
     if (debug) {
-      console.log(`🔍 Indexed ${documentsToIndex.length} posts for memory search`);
+      console.log(`🔍 Indexed ${documentsToIndex.length} posts for memory search (revision: ${indexRevision})`);
     }
 
     return miniSearchInstance;
@@ -96,6 +128,9 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
   };
 
   const performMemorySearch = async (text, props) => {
+    // Check if revision changed and invalidate index if needed
+    checkRevisionAndInvalidate();
+
     // Get all posts if we haven't indexed them yet or if forced refresh
     if (!miniSearchInstance || !indexedData) {
       const posts = await getAllPosts(true);
@@ -266,6 +301,9 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     }
 
     try {
+      // Check if revision changed and invalidate index if needed
+      checkRevisionAndInvalidate();
+
       // Get all posts if we haven't indexed them yet
       if (!miniSearchInstance || !indexedData) {
         const posts = await getAllPosts(true);
@@ -335,5 +373,6 @@ export function createPostSearch({ getAllPosts, getPostsEmbeddings, getAllMedia,
     refreshMemoryIndex,
     performMemorySearch,
     performVectorSearch,
+    clearSearchIndex,
   };
 }

@@ -772,24 +772,38 @@ async function simulateRepoDeploy(job) {
   // Update the project with deployed status
   if (projectId) {
     try {
+      // Only update activeRev if this job is newer (prevents race condition)
+      const project = await db.projects.findOne({ _id: projectId });
+      const jobId = job._id.toString();
+      const shouldUpdateActiveRev = !project?.activeRev ||
+        new ObjectId(jobId).getTimestamp() > new ObjectId(project.activeRev).getTimestamp();
+
+      const updateFields = {
+        deployment: {
+          deployed: true,
+          deployedAt: new Date(),
+          commit: commit || "latest",
+          branch: branch || "main",
+        },
+        status: "deployed",
+        updatedAt: new Date(),
+      };
+
+      if (shouldUpdateActiveRev) {
+        updateFields.activeRev = jobId;
+      }
+
       await db.projects.updateOne(
         { _id: projectId },
-        {
-          $set: {
-            deployment: {
-              deployed: true,
-              deployedAt: new Date(),
-              commit: commit || "latest",
-              branch: branch || "main",
-            },
-            status: "deployed",
-            activeRev: job._id.toString(),
-            updatedAt: new Date(),
-          },
-        }
+        { $set: updateFields }
       );
-      if (DEBUG)
-        console.log(`✅ Updated project ${projectId} with deployed status`);
+      if (DEBUG) {
+        if (shouldUpdateActiveRev) {
+          console.log(`✅ Updated project ${projectId} with deployed status and activeRev=${jobId}`);
+        } else {
+          console.log(`✅ Updated project ${projectId} with deployed status (activeRev unchanged - job is older)`);
+        }
+      }
     } catch (error) {
       if (DEBUG)
         console.error(`❌ Error updating project ${projectId}:`, error.message);
