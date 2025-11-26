@@ -130,8 +130,24 @@ async function createJob(task, data) {
 
       if (DEBUG) console.log(`🔗 Sending request to: ${apiUrl}/process`);
 
+      // Build request headers with authentication
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add WORKER_SECRET authentication if configured
+      const workerSecret = process.env.WORKER_SECRET;
+      if (workerSecret) {
+        headers['Authorization'] = `Bearer ${workerSecret}`;
+        if (DEBUG) console.log(`🔐 Using WORKER_SECRET authentication`);
+      } else if (DEBUG) {
+        console.log(`⚠️ WORKER_SECRET not configured - request may be rejected`);
+      }
+
       // Call the worker API
-      const response = await axios.post(`${apiUrl}/process`, workerPayload);
+      const response = await axios.post(`${apiUrl}/process`, workerPayload, {
+        headers,
+      });
 
       if (DEBUG) {
         console.log(
