@@ -156,6 +156,7 @@ export type {
 export type {
   PostSimilarityConfig,
   PostSimilarityService,
+  SimilaritySearchResult,
 } from './posts/similarity.js';
 
 export type {
@@ -167,6 +168,7 @@ export type {
 export type {
   MediaSimilarityConfig,
   MediaSimilarityService,
+  MediaSimilaritySearchResult,
 } from './media/similarity.js';
 
 export type {
@@ -259,3 +261,9 @@ export {
   type RevisionAwareCache,
   type RevisionAwareMapCache,
 } from './core/revisionCache.js';
+
+// Vector similarity utilities
+export {
+  cosineSimilarity,
+  type Embedding,
+} from './vector.js';
