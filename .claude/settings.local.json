@@ -70,7 +70,8 @@
       "WebSearch",
       "Bash(npx wrangler containers info:*)",
       "Bash(timeout 5 node:*)",
-      "Bash(node dist/worker.js:*)"
+      "Bash(node dist/worker.js:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   },

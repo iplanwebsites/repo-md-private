@@ -20,7 +20,7 @@ import {
   mdastToText,
 } from '../markdown/pipeline.js';
 import { countWords } from '../markdown/wordCount.js';
-import { hashContent } from '../utils/hash.js';
+import { hashContent, hashBuffer } from '../utils/hash.js';
 import { SlugManager } from '../utils/slug.js';
 import {
   findMarkdownFiles,
@@ -262,17 +262,43 @@ export class Processor {
     const mediaOutputDir = path.join(state.outputDir, this.config.media?.outputFolder ?? '_media');
     await ensureDir(mediaOutputDir);
 
-    // Get image sizes config
+    // Get image config
     const imageSizes = this.config.media?.sizes ?? [];
     const imageFormat = this.config.media?.format ?? 'webp';
     const imageQuality = this.config.media?.quality ?? 80;
+    const useHash = this.config.media?.useHash ?? true;
+    const useSharding = this.config.media?.useSharding ?? false;
 
     for (const mediaPath of mediaFiles) {
       try {
         const relativePath = normalizePath(path.relative(state.inputDir, mediaPath));
         const fileName = path.basename(mediaPath);
-        const fileNameWithoutExt = path.basename(mediaPath, path.extname(mediaPath));
-        const outputPath = path.join(mediaOutputDir, fileName);
+
+        // Read file content for hashing
+        const fileBuffer = await fs.readFile(mediaPath);
+        const contentHash = hashBuffer(fileBuffer);
+        const shortContentHash = contentHash.substring(0, 16); // Use first 16 chars for filename
+
+        // Determine output filename based on useHash config
+        let outputFileName: string;
+        let outputSubDir = mediaOutputDir;
+
+        if (useHash) {
+          outputFileName = `${shortContentHash}.${imageFormat}`;
+
+          // Apply sharding if enabled (first 2 chars as subdirectory)
+          if (useSharding) {
+            const shardDir = contentHash.substring(0, 2);
+            outputSubDir = path.join(mediaOutputDir, shardDir);
+            await ensureDir(outputSubDir);
+          }
+        } else {
+          // Use original filename (legacy behavior)
+          const fileNameWithoutExt = path.basename(mediaPath, path.extname(mediaPath));
+          outputFileName = `${fileNameWithoutExt}.${imageFormat}`;
+        }
+
+        const outputPath = path.join(outputSubDir, outputFileName);
 
         // Get original stats
         const stats = await getStats(mediaPath);
@@ -299,10 +325,16 @@ export class Processor {
             }
 
             try {
-              const sizeOutputPath = path.join(
-                mediaOutputDir,
-                `${fileNameWithoutExt}-${sizeConfig.suffix}.${imageFormat}`
-              );
+              // Use hash-based naming for thumbnails too
+              let sizeOutputFileName: string;
+              if (useHash) {
+                sizeOutputFileName = `${shortContentHash}-${sizeConfig.suffix}.${imageFormat}`;
+              } else {
+                const fileNameWithoutExt = path.basename(mediaPath, path.extname(mediaPath));
+                sizeOutputFileName = `${fileNameWithoutExt}-${sizeConfig.suffix}.${imageFormat}`;
+              }
+
+              const sizeOutputPath = path.join(outputSubDir, sizeOutputFileName);
 
               const sizeResult = await imageProcessor.process(mediaPath, sizeOutputPath, {
                 width: sizeConfig.width,
@@ -335,21 +367,32 @@ export class Processor {
               format: result.format,
               size: result.size,
               originalSize: stats.size,
+              hash: contentHash,
             },
             sizes: sizeVariants.length > 0 ? sizeVariants : undefined,
           });
         } else {
-          // Just copy the file
-          await imageProcessor.copy(mediaPath, outputPath);
+          // Just copy the file (non-processable files keep original extension)
+          const ext = path.extname(mediaPath);
+          let copyOutputPath: string;
+          if (useHash) {
+            const copyFileName = `${shortContentHash}${ext}`;
+            copyOutputPath = path.join(outputSubDir, copyFileName);
+          } else {
+            copyOutputPath = path.join(outputSubDir, fileName);
+          }
+
+          await imageProcessor.copy(mediaPath, copyOutputPath);
 
           state.media.push({
             originalPath: relativePath,
-            outputPath: normalizePath(path.relative(state.outputDir, outputPath)),
+            outputPath: normalizePath(path.relative(state.outputDir, copyOutputPath)),
             fileName,
             type: 'media',
             metadata: {
               size: stats.size,
               originalSize: stats.size,
+              hash: contentHash,
             },
           });
         }
