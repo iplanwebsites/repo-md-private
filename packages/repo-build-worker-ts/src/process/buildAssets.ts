@@ -25,7 +25,7 @@ import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
 import { TransformersTextEmbedder } from '@repo-md/plugin-embed-transformers';
 import { ClipImageEmbedder } from '@repo-md/plugin-embed-clip';
 import { SqliteDatabasePlugin } from '@repo-md/plugin-database-sqlite';
-import type { JobData, BuildResult, Logger } from '../types/job.js';
+import type { JobData, BuildResult, Logger, ImageSizeSettings, ImageFormatSettings } from '../types/job.js';
 
 // ============================================================================
 // Types
@@ -114,13 +114,85 @@ const generateDirectorySummary = async (directory: string): Promise<readonly Fil
 // Default Configuration
 // ============================================================================
 
+/**
+ * All available image sizes with their dimensions
+ */
+const ALL_IMAGE_SIZES = {
+  xs: { width: 100, height: null, suffix: 'xs' },
+  sm: { width: 300, height: null, suffix: 'sm' },
+  md: { width: 700, height: null, suffix: 'md' },
+  lg: { width: 1400, height: null, suffix: 'lg' },
+  xl: { width: 2160, height: null, suffix: 'xl' },
+  '2xl': { width: 3840, height: null, suffix: '2xl' },
+} as const;
+
+/**
+ * Default image sizes if none specified
+ */
 const DEFAULT_IMAGE_SIZES = [
-  { width: 100, height: null, suffix: 'xs' },
-  { width: 300, height: null, suffix: 'sm' },
-  { width: 700, height: null, suffix: 'md' },
-  { width: 1400, height: null, suffix: 'lg' },
-  { width: 2160, height: null, suffix: 'xl' },
+  ALL_IMAGE_SIZES.xs,
+  ALL_IMAGE_SIZES.sm,
+  ALL_IMAGE_SIZES.md,
+  ALL_IMAGE_SIZES.lg,
+  ALL_IMAGE_SIZES.xl,
 ] as const;
+
+/**
+ * Convert UI image size settings to processor format
+ * If all are false/undefined, returns default sizes
+ */
+const getImageSizesFromSettings = (
+  settings?: ImageSizeSettings
+): Array<{ width: number; height: null; suffix: string }> => {
+  if (!settings) {
+    return [...DEFAULT_IMAGE_SIZES];
+  }
+
+  const sizes: Array<{ width: number; height: null; suffix: string }> = [];
+
+  if (settings.xs) sizes.push({ ...ALL_IMAGE_SIZES.xs });
+  if (settings.sm) sizes.push({ ...ALL_IMAGE_SIZES.sm });
+  if (settings.md !== false) sizes.push({ ...ALL_IMAGE_SIZES.md }); // md is always included unless explicitly false
+  if (settings.lg) sizes.push({ ...ALL_IMAGE_SIZES.lg });
+  if (settings.xl) sizes.push({ ...ALL_IMAGE_SIZES.xl });
+  if (settings['2xl']) sizes.push({ ...ALL_IMAGE_SIZES['2xl'] });
+
+  // If no sizes selected, return defaults
+  return sizes.length > 0 ? sizes : [...DEFAULT_IMAGE_SIZES];
+};
+
+/**
+ * Get preferred image format from settings
+ * Returns 'webp' by default, 'jpeg' if only jpg is selected
+ */
+const getImageFormatFromSettings = (settings?: ImageFormatSettings): 'webp' | 'jpeg' => {
+  if (!settings) return 'webp';
+
+  // If only jpg is selected (webp is false), use jpeg
+  if (settings.jpg && !settings.webp) {
+    return 'jpeg';
+  }
+
+  // Default to webp (better compression)
+  return 'webp';
+};
+
+/**
+ * Convert UI mermaid render setting to processor strategy
+ */
+const getMermaidStrategyFromSettings = (
+  render?: 'svg' | 'iframe' | 'keep-as-code'
+): 'inline-svg' | 'img-svg' | 'pre-mermaid' => {
+  switch (render) {
+    case 'iframe':
+      return 'img-svg'; // iframe maps to img-svg in processor
+    case 'keep-as-code':
+      return 'pre-mermaid';
+    case 'svg':
+    default:
+      return 'inline-svg';
+  }
+};
 
 // ============================================================================
 // Main Build Function
@@ -136,7 +208,7 @@ const DEFAULT_IMAGE_SIZES = [
  * 4. Returns comprehensive build results
  */
 export const buildAssets = async (data: JobData): Promise<BuildResult> => {
-  const { logger, jobId, repoInfo } = data;
+  const { logger, jobId, repoInfo, projectSettings } = data;
   const issueCollector = new IssueCollector();
 
   safeLog(logger, 'log', 'Building assets...', { jobId });
@@ -164,11 +236,21 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
     // Create dist folder
     await mkdir(distFolder, { recursive: true });
 
-    // Configure path prefixes
-    const mediaPrefix = data.mediaPrefix ?? '/_repo/medias';
-    const notePrefix = data.notePrefix ?? '/_repo/notes';
+    // Configure path prefixes (use projectSettings.formatting if available)
+    const mediaPrefix = data.mediaPrefix ?? projectSettings?.formatting?.mediaPrefix ?? '/_repo/medias';
+    const notePrefix = data.notePrefix ?? projectSettings?.formatting?.pageLinkPrefix ?? '/_repo/notes';
     const domain = data.domain ?? '';
     const skipEmbeddings = process.env.SKIP_EMBEDDINGS === 'true' || data.skipEmbeddings === true;
+
+    // Get media settings from project settings
+    const mediaSettings = projectSettings?.media;
+    const imageSizes = getImageSizesFromSettings(mediaSettings?.imageSizes);
+    const imageFormat = getImageFormatFromSettings(mediaSettings?.imageFormats);
+    const imageQuality = mediaSettings?.imageQuality ?? 80;
+
+    // Get mermaid settings
+    const mermaidStrategy = getMermaidStrategyFromSettings(mediaSettings?.mermaidRender);
+    const mermaidDark = mediaSettings?.mermaidTheme === 'dark';
 
     safeLog(logger, 'log', 'Configuring processor with plugins...', {
       inputPath,
@@ -176,6 +258,11 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       mediaPrefix,
       notePrefix,
       skipEmbeddings,
+      imageSizes: imageSizes.map((s) => s.suffix),
+      imageFormat,
+      imageQuality,
+      mermaidStrategy,
+      mermaidDark,
     });
 
     // Build plugin configuration
@@ -201,9 +288,9 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       media: {
         optimize: true,
         skip: false,
-        sizes: DEFAULT_IMAGE_SIZES.map((s) => ({ width: s.width, height: s.height, suffix: s.suffix })),
-        format: 'webp',
-        quality: 80,
+        sizes: imageSizes,
+        format: imageFormat,
+        quality: imageQuality,
         useHash: true,
         useSharding: false,
         pathPrefix: mediaPrefix,
@@ -213,6 +300,11 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
         notePathPrefix: notePrefix,
         processAllFiles: true,
         exportPosts: true,
+      },
+      mermaid: {
+        enabled: true,
+        strategy: mermaidStrategy,
+        dark: mermaidDark,
       },
       plugins,
     };

@@ -215,19 +215,31 @@ These sections exist in the UI but are marked experimental or not for MVP:
 
 ---
 
-## Implementation Priority
+## Implementation Status
 
-### Phase 1: Media Settings (HIGH PRIORITY)
-1. Pass `imageSizes` to worker → processor
-2. Pass `imageFormats` to worker → processor
-3. Pass `mermaidRender` and `mermaidTheme` to worker → processor
+### ✅ Phase 1: Media Settings (IMPLEMENTED)
 
-### Phase 2: Formatting Settings (MEDIUM PRIORITY)
+**Commit:** Added project settings integration
+
+| Setting | UI Field | Status |
+|---------|----------|--------|
+| `imageSizes` | {xs, sm, md, lg, xl, 2xl} | ✅ Connected |
+| `imageFormats` | {jpg, webp} | ✅ Connected |
+| `imageQuality` | (future UI) | ✅ Ready (default: 80) |
+| `mermaidRender` | svg/iframe/keep-as-code | ✅ Connected |
+| `mermaidTheme` | light/dark | ✅ Connected |
+
+**Files Modified:**
+- `packages/repo-build-worker-ts/src/types/job.ts` - Added ProjectSettings types
+- `packages/repo-build-worker-ts/src/process/buildAssets.ts` - Use settings instead of defaults
+- `packages/repo-api/lib/cloudRun.js` - Pass projectSettings to worker
+
+### 🔄 Phase 2: Formatting Settings (PENDING)
 1. Pass `parseFormulas` to processor
 2. Pass `removeDeadLinks` to processor
 3. Pass `syntaxHighlighting` to processor
 
-### Phase 3: AI/Embeddings Settings (LOWER PRIORITY)
+### 🔄 Phase 3: AI/Embeddings Settings (PENDING)
 1. Add `skipEmbeddings` toggle to UI
 2. Add similar posts count configuration
 3. (Future) Model selection
