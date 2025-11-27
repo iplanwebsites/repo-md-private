@@ -210,18 +210,18 @@ The processor checks these fields in order: `cover`, `image`, `thumbnail`, `cove
 
 ### URL Generation
 
-The `url` field is only populated when `media.domain` is configured:
+The `url` field is only populated when `media.domain` is configured. The URL structure is `{domain}/_shared/medias/{filename}`:
 
 ```typescript
 const processor = new Processor({
   config: {
     dir: { input: './vault', output: './dist' },
     media: {
-      domain: 'https://static.repo.md/org/project',
-      pathPrefix: '/_media', // default
+      domain: 'https://static.repo.md/projects/abc123',
     },
   },
 });
+// Results in URLs like: https://static.repo.md/projects/abc123/_shared/medias/abc123.webp
 ```
 
 ### Output Structure
@@ -234,13 +234,13 @@ const processor = new Processor({
   "cover": {
     "original": "media/image.jpg",
     "path": "_media/abc123.webp",
-    "url": "https://static.repo.md/org/project/_media/abc123.webp",
+    "url": "https://static.repo.md/projects/abc123/_shared/medias/abc123.webp",
     "hash": "abc123def456...",
     "width": 1200,
     "height": 675,
     "sizes": [
-      { "suffix": "xs", "path": "_media/abc123-xs.webp", "url": "https://static.repo.md/org/project/_media/abc123-xs.webp", "width": 100, "height": 56 },
-      { "suffix": "sm", "path": "_media/abc123-sm.webp", "url": "https://static.repo.md/org/project/_media/abc123-sm.webp", "width": 300, "height": 169 }
+      { "suffix": "xs", "path": "_media/abc123-xs.webp", "url": "https://static.repo.md/projects/abc123/_shared/medias/abc123-xs.webp", "width": 100, "height": 56 },
+      { "suffix": "sm", "path": "_media/abc123-sm.webp", "url": "https://static.repo.md/projects/abc123/_shared/medias/abc123-sm.webp", "width": 300, "height": 169 }
     ]
   }
 }

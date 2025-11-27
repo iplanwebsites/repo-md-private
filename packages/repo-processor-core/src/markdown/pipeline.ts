@@ -11,6 +11,7 @@ import remarkGfm from 'remark-gfm';
 import remarkRehype from 'remark-rehype';
 import rehypeStringify from 'rehype-stringify';
 import rehypeRaw from 'rehype-raw';
+import rehypeSlug from 'rehype-slug';
 import matter from 'gray-matter';
 import type { Root as MdastRoot } from 'mdast';
 import type { Root as HastRoot } from 'hast';
@@ -132,6 +133,9 @@ export const createBasePipeline = (options: PipelineOptions = {}): any => {
     processor = processor.use(rehypeRaw);
   }
 
+  // Add slug IDs to headings (for TOC anchor links)
+  processor = processor.use(rehypeSlug);
+
   // Add custom rehype plugins
   for (const { plugin, options: pluginOpts } of opts.rehypePlugins ?? []) {
     processor = processor.use(plugin as any, pluginOpts);
@@ -160,7 +164,8 @@ export const mdastToHast = async (
 ): Promise<HastRoot> => {
   const processor: any = unified()
     .use(remarkRehype, { allowDangerousHtml: options.allowDangerousHtml ?? true })
-    .use(rehypeRaw);
+    .use(rehypeRaw)
+    .use(rehypeSlug); // Add IDs to headings
 
   const result = await processor.run(mdast);
   return result as HastRoot;
