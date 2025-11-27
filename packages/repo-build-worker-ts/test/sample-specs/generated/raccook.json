@@ -1,0 +1,33 @@
+{
+  "name": "Raccook AI Agent Specification",
+  "description": "A curious culinary adventure blog led by a mischievous raccoon exploring global cuisines.",
+  "type": "blog",
+  "topics": [
+    "food",
+    "cooking",
+    "travel",
+    "recipes",
+    "restaurant reviews"
+  ],
+  "features": [
+    "First-person culinary storytelling",
+    "Personalized recipes with backstories",
+    "Culinary travel narratives",
+    "Honest restaurant reviews",
+    "Artistic food photography"
+  ],
+  "technologies": {
+    "frontend": "Markdown",
+    "backend": "Not specified",
+    "database": "Not specified"
+  },
+  "author": "Not specified",
+  "license": "Not specified",
+  "status": "active",
+  "_metadata": {
+    "generatedAt": "2025-06-27T22:42:07.655Z",
+    "sourceFile": "/Users/felix/web/git/repo-md/repo-build-worker/test/sample-specs/raccook.md",
+    "generatedBy": "repo-build-worker",
+    "model": "gpt-4o-mini"
+  }
+}

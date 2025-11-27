@@ -1,0 +1,104 @@
+# GitHub Actions Publish Workflow
+# Publishes packages to npm when a release is created
+
+name: Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Packages to publish (comma-separated, e.g., processor-core,plugin-image-sharp)'
+        required: true
+        default: 'processor-core'
+      dry-run:
+        description: 'Dry run (no actual publish)'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all packages
+        run: |
+          npm run build:processor-core
+          npm run build:plugins
+
+      - name: Publish processor-core
+        if: github.event_name == 'release' || contains(github.event.inputs.packages, 'processor-core')
+        run: |
+          cd packages/repo-processor-core
+          if [ "${{ github.event.inputs.dry-run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish plugin-image-sharp
+        if: github.event_name == 'release' || contains(github.event.inputs.packages, 'plugin-image-sharp')
+        run: |
+          cd packages/repo-plugin-image-sharp
+          if [ "${{ github.event.inputs.dry-run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish plugin-embed-transformers
+        if: github.event_name == 'release' || contains(github.event.inputs.packages, 'plugin-embed-transformers')
+        run: |
+          cd packages/repo-plugin-embed-transformers
+          if [ "${{ github.event.inputs.dry-run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish plugin-embed-clip
+        if: github.event_name == 'release' || contains(github.event.inputs.packages, 'plugin-embed-clip')
+        run: |
+          cd packages/repo-plugin-embed-clip
+          if [ "${{ github.event.inputs.dry-run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish plugin-database-sqlite
+        if: github.event_name == 'release' || contains(github.event.inputs.packages, 'plugin-database-sqlite')
+        run: |
+          cd packages/repo-plugin-database-sqlite
+          if [ "${{ github.event.inputs.dry-run }}" == "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish --provenance --access public
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

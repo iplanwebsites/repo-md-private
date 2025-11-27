@@ -1,0 +1,44 @@
+{
+  "name": "@repo-md/plugin-image-sharp",
+  "version": "0.1.0",
+  "description": "Sharp-based image processor plugin for @repo-md/processor-core",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  },
+  "peerDependencies": {
+    "@repo-md/processor-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "repo-md",
+    "plugin",
+    "image",
+    "sharp",
+    "processor"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "fileName": "test",
+    "slug": "test",
+    "title": "Test Post",
+    "frontmatter": {
+      "title": "Test Post",
+      "date": {}
+    },
+    "firstParagraphText": "This is a test post with a broken-link and an image.",
+    "plain": "Test PostThis is a test post with a broken-link and an image.Missing ImageAnother Missing Link",
+    "wordCount": 15,
+    "html": "<h1 id=\"test-post\"><a href=\"#test-post\">Test Post</a></h1>\n<p>This is a test post with a <a href=\"#broken-link:broken-link\" title=\"\">broken-link</a> and an image.</p>\n<p><img src=\"/placeholder/400/300\" alt=\"Missing Image\" title=\"Image not found: missing.jpg\" width=\"400\" height=\"300\" class=\"md-image placeholder\"></p>\n<p><a href=\"#broken-link:Another%20Missing%20Link\" title=\"\">Another Missing Link</a></p>",
+    "toc": [
+      {
+        "id": "test-post",
+        "title": "Test Post",
+        "depth": 1
+      }
+    ],
+    "originalFilePath": "posts/test.md",
+    "folder": "posts",
+    "url": "/_repo/notes/test",
+    "hash": "69f45d2a2bd18d48ad0ba617f845528b94aa8a7cc0c3997a00fb1c5fc5ca69af",
+    "links": [],
+    "firstImage": "../images/missing.jpg",
+    "fsCreated": "2025-06-28T23:46:32.441Z",
+    "fsModified": "2025-06-28T23:46:32.441Z",
+    "_slugInfo": {
+      "desiredSlug": "test",
+      "disambiguatedSlug": "test",
+      "finalSlug": "test",
+      "isDisambiguated": false
+    }
+  }
+]

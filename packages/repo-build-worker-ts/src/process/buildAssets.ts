@@ -1,0 +1,343 @@
+/**
+ * Build Assets
+ *
+ * Modern TypeScript implementation using the plugin architecture.
+ * This is the main orchestration function that:
+ * 1. Configures the processor with plugins
+ * 2. Runs processing
+ * 3. Returns results
+ *
+ * All file generation is handled by the processor and its plugins.
+ */
+
+import { mkdir, writeFile, stat, readdir } from 'node:fs/promises';
+import { join, dirname, parse, relative } from 'node:path';
+import {
+  Processor,
+  createIssueCollector,
+  type ProcessConfig,
+  type ProcessedPost,
+  type ProcessedMedia,
+} from '@repo-md/processor-core';
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
+import { TransformersTextEmbedder } from '@repo-md/plugin-embed-transformers';
+import { ClipImageEmbedder } from '@repo-md/plugin-embed-clip';
+import { SqliteDatabasePlugin } from '@repo-md/plugin-database-sqlite';
+import type { JobData, BuildResult, Logger } from '../types/job.js';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface FileSummary {
+  readonly path: string;
+  readonly filename: string;
+  readonly extension: string;
+  readonly size: number;
+  readonly folder: readonly string[];
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Safe logger wrapper
+ */
+const safeLog = (
+  logger: Logger | undefined,
+  level: 'log' | 'warn' | 'error',
+  message: string,
+  context?: Record<string, unknown>
+): void => {
+  if (logger && typeof logger[level] === 'function') {
+    logger[level](message, context);
+  } else if (level === 'warn' || level === 'error') {
+    console[level](message, context);
+  } else {
+    console.log(message, context);
+  }
+};
+
+/**
+ * Save JSON data to file
+ */
+const saveJson = async (
+  distFolder: string,
+  filename: string,
+  data: unknown,
+  logger?: Logger
+): Promise<string> => {
+  const filePath = join(distFolder, filename);
+  await writeFile(filePath, JSON.stringify(data, null, 2));
+  safeLog(logger, 'log', `Saved ${filename} to ${filePath}`);
+  return filePath;
+};
+
+/**
+ * Generate directory summary
+ */
+const generateDirectorySummary = async (directory: string): Promise<readonly FileSummary[]> => {
+  const files: FileSummary[] = [];
+
+  const processDirectory = async (dir: string): Promise<void> => {
+    const entries = await readdir(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      const relativePath = relative(directory, fullPath);
+
+      if (entry.isDirectory()) {
+        await processDirectory(fullPath);
+      } else {
+        const stats = await stat(fullPath);
+        const pathInfo = parse(fullPath);
+
+        files.push({
+          path: relativePath,
+          filename: entry.name,
+          extension: pathInfo.ext.replace('.', ''),
+          size: stats.size,
+          folder: relativePath.split('/').slice(0, -1),
+        });
+      }
+    }
+  };
+
+  await processDirectory(directory);
+  return files;
+};
+
+// ============================================================================
+// Default Configuration
+// ============================================================================
+
+const DEFAULT_IMAGE_SIZES = [
+  { width: 100, suffix: 'xs' },
+  { width: 300, suffix: 'sm' },
+  { width: 700, suffix: 'md' },
+  { width: 1400, suffix: 'lg' },
+  { width: 2160, suffix: 'xl' },
+] as const;
+
+// ============================================================================
+// Main Build Function
+// ============================================================================
+
+/**
+ * Build assets from repository using modern plugin architecture
+ *
+ * This function orchestrates the entire build process:
+ * 1. Configures processor with appropriate plugins
+ * 2. Runs the processor (which handles all file generation)
+ * 3. Generates additional metadata files
+ * 4. Returns comprehensive build results
+ */
+export const buildAssets = async (data: JobData): Promise<BuildResult> => {
+  const { logger, jobId, repoInfo } = data;
+  const issueCollector = createIssueCollector();
+
+  safeLog(logger, 'log', 'Building assets...', { jobId });
+
+  // Validate required data
+  if (!repoInfo?.path) {
+    const error = new Error('Repository path is required in repoInfo');
+    safeLog(logger, 'error', error.message);
+    throw error;
+  }
+
+  // Determine paths
+  const repoPath = repoInfo.path;
+  const distFolder = repoInfo.distPath ?? join(dirname(repoPath), 'dist');
+  const repositoryFolder = data.repositoryFolder ?? '';
+  const inputPath = repositoryFolder
+    ? join(repoPath, repositoryFolder.replace(/^\/+|\/+$/g, ''))
+    : repoPath;
+
+  if (repositoryFolder) {
+    safeLog(logger, 'log', `Using repository subfolder: ${repositoryFolder}`);
+  }
+
+  try {
+    // Create dist folder
+    await mkdir(distFolder, { recursive: true });
+
+    // Configure path prefixes
+    const mediaPrefix = data.mediaPrefix ?? '/_repo/medias';
+    const notePrefix = data.notePrefix ?? '/_repo/notes';
+    const domain = data.domain ?? '';
+    const skipEmbeddings = process.env.SKIP_EMBEDDINGS === 'true' || data.skipEmbeddings === true;
+
+    safeLog(logger, 'log', 'Configuring processor with plugins...', {
+      inputPath,
+      distFolder,
+      mediaPrefix,
+      notePrefix,
+      skipEmbeddings,
+    });
+
+    // Build plugin configuration
+    const plugins: ProcessConfig['plugins'] = {
+      imageProcessor: new SharpImageProcessor(),
+    };
+
+    // Add embedding plugins unless skipped
+    if (!skipEmbeddings) {
+      plugins.textEmbedder = new TransformersTextEmbedder();
+      plugins.imageEmbedder = new ClipImageEmbedder();
+      plugins.database = new SqliteDatabasePlugin();
+    }
+
+    // Configure processor
+    const config: ProcessConfig = {
+      directories: {
+        input: inputPath,
+        output: distFolder,
+        mediaOutput: join(distFolder, '_medias'),
+        postsOutput: join(distFolder, '_posts'),
+      },
+      paths: {
+        notesPrefix: notePrefix,
+        mediaPrefix: mediaPrefix,
+        domain: domain,
+        useAbsolutePaths: true,
+      },
+      media: {
+        optimize: true,
+        skip: false,
+        sizes: DEFAULT_IMAGE_SIZES.map((s) => ({ width: s.width, suffix: s.suffix })),
+        format: 'webp',
+        quality: 80,
+        useHash: true,
+        useSharding: false,
+      },
+      posts: {
+        exportEnabled: true,
+        processAllFiles: true,
+        useHash: true,
+      },
+      plugins,
+    };
+
+    // Create and run processor
+    safeLog(logger, 'log', 'Processing repository content...');
+    const processor = new Processor(config);
+    await processor.initialize();
+    const result = await processor.process();
+    await processor.dispose();
+
+    const { posts, media, embeddings, database } = result;
+
+    safeLog(logger, 'log', 'Assets built successfully!', {
+      jobId,
+      filesProcessed: posts.length,
+      mediasProcessed: media.length,
+    });
+
+    // Content validation
+    const contentWarnings: string[] = [];
+
+    if (posts.length === 0) {
+      contentWarnings.push('no_posts');
+      safeLog(logger, 'warn', 'No markdown posts found in repository');
+    }
+
+    if (media.length === 0) {
+      contentWarnings.push('no_media');
+      safeLog(logger, 'warn', 'No media files found in repository');
+    }
+
+    // Generate file summaries
+    safeLog(logger, 'log', 'Generating file summaries...');
+    const sourceFiles = await generateDirectorySummary(inputPath);
+    const distFiles = await generateDirectorySummary(distFolder);
+
+    const sourceFileSummaryPath = await saveJson(distFolder, 'files-source.json', sourceFiles, logger);
+    const distFileSummaryPath = await saveJson(distFolder, 'files-dist.json', distFiles, logger);
+
+    // Save issue report
+    const issueReport = issueCollector.generateReport();
+    await saveJson(distFolder, 'worker-issues.json', issueReport, logger);
+
+    safeLog(logger, 'log', issueCollector.getSummaryString());
+
+    // Build result
+    const buildResult: BuildResult = {
+      ...data,
+      assets: {
+        processed: true,
+        distFolder,
+        contentPath: join(distFolder, 'posts.json'),
+        filesCount: posts.length,
+        mediaCount: media.length,
+        timestamp: new Date().toISOString(),
+      },
+      contentHealth: {
+        warnings: contentWarnings,
+        metrics: {
+          postCount: posts.length,
+          mediaCount: media.length,
+          contentRatio:
+            posts.length > 0 && media.length > 0
+              ? posts.length / (posts.length + media.length)
+              : posts.length > 0
+              ? 1
+              : 0,
+        },
+      },
+      fileSummaries: {
+        sourceFileSummaryPath,
+        distFileSummaryPath,
+        sourceFileCount: sourceFiles.length,
+        distFileCount: distFiles.length,
+      },
+    };
+
+    // Add embeddings info if available
+    if (embeddings) {
+      (buildResult as any).postEmbeddings = {
+        filesProcessed: Object.keys(embeddings.text ?? {}).length,
+        filesReused: 0,
+        dimension: 384,
+        model: 'all-MiniLM-L6-v2',
+        hashMapPath: join(distFolder, 'posts-embedding-hash-map.json'),
+        slugMapPath: join(distFolder, 'posts-embedding-slug-map.json'),
+        similarityMapPath: join(distFolder, 'posts-similarity.json'),
+        similarPostsMapPath: join(distFolder, 'posts-similar-hash.json'),
+        similarityPairsCount: 0,
+      };
+
+      (buildResult as any).mediaEmbeddings = {
+        filesProcessed: Object.keys(embeddings.image ?? {}).length,
+        filesReused: 0,
+        dimension: 512,
+        model: 'clip-vit-base-patch32',
+        hashMapPath: join(distFolder, 'media-embedding-hash-map.json'),
+      };
+    }
+
+    // Add database info if available
+    if (database) {
+      (buildResult as any).database = {
+        path: database.databasePath,
+        tables: database.tables,
+        rowCounts: database.rowCounts,
+      };
+    }
+
+    return buildResult;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    safeLog(logger, 'error', 'Failed to build assets', {
+      jobId,
+      error: errorMessage,
+      stack: errorStack,
+    });
+
+    throw error;
+  }
+};
+
+export default buildAssets;

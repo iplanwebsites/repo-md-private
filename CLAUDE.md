@@ -10,13 +10,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Turborepo monorepo using npm workspaces. All packages live in `packages/`:
 
+### Core Packages
+
 | Package             | Description                                                      |
 | ------------------- | ---------------------------------------------------------------- |
+| `repo-processor-core` | @repo-md/processor-core - Lightweight modular processor with plugin architecture |
+| `repo-processor`    | @repo-md/processor - Legacy markdown processor (Obsidian to JSON) |
 | `repo-client`       | @repo-md/client - JavaScript SDK for consuming content           |
-| `repo-processor`    | @repo-md/processor - Markdown processor (Obsidian to JSON)       |
 | `repo-api`          | @repo-md/api - Express API server with tRPC                      |
 | `repo-app`          | @repo-md/app - Vue.js frontend                                   |
-| `repo-build-worker` | @repo-md/worker - Async build worker (Cloud Run / CF Containers) |
+
+### Workers
+
+| Package             | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `repo-build-worker` | @repo-md/worker - Legacy async build worker (Cloud Run / CF)     |
+| `repo-build-worker-ts` | @repo-md/worker-ts - Modern TypeScript worker using plugin architecture |
+
+### Plugins (for processor-core)
+
+| Package                    | Description                                           |
+| -------------------------- | ----------------------------------------------------- |
+| `repo-plugin-image-sharp`  | @repo-md/plugin-image-sharp - Sharp image processing  |
+| `repo-plugin-embed-transformers` | @repo-md/plugin-embed-transformers - HuggingFace text embeddings |
+| `repo-plugin-embed-clip`   | @repo-md/plugin-embed-clip - CLIP image embeddings    |
+| `repo-plugin-database-sqlite` | @repo-md/plugin-database-sqlite - SQLite with FTS5 |
+
+### Edge & Services
+
+| Package             | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
 | `repo-cli`          | @repo-md/cli - CLI tool - not in use - placeholder for future    |
 | `repo-mcp-server`   | @repo-md/mcp-server - MCP Cloudflare Worker                      |
 | `repo-mcp-npm`      | @repo-md/mcp - MCP npm package                                   |
@@ -119,11 +142,24 @@ Use try/catch only at boundaries. Let errors bubble unless you can meaningfully 
 
 Each package has its own `CLAUDE.md` with detailed guidance:
 
-- **@repo-md/processor**: unified.js pipeline, Sharp for images, wiki-link resolution
+### Core
+- **@repo-md/processor-core**: Plugin-based processor, unified.js pipeline, wiki-link resolution
+- **@repo-md/processor**: Legacy processor with Sharp/Playwright (use processor-core for new work)
 - **@repo-md/client**: Browser-compatible SDK, don't run demos (user tests manually)
+
+### Workers
+- **@repo-md/worker-ts**: Modern TypeScript worker using plugin architecture
+- **@repo-md/worker**: Legacy worker - Cloud Run / CF Containers, embeddings, SQLite
+
+### Plugins
+- **@repo-md/plugin-image-sharp**: Sharp-based image processing, resizing, format conversion
+- **@repo-md/plugin-embed-transformers**: HuggingFace Transformers.js text embeddings
+- **@repo-md/plugin-embed-clip**: CLIP image embeddings for semantic search
+- **@repo-md/plugin-database-sqlite**: SQLite with FTS5 and pre-computed similarity
+
+### Services
 - **@repo-md/api**: Express + tRPC, MongoDB, GitHub webhooks, job queue pattern
 - **@repo-md/app**: Vue 3 Composition API, Pinia, Tailwind, Supabase Auth
-- **@repo-md/worker**: Cloud Run / CF Containers, embeddings, SQLite vector search
 - **@repo-md/mcp-server**: MCP protocol, Cloudflare Workers, Zod validation
 
 ## Testing
