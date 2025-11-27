@@ -871,9 +871,10 @@ async function createRepoDeployJob(projectId, ctx, commit, branch) {
     }
 
     // Build the static domain URL for absolute paths
+    // Uses project ID format: https://static.repo.md/projects/{projectId}
     const projectSlugValue = project.slug || "_unknown-project-slug-" + project._id.toString();
     const orgSlugValue = project.orgSlug || (project.orgId ? project.orgId.toString() : "_unknown-org-slug");
-    const staticDomain = `https://static.repo.md/${orgSlugValue}/${projectSlugValue}`;
+    const staticDomain = `https://static.repo.md/projects/${project._id.toString()}`;
 
     // Create a job to deploy the repository
     const job = await createJob("deploy-repo", {
