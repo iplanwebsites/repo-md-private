@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from "vue";
-import { Server } from "lucide-vue-next";
+import { Server, Brain } from "lucide-vue-next";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,10 @@ const repositoryFolder = ref("");
 const ignoreFiles = ref("");
 const isSaving = ref(false);
 
+// Embeddings settings
+const enableEmbeddings = ref(true);
+const similarPostsCount = ref(10);
+
 // Initialize form data from props
 const initializeFormData = () => {
 	if (props.project) {
@@ -36,6 +40,9 @@ const initializeFormData = () => {
 		repositoryFolder.value = buildSettings.repositoryFolder || "";
 		ignoreFiles.value = buildSettings.ignoreFiles || "";
 		enableAutoDeployment.value = buildSettings.enableAutoDeployment !== undefined ? buildSettings.enableAutoDeployment : true;
+		// Embeddings settings (skipEmbeddings is inverted to enableEmbeddings for better UX)
+		enableEmbeddings.value = buildSettings.skipEmbeddings !== undefined ? !buildSettings.skipEmbeddings : true;
+		similarPostsCount.value = buildSettings.similarPostsCount !== undefined ? buildSettings.similarPostsCount : 10;
 	}
 };
 
@@ -57,7 +64,10 @@ const saveSettings = async () => {
 			build: {
 				repositoryFolder: repositoryFolder.value,
 				ignoreFiles: ignoreFiles.value,
-				enableAutoDeployment: enableAutoDeployment.value
+				enableAutoDeployment: enableAutoDeployment.value,
+				// Store as skipEmbeddings (inverted from UI)
+				skipEmbeddings: !enableEmbeddings.value,
+				similarPostsCount: similarPostsCount.value
 			}
 		};
 
@@ -151,6 +161,59 @@ const saveSettings = async () => {
 			<p class="text-xs text-muted-foreground mt-2">
 				List files and folders to ignore, one per line. You can also create a <code>.repoignore</code> file directly in your repository for the same effect. Supports glob patterns like <code>*.log</code> and <code>**/.DS_Store</code>.
 			</p>
+		</SettingsCard>
+
+		<!-- Embeddings Settings Card -->
+		<SettingsCard
+			title="AI & Embeddings"
+			description="Configure AI-powered features like semantic search and similar content recommendations."
+			:isSaving="isSaving"
+			@save="saveSettings"
+			more="/docs/embeddings"
+			moreText="embeddings"
+		>
+			<div class="space-y-6">
+				<!-- Enable Embeddings -->
+				<div class="flex justify-between items-center">
+					<div>
+						<p class="font-medium">Generate Embeddings</p>
+						<p class="text-sm text-muted-foreground">
+							Enable AI-powered semantic search and similar content features. Disabling this speeds up builds but removes AI search capabilities.
+						</p>
+					</div>
+					<Switch
+						id="enable-embeddings"
+						v-model:checked="enableEmbeddings"
+					/>
+				</div>
+
+				<!-- Similar Posts Count -->
+				<div v-if="enableEmbeddings" class="pl-6 border-l-2 border-l-muted">
+					<div class="flex justify-between items-center">
+						<div>
+							<p class="font-medium">Similar Posts Count</p>
+							<p class="text-sm text-muted-foreground">
+								Number of similar posts to compute for each article (1-50)
+							</p>
+						</div>
+						<div class="w-24">
+							<Input
+								v-model.number="similarPostsCount"
+								type="number"
+								min="1"
+								max="50"
+								placeholder="10"
+							/>
+						</div>
+					</div>
+				</div>
+
+				<!-- Info when embeddings disabled -->
+				<div v-if="!enableEmbeddings" class="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-md border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-3">
+					<Brain class="h-5 w-5 flex-shrink-0" />
+					<span>With embeddings disabled, AI-powered search and "similar posts" features will not be available. Your content will still be searchable by keywords.</span>
+				</div>
+			</div>
 		</SettingsCard>
 
 		<!-- Build Settings Card -->

@@ -240,7 +240,14 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
     const mediaPrefix = data.mediaPrefix ?? projectSettings?.formatting?.mediaPrefix ?? '/_repo/medias';
     const notePrefix = data.notePrefix ?? projectSettings?.formatting?.pageLinkPrefix ?? '/_repo/notes';
     const domain = data.domain ?? '';
-    const skipEmbeddings = process.env.SKIP_EMBEDDINGS === 'true' || data.skipEmbeddings === true;
+
+    // Get build settings from project settings
+    const buildSettings = projectSettings?.build;
+    const skipEmbeddings =
+      process.env.SKIP_EMBEDDINGS === 'true' ||
+      data.skipEmbeddings === true ||
+      buildSettings?.skipEmbeddings === true;
+    const similarPostsCount = buildSettings?.similarPostsCount ?? 10;
 
     // Get media settings from project settings
     const mediaSettings = projectSettings?.media;
@@ -264,6 +271,7 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       mediaPrefix,
       notePrefix,
       skipEmbeddings,
+      similarPostsCount,
       imageSizes: imageSizes.map((s) => s.suffix),
       imageFormat,
       imageQuality,

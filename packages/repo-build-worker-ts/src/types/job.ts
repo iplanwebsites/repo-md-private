@@ -73,6 +73,8 @@ export interface BuildSettings {
   readonly ignoreFiles?: string;
   readonly enableAutoDeployment?: boolean;
   readonly productionBranch?: string;
+  readonly skipEmbeddings?: boolean;
+  readonly similarPostsCount?: number;
 }
 
 /**
