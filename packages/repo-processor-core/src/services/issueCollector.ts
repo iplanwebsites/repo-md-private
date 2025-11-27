@@ -375,3 +375,12 @@ export const generateIssueReport = (
     processEndTime: endTime,
   },
 });
+
+// ============================================================================
+// Factory Function
+// ============================================================================
+
+/**
+ * Create a new issue collector instance
+ */
+export const createIssueCollector = (): IssueCollector => new IssueCollector();
