@@ -43,11 +43,10 @@ async function deployRepo(data) {
   const tempFolderPath = path.join(jobFolder, "source");
 
   try {
-    // Initialize GitHub service
-    const gitToken = data.gitToken || process.env.GITHUB_TOKEN;
-    if (!gitToken && repoUrl.includes('github.com') && !repoUrl.startsWith('https://github.com/public/')) {
-      console.error("❌ GitHub authentication token missing for potentially private repository", { jobId: data.jobId });
-      throw new Error("GitHub authentication token is required for private repositories");
+    // Initialize GitHub service (token optional for public repos)
+    const gitToken = data.gitToken || process.env.GITHUB_TOKEN || null;
+    if (!gitToken) {
+      console.log("ℹ️ No GitHub token provided - attempting public repo clone", { jobId: data.jobId });
     }
     const githubService = new GitHubService(gitToken);
 

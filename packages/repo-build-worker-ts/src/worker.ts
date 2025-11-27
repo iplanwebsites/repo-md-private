@@ -7,6 +7,15 @@
 
 import 'dotenv/config';
 import express, { type Request, type Response, type NextFunction } from 'express';
+
+// Global error handlers for async operations
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT EXCEPTION:', error);
+});
 import { rm } from 'node:fs/promises';
 import { buildAssets } from './process/buildAssets.js';
 // @ts-ignore - JS module
@@ -267,8 +276,10 @@ app.post('/process', async (req: Request, res: Response) => {
   jobLogger.log('Job accepted', { jobId });
   res.json({ status: 'accepted', jobId });
 
-  // Process asynchronously
-  processJob(jobId, task as TaskType, data ?? {}, callbackUrl, jobLogger);
+  // Process asynchronously with error handling
+  processJob(jobId, task as TaskType, data ?? {}, callbackUrl, jobLogger).catch((error) => {
+    console.error(`[${jobId}] UNHANDLED ERROR in processJob:`, error);
+  });
 });
 
 // Sync build endpoint (for direct API calls)
