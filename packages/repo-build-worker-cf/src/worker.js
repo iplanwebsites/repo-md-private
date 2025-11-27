@@ -1,4 +1,7 @@
 // src/worker.js
+// SKIP_SQLITE=true - Disable SQLite features (required for CF Containers - better-sqlite3 native module doesn't work)
+const SKIP_SQLITE = process.env.SKIP_SQLITE === 'true';
+
 import express from "express";
 import "dotenv/config";
 import fs from "node:fs/promises";
@@ -6,7 +9,12 @@ import path from "node:path";
 import loggerService from "./services/loggerService.js";
 
 import WpImporter from "./lib/wpImporter.js";
-import inferenceRouter from "./inferenceRouter.js";
+
+// Skip inference router if embeddings are disabled (for CF Containers)
+let inferenceRouter = null;
+if (process.env.SKIP_EMBEDDINGS !== 'true') {
+  inferenceRouter = (await import('./inferenceRouter.js')).default;
+}
 
 // Import services
 import buildAssets from "./process/buildAssets.js";
@@ -25,8 +33,10 @@ import scanFrontmatterSchema from "./process/scanFrontmatterSchema.js";
 const app = express();
 app.use(express.json({ limit: "50mb" }));
 
-// Mount inference router
-app.use("/inference", inferenceRouter);
+// Mount inference router (only if embeddings enabled)
+if (inferenceRouter) {
+  app.use("/inference", inferenceRouter);
+}
 
 // System logger for non-job related logging
 const systemLogger = loggerService.getLogger("system");
@@ -82,6 +92,226 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   systemLogger.log("Health check");
   res.json({ status: "healthy", timestamp: new Date().toISOString() });
+});
+
+// Self-contained test endpoint - runs a build pipeline test and returns timing metrics
+app.get("/test", async (req, res) => {
+  systemLogger.log("🧪 Running self-contained build test");
+
+  const timing = {
+    testStart: Date.now(),
+    marks: {}
+  };
+
+  const mark = (label) => {
+    timing.marks[label] = Date.now() - timing.testStart;
+  };
+
+  try {
+    mark('init');
+
+    // Create temp directory
+    const tempDir = path.join(process.env.TEMP_DIR || '/tmp', `repo-test-${Date.now()}`);
+    const sourceDir = path.join(tempDir, 'source');
+    const distDir = path.join(tempDir, 'dist');
+
+    await fs.mkdir(path.join(sourceDir, 'posts'), { recursive: true });
+    await fs.mkdir(distDir, { recursive: true });
+    mark('dirs-created');
+
+    // Create test markdown files
+    await fs.writeFile(path.join(sourceDir, 'posts', 'test-post-1.md'), `---
+title: Test Post One
+date: 2024-01-15
+tags: [test, cloudflare]
+draft: false
+---
+
+# Test Post One
+
+This is a **test post** for the CF container build pipeline.
+
+## Features
+- Markdown processing
+- Frontmatter parsing
+- Wiki links like [[test-post-2]]
+`);
+
+    await fs.writeFile(path.join(sourceDir, 'posts', 'test-post-2.md'), `---
+title: Test Post Two
+date: 2024-01-16
+category: testing
+---
+
+# Test Post Two
+
+Second test post with a link back to [[test-post-1|the first post]].
+`);
+    mark('content-created');
+
+    // Run build pipeline
+    const testData = {
+      jobId: `test-${Date.now()}`,
+      tempDir,
+      repoInfo: { path: sourceDir, distPath: distDir },
+      assets: { distFolder: distDir },
+      config: {
+        embeddings: false,  // Skip for faster test
+        mediaOptimization: false
+      }
+    };
+
+    mark('build-start');
+    const result = await buildAssets(testData);
+    mark('build-complete');
+
+    // Check results
+    const files = await fs.readdir(distDir);
+    mark('results-checked');
+
+    // Cleanup
+    await fs.rm(tempDir, { recursive: true, force: true });
+    mark('cleanup');
+
+    const totalDuration = Date.now() - timing.testStart;
+
+    systemLogger.log(`✅ Test completed in ${totalDuration}ms`);
+
+    res.json({
+      status: 'success',
+      message: 'Build pipeline test completed',
+      timing: {
+        total: totalDuration,
+        marks: timing.marks,
+        breakdown: {
+          setup: timing.marks['content-created'] - timing.marks['init'],
+          build: timing.marks['build-complete'] - timing.marks['build-start'],
+          cleanup: timing.marks['cleanup'] - timing.marks['results-checked']
+        }
+      },
+      result: {
+        jobId: result.jobId,
+        filesGenerated: files.length,
+        files: files
+      }
+    });
+
+  } catch (error) {
+    const totalDuration = Date.now() - timing.testStart;
+    systemLogger.error('❌ Test failed:', error.message);
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      timing: {
+        total: totalDuration,
+        marks: timing.marks
+      }
+    });
+  }
+});
+
+// Full integration test endpoint - clones a sample repo and processes it
+app.get("/test/full", async (req, res) => {
+  systemLogger.log("🧪 Running full integration test");
+
+  const timing = {
+    testStart: Date.now(),
+    marks: {}
+  };
+
+  const mark = (label) => {
+    timing.marks[label] = Date.now() - timing.testStart;
+  };
+
+  // Use query params or default test repo
+  const repoUrl = req.query.repo || 'https://github.com/repo-md/sample-blog';
+  const skipR2 = req.query.skipR2 !== 'false';  // Skip R2 upload by default for tests
+
+  try {
+    mark('init');
+
+    const jobId = `fulltest-${Date.now()}`;
+    const tempDir = path.join(process.env.TEMP_DIR || '/tmp', jobId);
+
+    // Clone repo
+    mark('clone-start');
+    const cloneResult = await acquireUserRepo({
+      jobId,
+      tempDir,
+      repoUrl,
+      gitToken: process.env.GITHUB_TOKEN
+    });
+    mark('clone-complete');
+
+    // Build assets
+    mark('build-start');
+    const buildResult = await buildAssets({
+      ...cloneResult,
+      config: {
+        embeddings: process.env.SKIP_EMBEDDINGS !== 'true',
+        mediaOptimization: true
+      }
+    });
+    mark('build-complete');
+
+    // Enrich data
+    mark('enrich-start');
+    const enrichResult = await enrichData(buildResult);
+    mark('enrich-complete');
+
+    // List output files
+    const distPath = enrichResult.assets?.distFolder || path.join(tempDir, 'dist');
+    let files = [];
+    try {
+      files = await fs.readdir(distPath);
+    } catch (e) {
+      // dist folder might not exist
+    }
+    mark('results-checked');
+
+    // Cleanup
+    await fs.rm(tempDir, { recursive: true, force: true });
+    mark('cleanup');
+
+    const totalDuration = Date.now() - timing.testStart;
+
+    systemLogger.log(`✅ Full test completed in ${totalDuration}ms`);
+
+    res.json({
+      status: 'success',
+      message: 'Full integration test completed',
+      repoUrl,
+      timing: {
+        total: totalDuration,
+        marks: timing.marks,
+        breakdown: {
+          clone: timing.marks['clone-complete'] - timing.marks['clone-start'],
+          build: timing.marks['build-complete'] - timing.marks['build-start'],
+          enrich: timing.marks['enrich-complete'] - timing.marks['enrich-start'],
+          cleanup: timing.marks['cleanup'] - timing.marks['results-checked']
+        }
+      },
+      result: {
+        jobId,
+        filesGenerated: files.length,
+        files: files.slice(0, 20)  // Limit to first 20 files
+      }
+    });
+
+  } catch (error) {
+    const totalDuration = Date.now() - timing.testStart;
+    systemLogger.error('❌ Full test failed:', error.message);
+
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+      timing: {
+        total: totalDuration,
+        marks: timing.marks
+      }
+    });
+  }
 });
 
 // Authentication middleware for /process endpoint
@@ -442,6 +672,12 @@ async function checkNodeVersion() {
   const majorVersion = parseInt(nodeVersion.split('.')[0].substring(1));
 
   systemLogger.log(`🔍 Node.js version: ${nodeVersion} (module version: ${process.versions.modules})`);
+
+  // Skip SQLite check if SKIP_SQLITE is set (for CF Containers)
+  if (SKIP_SQLITE) {
+    systemLogger.log(`⚠️  SKIP_SQLITE=true - Skipping better-sqlite3 check (SQLite features disabled)`);
+    return;
+  }
 
   try {
     // Try to actually instantiate better-sqlite3 to verify compatibility

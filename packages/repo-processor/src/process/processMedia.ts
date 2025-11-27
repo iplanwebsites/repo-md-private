@@ -2,7 +2,14 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import sharp from "sharp"; 
+// Lazy-load sharp to avoid crash when not installed (e.g., CF Containers)
+let sharpModule: typeof import("sharp") | null = null;
+async function getSharp() {
+  if (!sharpModule) {
+    sharpModule = (await import("sharp")).default;
+  }
+  return sharpModule;
+}
 import ora from "ora";  // Import for the spinner
 
 // Import types from the unified types structure
@@ -444,6 +451,7 @@ async function processMediaFile(
   if (options.optimizeImages && isImage) {
     try {
       // Get image metadata and store essential details but not exif
+      const sharp = await getSharp();
       const imageMetadata = await sharp(filePath).metadata();
       
       // Update metadata with essential properties but skip exif
@@ -566,7 +574,8 @@ async function processMediaFile(
             
             // Get stats of the existing file
             const existingStats = fs.statSync(outputPath);
-            const existingMetadata = await sharp(outputPath).metadata();
+            const sharpExisting = await getSharp();
+            const existingMetadata = await sharpExisting(outputPath).metadata();
             
             // Add to sizes array
             mediaFile.sizes[sizeName].push({
@@ -588,7 +597,8 @@ async function processMediaFile(
           }
 
           // Process image with sharp
-          let sharpInstance = sharp(filePath);
+          const sharpProcess = await getSharp();
+          let sharpInstance = sharpProcess(filePath);
           
           // Resize if not original
           if (size.suffix !== 'original') {
@@ -618,7 +628,8 @@ async function processMediaFile(
 
           // Get stats of the processed file
           const processedStats = fs.statSync(outputPath);
-          const processedMetadata = await sharp(outputPath).metadata();
+          const sharpMeta = await getSharp();
+          const processedMetadata = await sharpMeta(outputPath).metadata();
 
           // Add to sizes array
           mediaFile.sizes[sizeName].push({

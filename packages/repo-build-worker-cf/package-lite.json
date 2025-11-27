@@ -1,0 +1,17 @@
+{
+  "name": "@repo-md/worker-cf-lite",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/worker-lite.js",
+  "scripts": {
+    "start": "node src/worker-lite.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "@repo-md/processor": "file:../repo-processor"
+  },
+  "overrides": {
+    "sharp": "npm:noop-pkg@^1.0.0",
+    "playwright": "npm:noop-pkg@^1.0.0"
+  }
+}

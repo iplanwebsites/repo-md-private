@@ -1,2 +1,20 @@
-node_modules;
-npm - debug.log.git.env;
+node_modules
+npm-debug.log
+.git
+.env
+.env.*
+*.md
+README*
+CHANGELOG*
+LICENSE*
+.npmrc
+.gitignore
+.dockerignore
+Dockerfile*
+scripts/
+*.log
+*.test.js
+*.spec.js
+__tests__
+coverage
+.nyc_output

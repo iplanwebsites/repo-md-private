@@ -1,7 +1,16 @@
 // src/process/buildSqliteDatabase.js
+// SKIP_SQLITE=true disables this module (for CF Containers where better-sqlite3 doesn't work)
 import fs from 'fs/promises';
 import path from 'path';
-import Database from 'better-sqlite3';
+
+// Lazy-load better-sqlite3 only when needed (avoid crash on import in CF Containers)
+let Database = null;
+async function getDatabase() {
+  if (!Database) {
+    Database = (await import('better-sqlite3')).default;
+  }
+  return Database;
+}
 
 /**
  * Normalize frontmatter based on schema recommendations
@@ -93,7 +102,13 @@ function valueToSQL(value, sqlType) {
  */
 async function buildSqliteDatabase(data) {
   console.log('🗃️ Building SQLite database...', { jobId: data.jobId });
-  
+
+  // Skip if SKIP_SQLITE is set (for CF Containers)
+  if (process.env.SKIP_SQLITE === 'true') {
+    console.log('⚠️ SKIP_SQLITE=true - Skipping SQLite database creation');
+    return { skipped: true, reason: 'SKIP_SQLITE=true' };
+  }
+
   // Validate required data
   if (!data.assets || !data.assets.distFolder) {
     throw new Error('Asset information is required (distFolder)');
@@ -138,9 +153,10 @@ async function buildSqliteDatabase(data) {
     const contentData = Array.isArray(contentJson) ? contentJson : (contentJson.posts || []);
     
     console.log(`📊 Creating SQLite database from ${contentData.length} content items...`);
-    
-    // Create or connect to SQLite database
-    const db = new Database(dbPath);
+
+    // Create or connect to SQLite database (lazy-load to avoid crash on import)
+    const DatabaseClass = await getDatabase();
+    const db = new DatabaseClass(dbPath);
     
     // Begin transaction for better performance
     db.exec('BEGIN TRANSACTION;');

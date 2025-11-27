@@ -13,7 +13,14 @@
     "docker:test": "docker run --rm repo-worker-cf:local node scripts/test-embeddings.js",
     "cf:deploy": "npx wrangler deploy",
     "cf:dev": "npx wrangler dev",
-    "cf:login": "npx wrangler login"
+    "cf:login": "npx wrangler login",
+    "cf:dashboard": "open https://dash.cloudflare.com/?to=/:account/workers-and-pages",
+    "cf:whoami": "npx wrangler whoami",
+    "test:local": "node scripts/test-cf-container.js --local",
+    "test:wrangler": "node scripts/test-cf-container.js --wrangler",
+    "test:deployed": "node scripts/test-cf-container.js --deployed",
+    "test:http": "curl -s http://localhost:8080/test | node -e \"const d=require('fs').readFileSync(0,'utf8');console.log(JSON.stringify(JSON.parse(d),null,2))\"",
+    "test:http:full": "curl -s http://localhost:8080/test/full | node -e \"const d=require('fs').readFileSync(0,'utf8');console.log(JSON.stringify(JSON.parse(d),null,2))\""
   },
   "keywords": [
     "worker",

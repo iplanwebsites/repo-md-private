@@ -1,417 +1,417 @@
-# Repo Worker Service & Project Brief Generator
+# Repo Build Worker - Cloudflare Containers
 
-![GCP Cloud Run](https://img.shields.io/badge/GCP-Cloud%20Run-blue)
-![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-Containers-orange)
+![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)
 
-A worker service that processes repository data asynchronously using GCP Cloud Run. This worker handles various tasks in the processing pipeline including building assets, computing embeddings, and enriching data.
+A worker service that processes repository data asynchronously using **Cloudflare Containers**. This worker handles markdown processing, asset optimization, embedding generation, and site deployment.
 
-## Project Brief to Starter Repository Generator
+## Features
 
-### Overview
+- **Cloudflare Containers** - Runs Docker containers at the edge with Durable Objects
+- **Pre-loaded ML Models** - transformer.js models baked into Docker image for fast cold starts
+- **Async Job Processing** - HTTP endpoint receives jobs, processes async, calls back with results
+- **Full Build Pipeline** - Markdown → HTML, image optimization, embeddings, SQLite DB, R2 upload
 
-This module includes a Node.js tool that takes a project brief as input and uses OpenAI to generate a JSON array of files to be created for a starter repo.md (platform) project. The generated files are markdown documents with appropriate frontmatter for various use cases like blogs, websites, or applications.
+## Quick Start
 
-### Project Brief Summary
+### Prerequisites
 
-The system processes natural language project descriptions and automatically generates:
-- Markdown files with relevant frontmatter
-- Inter-linked content using wiki syntax `[[filename]]`
-- Structured project layouts appropriate for the requested use case
+- Node.js 20+
+- Docker (for local testing)
+- Cloudflare account with Containers beta access
+- Wrangler CLI (`npm install -g wrangler`)
 
-### Repo.md Platform Integration
-
-This is designed as a starter repository generator for the repo.md platform, which processes markdown files with frontmatter to create dynamic websites and applications.
-
-### Frontmatter Parameters
-
-The generated files include contextually relevant frontmatter fields that vary based on the project brief:
-
-#### Common Fields
-- `title`: Page or post title
-- `date`: Creation or publication date
-- `slug`: URL-friendly identifier
-- `description`: Brief content summary
-
-#### Content-Specific Fields
-- **Blog/News**: `author`, `tags`, `category`, `featured`, `excerpt`
-- **Documentation**: `section`, `order`, `prev`, `next`, `toc`
-- **Portfolio**: `project_type`, `technologies`, `demo_url`, `github_url`
-- **E-commerce**: `price`, `sku`, `availability`, `images`
-
-### Wiki-Style Linking
-
-Files can reference each other using wiki syntax `[[filename]]` (without extension), enabling:
-- Automatic cross-referencing between pages
-- Dynamic navigation generation
-- Content relationship mapping
-
-### Usage
-
-```javascript
-const { createStarterProjectFromBrief } = require('./lib/mdAgent');
-
-const brief = "Create a personal blog about web development with posts about React, Node.js, and deployment";
-const options = {
-  outputDir: './output',
-  includeAssets: true
-};
-
-await createStarterProjectFromBrief(brief, options);
-```
-
-### Environment Variables
-
-- `OPENAI_API_KEY`: Your OpenAI API key for content generation
-
-### Testing
-
-Run the project generator test:
-
-```bash
-npm run testProjectStarterGenerator
-```
-
-## 🚀 Features
-
-- HTTP endpoint for job submission
-- Asynchronous processing with callbacks
-- Multiple task types support
-- Automatic deployment via GitLab CI/CD
-- Emoji-rich logging for clear visibility
-
-## 🛠️ Architecture
-
-The worker service follows a simple architecture:
-
-1. Exposes an HTTP endpoint to receive job requests
-2. Acknowledges requests immediately
-3. Processes tasks asynchronously
-4. Calls back to the specified URL with results
-
-## 📋 Task Types
-
-- `process-all`: Runs the full pipeline (build assets → build SQLite database → compute embeddings → enrich data)
-- `build-assets`: Only runs the asset building step
-- `build-database`: Only runs the SQLite database building step
-- `compute-embeddings`: Only computes embeddings
-- `enrich-data`: Only performs data enrichment
-- `acquire-user-repo`: Clones a GitHub repository to a temporary folder
-- `new-repo-from-template`: Creates a new repository from a template and clones it
-- `process-with-repo`: Acquires a repository and then runs the full processing pipeline
-- `process-from-template`: Creates a repository from template and then runs the full processing pipeline
-- `generate-project-from-brief`: Generates a project from a natural language brief, optionally creates GitHub repo
-- `generate-and-deploy-project`: Generates project from brief, creates repo, and runs full deployment pipeline
-
-## 🏃‍♂️ Running Locally
+### Local Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Configure environment variables
+# Copy environment config
 cp .env.example .env
-# Edit .env file to set custom PORT if needed (defaults to 5522)
 
-# Run in development mode with auto-restart
+# Run locally (Node.js)
 npm run dev
 
-# Run in production mode
-npm start
+# Or run with Docker
+npm run docker:build
+npm run docker:run
 ```
 
-## 📦 Docker Build
+### Test the Worker
 
 ```bash
-docker build -t repo-worker .
-docker run -p 5522:5522 repo-worker
+# Health check
+curl http://localhost:8080/health
+
+# Run build pipeline test (returns timing metrics)
+curl http://localhost:8080/test
+
+# Full integration test with sample repo
+curl http://localhost:8080/test/full
 ```
 
-## 🌐 API Usage
+---
+
+## Cloudflare Deployment Guide
+
+### Step 1: Authenticate with Cloudflare
+
+```bash
+# Login to Cloudflare (opens browser)
+npm run cf:login
+
+# Or use wrangler directly
+npx wrangler login
+
+# Verify authentication
+npx wrangler whoami
+```
+
+### Step 2: Configure wrangler.toml
+
+The `wrangler.toml` is pre-configured. Update if needed:
+
+```toml
+name = "repo-build-worker-cf"
+main = "src/cf-worker.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Container configuration
+[[containers]]
+max_instances = 5
+class_name = "RepoBuildContainer"
+image = "./Dockerfile"
+
+# Durable Object for container management
+[[durable_objects.bindings]]
+name = "BUILD_CONTAINER"
+class_name = "RepoBuildContainer"
+```
+
+### Step 3: Set Up Secrets
+
+```bash
+# Required: Authentication secret for API endpoints
+npx wrangler secret put WORKER_SECRET
+
+# GitHub access (for cloning private repos)
+npx wrangler secret put GITHUB_TOKEN
+
+# R2 Storage (for deploying built sites)
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
+npx wrangler secret put R2_ACCOUNT_ID
+npx wrangler secret put R2_BUCKET_NAME
+
+# Optional: OpenAI for AI-powered features
+npx wrangler secret put OPENAI_API_KEY
+```
+
+### Step 4: Deploy to Cloudflare
+
+```bash
+# Deploy the worker with containers
+npm run cf:deploy
+
+# Or use wrangler directly
+npx wrangler deploy
+```
+
+### Step 5: Verify Deployment
+
+```bash
+# Get your worker URL (shown after deploy)
+WORKER_URL="https://repo-build-worker-cf.<your-subdomain>.workers.dev"
+
+# Test health endpoint
+curl $WORKER_URL/health
+
+# Test build pipeline
+curl $WORKER_URL/test
+```
+
+---
+
+## Development Commands
+
+```bash
+# Local Development
+npm run dev              # Start with nodemon (auto-restart)
+npm start                # Start production mode
+
+# Docker
+npm run docker:build     # Build Docker image with pre-loaded models
+npm run docker:run       # Run container locally (port 8080)
+npm run docker:test      # Test embeddings inside container
+
+# Cloudflare
+npm run cf:login         # Authenticate with Cloudflare
+npm run cf:dev           # Local development with wrangler
+npm run cf:deploy        # Deploy to Cloudflare Containers
+
+# Testing
+npm run test:local       # Test against localhost:8080
+npm run test:wrangler    # Test against wrangler dev (port 5522)
+npm run test:deployed    # Test against deployed CF worker
+npm run test:http        # Quick curl test of /test endpoint
+npm run test:http:full   # Quick curl test of /test/full endpoint
+```
+
+---
+
+## API Reference
 
 ### Health Check
 
 ```bash
-curl http://localhost:5522/health
+GET /health
 ```
+
+Response:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+### Build Pipeline Test
+
+```bash
+GET /test
+```
+
+Runs a self-contained build test with synthetic content. Returns timing metrics.
+
+Response:
+```json
+{
+  "status": "success",
+  "timing": {
+    "total": 512,
+    "breakdown": {
+      "setup": 2,
+      "build": 507,
+      "cleanup": 3
+    }
+  },
+  "result": {
+    "filesGenerated": 24,
+    "files": ["posts.json", "content.sqlite", "graph.json", "..."]
+  }
+}
+```
+
+### Full Integration Test
+
+```bash
+GET /test/full?repo=https://github.com/owner/repo
+```
+
+Clones a real repo and runs the full pipeline. Defaults to `repo-md/sample-blog`.
 
 ### Submit Job
 
-#### Process All
 ```bash
-curl -X POST http://localhost:5522/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jobId": "job-123",
-    "task": "process-all",
-    "data": { "repoUrl": "https://github.com/user/repo" },
-    "callbackUrl": "https://your-api.example.com/job-callback"
-  }'
+POST /process
+Authorization: Bearer <WORKER_SECRET>
+Content-Type: application/json
+
+{
+  "jobId": "unique-job-id",
+  "task": "deploy-repo",
+  "data": { ... },
+  "callbackUrl": "https://your-api.com/callback"
+}
 ```
 
-#### Acquire User Repository
+The worker acknowledges immediately and calls back when done.
+
+#### Task Types
+
+| Task | Description |
+|------|-------------|
+| `deploy-repo` | Clone repo, build assets, upload to R2 |
+| `process-all` | Full pipeline: assets → database → embeddings → enrich |
+| `build-assets` | Only build assets (markdown → HTML, images) |
+| `build-database` | Only build SQLite database |
+| `enrich-data` | Only run data enrichment |
+| `acquire-user-repo` | Clone a GitHub repository |
+| `new-repo-from-template` | Create repo from template |
+| `wp-import` | Import WordPress XML export |
+| `generate-project-from-brief` | AI-generate project from description |
+
+#### Example: Deploy Repository
+
 ```bash
-curl -X POST http://localhost:5522/process \
+curl -X POST https://your-worker.workers.dev/process \
+  -H "Authorization: Bearer YOUR_WORKER_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
-    "jobId": "job-456",
-    "task": "acquire-user-repo",
-    "data": { 
+    "jobId": "deploy-123",
+    "task": "deploy-repo",
+    "data": {
       "repoUrl": "https://github.com/user/repo",
-      "branch": "main",
-      "gitToken": "YOUR_GITHUB_TOKEN"
-    },
-    "callbackUrl": "https://your-api.example.com/job-callback"
-  }'
-```
-
-#### Create New Repository from Template
-```bash
-curl -X POST http://localhost:5522/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jobId": "job-789",
-    "task": "new-repo-from-template",
-    "data": { 
-      "templateRepoUrl": "https://github.com/template-owner/template-repo",
-      "newRepoName": "my-new-project",
-      "newRepoDescription": "Created from template",
-      "isPrivate": false,
-      "gitToken": "YOUR_GITHUB_TOKEN"
-    },
-    "callbackUrl": "https://your-api.example.com/job-callback"
-  }'
-```
-
-#### Process with Repository Acquisition
-```bash
-curl -X POST http://localhost:5522/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jobId": "job-101112",
-    "task": "process-with-repo",
-    "data": { 
-      "repoUrl": "https://github.com/user/repo",
-      "branch": "main",
-      "gitToken": "YOUR_GITHUB_TOKEN"
-    },
-    "callbackUrl": "https://your-api.example.com/job-callback"
-  }'
-```
-
-#### Build Database from Content
-```bash
-curl -X POST http://localhost:5522/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jobId": "job-db123",
-    "task": "build-database",
-    "data": { 
-      "assets": {
-        "distFolder": "/path/to/dist",
-        "contentPath": "/path/to/dist/content.json"
+      "gitToken": "ghp_xxx",
+      "r2": {
+        "accessKeyId": "xxx",
+        "secretAccessKey": "xxx",
+        "accountId": "xxx",
+        "bucketName": "my-bucket"
       }
     },
-    "callbackUrl": "https://your-api.example.com/job-callback"
+    "callbackUrl": "https://your-api.com/job-callback"
   }'
 ```
 
-#### Generate Project from Brief
+#### Example: Generate Project from Brief
+
 ```bash
-curl -X POST http://localhost:5522/process \
+curl -X POST https://your-worker.workers.dev/process \
+  -H "Authorization: Bearer YOUR_WORKER_SECRET" \
   -H "Content-Type: application/json" \
   -d '{
-    "jobId": "job-gen123",
+    "jobId": "gen-456",
     "task": "generate-project-from-brief",
     "data": {
-      "brief": "Create a personal blog about web development with posts about React, Node.js, and deployment best practices",
+      "brief": "Create a personal blog about web development",
       "repoName": "my-dev-blog",
-      "repoDescription": "Personal blog about web development",
-      "isPrivate": false,
-      "gitToken": "YOUR_GITHUB_TOKEN"
+      "gitToken": "ghp_xxx"
     },
-    "callbackUrl": "https://your-api.example.com/job-callback"
+    "callbackUrl": "https://your-api.com/job-callback"
   }'
 ```
 
-#### Generate and Deploy Project
-```bash
-curl -X POST http://localhost:5522/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jobId": "job-deploy123",
-    "task": "generate-and-deploy-project", 
-    "data": {
-      "brief": "Build documentation for a SaaS API product including getting started guide, API reference, and tutorials",
-      "repoName": "api-docs",
-      "isPrivate": false,
-      "gitToken": "YOUR_GITHUB_TOKEN"
-    },
-    "callbackUrl": "https://your-api.example.com/job-callback"
-  }'
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Cloudflare Edge                          │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌──────────────────────────────────┐   │
+│  │  CF Worker  │───▶│   Durable Object (Container)     │   │
+│  │ cf-worker.js│    │  ┌────────────────────────────┐  │   │
+│  └─────────────┘    │  │  Docker Container          │  │   │
+│        │            │  │  ┌──────────────────────┐  │  │   │
+│        │            │  │  │  Express App         │  │  │   │
+│        ▼            │  │  │  (worker.js)         │  │  │   │
+│   Routes requests   │  │  │                      │  │  │   │
+│   to containers     │  │  │  • /health           │  │  │   │
+│                     │  │  │  • /test             │  │  │   │
+│                     │  │  │  • /process          │  │  │   │
+│                     │  │  │  • /inference/*      │  │  │   │
+│                     │  │  └──────────────────────┘  │  │   │
+│                     │  │                            │  │   │
+│                     │  │  Pre-loaded Models:        │  │   │
+│                     │  │  • Xenova/mobileclip_s0    │  │   │
+│                     │  │  • Xenova/all-MiniLM-L6-v2 │  │   │
+│                     │  └────────────────────────────┘  │   │
+│                     └──────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## 🚢 GCP Cloud Run Setup
+### Request Flow
 
-### Initial Setup
+1. Request hits CF Worker (`cf-worker.js`)
+2. Worker routes to appropriate Durable Object container
+3. Container runs Express app (`worker.js`)
+4. Job processed async, callback sent when complete
 
-1. **Create a GCP Project**
+### Key Files
 
-```bash
-gcloud projects create your-project-id
-gcloud config set project your-project-id
-```
+| File | Purpose |
+|------|---------|
+| `src/cf-worker.js` | Cloudflare Worker entry point, routes to containers |
+| `src/worker.js` | Express app running inside container |
+| `src/process/*.js` | Individual processing modules |
+| `src/lib/*.js` | Utility libraries (embeddings, parsers) |
+| `wrangler.toml` | Cloudflare configuration |
+| `Dockerfile` | Container image with pre-loaded models |
 
-2. **Enable Required APIs**
+---
 
-```bash
-gcloud services enable cloudbuild.googleapis.com run.googleapis.com artifactregistry.googleapis.com containerregistry.googleapis.com
-```
+## Environment Variables
 
-3. **Set up Service Account for GitLab CI/CD**
+### Required for Production
 
-```bash
-# Create service account
-gcloud iam service-accounts create gitlab-ci-account \
-  --display-name="GitLab CI Service Account"
+| Variable | Description |
+|----------|-------------|
+| `WORKER_SECRET` | Auth token for /process endpoint |
+| `GITHUB_TOKEN` | GitHub access for cloning repos |
+| `R2_ACCESS_KEY_ID` | R2 storage access key |
+| `R2_SECRET_ACCESS_KEY` | R2 storage secret |
+| `R2_ACCOUNT_ID` | Cloudflare account ID |
+| `R2_BUCKET_NAME` | R2 bucket for deployments |
 
-# Grant necessary roles
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:gitlab-ci-account@your-project-id.iam.gserviceaccount.com" \
-  --role="roles/run.admin"
+### Optional
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:gitlab-ci-account@your-project-id.iam.gserviceaccount.com" \
-  --role="roles/storage.admin"
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | For AI-powered project generation |
+| `SKIP_EMBEDDINGS` | Set to "true" to disable embeddings |
+| `KEEP_TMP_FILES` | Set to "true" to preserve temp files |
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:gitlab-ci-account@your-project-id.iam.gserviceaccount.com" \
-  --role="roles/cloudbuild.builds.builder"
+---
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:gitlab-ci-account@your-project-id.iam.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser"
+## Troubleshooting
 
-# Create and download key
-gcloud iam service-accounts keys create gitlab-ci-key.json \
-  --iam-account=gitlab-ci-account@your-project-id.iam.gserviceaccount.com
-```
-
-4. **Add Service Account Key to GitLab CI/CD Variables**
-
-   - Go to your GitLab project → Settings → CI/CD → Variables
-   - Add a new variable called `GCP_SERVICE_ACCOUNT`
-   - Paste the content of the `gitlab-ci-key.json` file
-   - Make sure it's masked but not protected
-
-5. **Update GitLab CI/CD Variables**
-
-   - Add `GCP_PROJECT_ID` with your actual GCP project ID
-   - Optionally customize `REGION` and `SERVICE_NAME` if needed
-
-### Manual Deployment
-
-If you need to deploy manually without GitLab CI/CD:
+### Container not starting
 
 ```bash
-# Build the image
-gcloud builds submit --tag gcr.io/your-project-id/repo-worker
+# Check wrangler logs
+npx wrangler tail
 
-# Deploy to Cloud Run
-gcloud run deploy repo-worker \
-  --image gcr.io/your-project-id/repo-worker \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --memory 512M \
-  --cpu 1 \
-  --concurrency 80 \
-  --timeout 5m
+# Verify Docker builds locally
+npm run docker:build
+npm run docker:run
 ```
 
-## 🔒 Security Considerations
-
-For production deployments, consider:
-
-1. **Authentication**: Remove `--allow-unauthenticated` and set up proper authentication
-2. **Secrets Management**: Use GCP Secret Manager for sensitive values
-3. **VPC-SC**: Configure VPC Service Controls for additional network security
-4. **Logging**: Set up structured logging with Cloud Logging
-
-## 📊 Monitoring
-
-Use GCP Cloud Monitoring to:
-
-- Set up alerts for service errors
-- Monitor CPU and memory usage
-- Track job processing times and throughput
-- Create custom dashboards for service health
-
-## 🧩 Customization
-
-To add new task types:
-
-1. Create a new process module in `src/process/`
-2. Import the new process in the worker.js file
-3. Add the new task type to the switch statement in `doWork()` function
-4. Deploy the updated service
-
-### SQLite Database Integration
-
-The service builds an SQLite database (`content.sqlite`) in the dist folder alongside the existing content files. This database provides efficient querying capabilities for the processed content. The database is created by the `buildSqliteDatabase` process.
-
-#### Database Schema
-
-- **notes**: Main table containing all document content and metadata
-  - `id`: Unique identifier for the note
-  - `slug`: URL-friendly version of the title
-  - `title`: Document title
-  - `content`: HTML or markdown content
-  - `backlinks`: JSON array of backlinks to this document
-  - `wordCount`: Number of words in the document
-  - `created`: Creation timestamp
-  - `modified`: Last modification timestamp
-  - `path`: Original file path
-  - `type`: Document type
-
-- **tags**: Table containing all unique tags
-  - `id`: Unique identifier
-  - `tag`: Tag name
-
-- **note_tags**: Junction table for many-to-many relationship between notes and tags
-  - `note_id`: Reference to notes.id
-  - `tag_id`: Reference to tags.id
-
-- **links**: Table storing relationships between documents
-  - `source_id`: Source document ID
-  - `target_id`: Target document ID
-
-#### Example Queries
-
-```sql
--- Get all documents with a specific tag
-SELECT n.* FROM notes n
-JOIN note_tags nt ON n.id = nt.note_id
-JOIN tags t ON t.id = nt.tag_id
-WHERE t.tag = 'important';
-
--- Find all linked documents
-SELECT target.* FROM notes source
-JOIN links l ON source.id = l.source_id
-JOIN notes target ON l.target_id = target.id
-WHERE source.slug = 'home-page';
-```
-
-### GitHub Integration
-
-This service includes GitHub integration capabilities:
-
-- **Repository Cloning**: Clone any GitHub repository to a temporary folder
-- **Template Repository**: Create new repositories from templates
-- **Advanced Operations**: The service supports repository creation, forking, and build operations
-
-Make sure to set up the required GitHub authentication tokens in your environment:
+### Secrets not working
 
 ```bash
-# In your .env file
-GITHUB_TOKEN=your_github_personal_access_token
+# List secrets
+npx wrangler secret list
+
+# Re-add secret
+npx wrangler secret put WORKER_SECRET
 ```
+
+### Cold start too slow
+
+The Docker image includes pre-loaded models (~1-2GB). If cold starts are slow:
+- Increase `max_instances` in wrangler.toml
+- Adjust `sleepAfter` in cf-worker.js (default 10m)
+
+### Build failures
+
+```bash
+# Clear Docker cache and rebuild
+npm run docker:build:no-cache
+
+# Check for native module issues
+npm rebuild better-sqlite3
+```
+
+---
+
+## Testing Checklist
+
+Before deploying to production:
+
+- [ ] `npm run docker:build` succeeds
+- [ ] `npm run docker:run` starts without errors
+- [ ] `curl localhost:8080/health` returns healthy
+- [ ] `curl localhost:8080/test` returns success with timing
+- [ ] Secrets configured in Cloudflare
+- [ ] `npm run cf:deploy` succeeds
+- [ ] Production health check works
+
+---
+
+## License
+
+Copyright (c) 2025 repo.md

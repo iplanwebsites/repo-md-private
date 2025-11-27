@@ -58,7 +58,17 @@
       "Bash(bash -c '../../node_modules/.bin/tsc --noEmit 2>&1 | head -100')",
       "Bash(echo:*)",
       "Bash(node --trace-warnings -e:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(curl:*)",
+      "Bash(time curl -s --max-time 120 https://repo-build-worker-cf.fragile.workers.dev/test)",
+      "Bash(for i in 1 2 3 4 5)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(time curl -s --max-time 60 https://repo-build-worker-cf.fragile.workers.dev/test)",
+      "Bash(time curl:*)",
+      "Bash(npx wrangler tail:*)",
+      "WebSearch",
+      "Bash(npx wrangler containers info:*)"
     ],
     "deny": []
   },

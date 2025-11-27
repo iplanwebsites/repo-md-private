@@ -5,3 +5,4 @@ DEV.md
 **/.claude/settings.local.json
 test-starter/
 
+vendor/
