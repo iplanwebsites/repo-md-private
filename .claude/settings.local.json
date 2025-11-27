@@ -68,7 +68,8 @@
       "Bash(time curl:*)",
       "Bash(npx wrangler tail:*)",
       "WebSearch",
-      "Bash(npx wrangler containers info:*)"
+      "Bash(npx wrangler containers info:*)",
+      "Bash(timeout 5 node:*)"
     ],
     "deny": []
   },

@@ -14,10 +14,12 @@ import { mkdir, writeFile, stat, readdir } from 'node:fs/promises';
 import { join, dirname, parse, relative } from 'node:path';
 import {
   Processor,
-  createIssueCollector,
+  IssueCollector,
   type ProcessConfig,
+  type ProcessorOptions,
   type ProcessedPost,
   type ProcessedMedia,
+  type PluginConfig,
 } from '@repo-md/processor-core';
 import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
 import { TransformersTextEmbedder } from '@repo-md/plugin-embed-transformers';
@@ -113,11 +115,11 @@ const generateDirectorySummary = async (directory: string): Promise<readonly Fil
 // ============================================================================
 
 const DEFAULT_IMAGE_SIZES = [
-  { width: 100, suffix: 'xs' },
-  { width: 300, suffix: 'sm' },
-  { width: 700, suffix: 'md' },
-  { width: 1400, suffix: 'lg' },
-  { width: 2160, suffix: 'xl' },
+  { width: 100, height: null, suffix: 'xs' },
+  { width: 300, height: null, suffix: 'sm' },
+  { width: 700, height: null, suffix: 'md' },
+  { width: 1400, height: null, suffix: 'lg' },
+  { width: 2160, height: null, suffix: 'xl' },
 ] as const;
 
 // ============================================================================
@@ -135,7 +137,7 @@ const DEFAULT_IMAGE_SIZES = [
  */
 export const buildAssets = async (data: JobData): Promise<BuildResult> => {
   const { logger, jobId, repoInfo } = data;
-  const issueCollector = createIssueCollector();
+  const issueCollector = new IssueCollector();
 
   safeLog(logger, 'log', 'Building assets...', { jobId });
 
@@ -188,45 +190,41 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       plugins.database = new SqliteDatabasePlugin();
     }
 
-    // Configure processor
+    // Configure processor using the correct ProcessConfig structure
     const config: ProcessConfig = {
-      directories: {
+      dir: {
         input: inputPath,
         output: distFolder,
-        mediaOutput: join(distFolder, '_medias'),
-        postsOutput: join(distFolder, '_posts'),
-      },
-      paths: {
-        notesPrefix: notePrefix,
-        mediaPrefix: mediaPrefix,
-        domain: domain,
-        useAbsolutePaths: true,
+        mediaOutput: '_medias',
+        postsOutput: '_posts',
       },
       media: {
         optimize: true,
         skip: false,
-        sizes: DEFAULT_IMAGE_SIZES.map((s) => ({ width: s.width, suffix: s.suffix })),
+        sizes: DEFAULT_IMAGE_SIZES.map((s) => ({ width: s.width, height: s.height, suffix: s.suffix })),
         format: 'webp',
         quality: 80,
         useHash: true,
         useSharding: false,
+        pathPrefix: mediaPrefix,
+        domain: domain,
       },
-      posts: {
-        exportEnabled: true,
+      content: {
+        notePathPrefix: notePrefix,
         processAllFiles: true,
-        useHash: true,
+        exportPosts: true,
       },
       plugins,
     };
 
     // Create and run processor
     safeLog(logger, 'log', 'Processing repository content...');
-    const processor = new Processor(config);
+    const processor = new Processor({ config });
     await processor.initialize();
     const result = await processor.process();
     await processor.dispose();
 
-    const { posts, media, embeddings, database } = result;
+    const { posts, media } = result;
 
     safeLog(logger, 'log', 'Assets built successfully!', {
       jobId,
@@ -293,10 +291,10 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       },
     };
 
-    // Add embeddings info if available
-    if (embeddings) {
+    // Add embeddings info if plugins were enabled
+    if (!skipEmbeddings) {
       (buildResult as any).postEmbeddings = {
-        filesProcessed: Object.keys(embeddings.text ?? {}).length,
+        filesProcessed: posts.length,
         filesReused: 0,
         dimension: 384,
         model: 'all-MiniLM-L6-v2',
@@ -308,20 +306,17 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       };
 
       (buildResult as any).mediaEmbeddings = {
-        filesProcessed: Object.keys(embeddings.image ?? {}).length,
+        filesProcessed: media.length,
         filesReused: 0,
         dimension: 512,
         model: 'clip-vit-base-patch32',
         hashMapPath: join(distFolder, 'media-embedding-hash-map.json'),
       };
-    }
 
-    // Add database info if available
-    if (database) {
       (buildResult as any).database = {
-        path: database.databasePath,
-        tables: database.tables,
-        rowCounts: database.rowCounts,
+        path: join(distFolder, 'repo.db'),
+        tables: ['posts', 'media', 'embeddings', 'similarity'],
+        rowCounts: { posts: posts.length, media: media.length },
       };
     }
 

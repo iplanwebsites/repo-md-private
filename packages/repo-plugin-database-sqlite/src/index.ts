@@ -10,6 +10,8 @@ import { join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import type {
   DatabasePlugin,
+  DatabaseBuildInput,
+  DatabaseResult as CoreDatabaseResult,
   PluginContext,
   TextEmbeddingPlugin,
   ProcessedPost,
@@ -31,18 +33,7 @@ export interface SqlitePluginOptions {
   readonly similarPostsCount?: number;
 }
 
-export interface DatabaseBuildInput {
-  readonly posts: readonly ProcessedPost[];
-  readonly media: readonly ProcessedMedia[];
-  readonly embeddings?: Readonly<Record<string, readonly number[]>>;
-  readonly imageEmbeddings?: Readonly<Record<string, readonly number[]>>;
-}
-
-export interface DatabaseResult {
-  readonly databasePath: string;
-  readonly tables: readonly string[];
-  readonly rowCounts: Readonly<Record<string, number>>;
-  readonly hasVectorSearch: boolean;
+export interface DatabaseResult extends CoreDatabaseResult {
   readonly hasFts: boolean;
 }
 
@@ -127,8 +118,13 @@ export class SqliteDatabasePlugin implements DatabasePlugin {
       // Insert embeddings and similarity data
       let embeddingsCount = 0;
       if (data.embeddings && this.options.enableVector) {
-        embeddingsCount = this.insertEmbeddings(db, data.embeddings);
-        this.computeAndInsertSimilarity(db, data.posts, data.embeddings);
+        // Convert ReadonlyMap to Record for easier processing
+        const embeddingsRecord: Record<string, readonly number[]> = {};
+        data.embeddings.forEach((value, key) => {
+          embeddingsRecord[key] = value;
+        });
+        embeddingsCount = this.insertEmbeddings(db, embeddingsRecord);
+        this.computeAndInsertSimilarity(db, data.posts, embeddingsRecord);
       }
 
       // Optimize database
@@ -292,19 +288,19 @@ export class SqliteDatabasePlugin implements DatabasePlugin {
           slug: post.slug,
           title: post.title ?? post.fileName,
           fileName: post.fileName,
-          originalPath: post.originalPath ?? post.filePath,
-          html: post.html,
-          markdown: post.markdown ?? post.md,
-          plainText: post.plainText ?? post.plain,
-          excerpt: post.excerpt ?? post.firstParagraphText,
+          originalPath: post.originalPath,
+          html: post.content,
+          markdown: post.markdown,
+          plainText: post.plainText,
+          excerpt: post.excerpt,
           wordCount: post.wordCount ?? 0,
           frontmatter: JSON.stringify(post.frontmatter ?? {}),
           toc: JSON.stringify(post.toc ?? []),
           links: JSON.stringify(post.links ?? []),
-          backlinks: JSON.stringify(post.backlinks ?? []),
+          backlinks: JSON.stringify([]),
           createdAt: post.metadata?.createdAt ?? null,
-          updatedAt: post.metadata?.updatedAt ?? null,
-          publishedAt: post.frontmatter?.date ?? post.frontmatter?.published ?? null,
+          updatedAt: post.metadata?.modifiedAt ?? null,
+          publishedAt: (post.frontmatter as any)?.date ?? (post.frontmatter as any)?.published ?? null,
         });
       }
     });
@@ -329,17 +325,19 @@ export class SqliteDatabasePlugin implements DatabasePlugin {
 
     const insertMany = db.transaction((mediaList: readonly ProcessedMedia[]) => {
       for (const item of mediaList) {
+        // Generate hash from originalPath if not in metadata
+        const hash = item.metadata?.hash ?? item.originalPath?.replace(/[^a-zA-Z0-9]/g, '_') ?? 'unknown';
         stmt.run({
-          hash: item.hash,
+          hash,
           originalPath: item.originalPath,
-          outputPath: item.outputPath ?? item.url,
+          outputPath: item.outputPath,
           type: item.type ?? 'image',
-          mimeType: item.mimeType ?? item.metadata?.mimeType,
+          mimeType: item.metadata?.format ?? 'unknown',
           fileSize: item.metadata?.size ?? item.metadata?.originalSize ?? 0,
           width: item.metadata?.width ?? 0,
           height: item.metadata?.height ?? 0,
           metadata: JSON.stringify(item.metadata ?? {}),
-          sizes: JSON.stringify(item.sizes ?? {}),
+          sizes: JSON.stringify({}),
         });
       }
     });

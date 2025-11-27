@@ -111,9 +111,8 @@ export class ClipImageEmbedder implements ImageEmbeddingPlugin {
       const dataUrl = `data:${mimeType};base64,${base64}`;
 
       const result = await this.pipeline(dataUrl, {
-        pooling: 'mean',
         normalize: this.options.normalize,
-      });
+      } as any);
 
       return this.extractEmbedding(result);
     } catch (error) {
@@ -136,9 +135,8 @@ export class ClipImageEmbedder implements ImageEmbeddingPlugin {
       const dataUrl = `data:${mimeType};base64,${base64}`;
 
       const result = await this.pipeline(dataUrl, {
-        pooling: 'mean',
         normalize: this.options.normalize,
-      });
+      } as any);
 
       return this.extractEmbedding(result);
     } catch (error) {
