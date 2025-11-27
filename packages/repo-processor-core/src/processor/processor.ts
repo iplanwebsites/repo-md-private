@@ -8,7 +8,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import type { ProcessConfig } from '../types/config.js';
-import type { ProcessedPost, ProcessedMedia, ProcessResult } from '../types/output.js';
+import type { ProcessedPost, ProcessedMedia, ProcessResult, MediaSizeVariant } from '../types/output.js';
 import type { LogLevel, PluginContext } from '../plugins/types.js';
 import { PluginManager } from '../plugins/manager.js';
 import { IssueCollector } from '../services/issueCollector.js';
@@ -262,10 +262,16 @@ export class Processor {
     const mediaOutputDir = path.join(state.outputDir, this.config.media?.outputFolder ?? '_media');
     await ensureDir(mediaOutputDir);
 
+    // Get image sizes config
+    const imageSizes = this.config.media?.sizes ?? [];
+    const imageFormat = this.config.media?.format ?? 'webp';
+    const imageQuality = this.config.media?.quality ?? 80;
+
     for (const mediaPath of mediaFiles) {
       try {
         const relativePath = normalizePath(path.relative(state.inputDir, mediaPath));
         const fileName = path.basename(mediaPath);
+        const fileNameWithoutExt = path.basename(mediaPath, path.extname(mediaPath));
         const outputPath = path.join(mediaOutputDir, fileName);
 
         // Get original stats
@@ -273,10 +279,50 @@ export class Processor {
 
         // Process with plugin
         if (imageProcessor.canProcess(mediaPath)) {
+          // Get original dimensions first
+          const metadata = await imageProcessor.getMetadata(mediaPath);
+          const originalWidth = metadata.width;
+
+          // Process the main (full-size) image
           const result = await imageProcessor.process(mediaPath, outputPath, {
-            format: 'webp',
-            quality: 80,
+            format: imageFormat,
+            quality: imageQuality,
           });
+
+          // Generate thumbnails for each configured size
+          const sizeVariants: MediaSizeVariant[] = [];
+
+          for (const sizeConfig of imageSizes) {
+            // Skip if no width specified or if width is larger than original (no upscaling)
+            if (sizeConfig.width === null || sizeConfig.width >= originalWidth) {
+              continue;
+            }
+
+            try {
+              const sizeOutputPath = path.join(
+                mediaOutputDir,
+                `${fileNameWithoutExt}-${sizeConfig.suffix}.${imageFormat}`
+              );
+
+              const sizeResult = await imageProcessor.process(mediaPath, sizeOutputPath, {
+                width: sizeConfig.width,
+                height: sizeConfig.height ?? undefined,
+                format: imageFormat,
+                quality: imageQuality,
+              });
+
+              sizeVariants.push({
+                suffix: sizeConfig.suffix,
+                outputPath: normalizePath(path.relative(state.outputDir, sizeResult.outputPath)),
+                width: sizeResult.width,
+                height: sizeResult.height,
+                size: sizeResult.size,
+              });
+            } catch (sizeError) {
+              const sizeErrorMsg = sizeError instanceof Error ? sizeError.message : String(sizeError);
+              this.log(`Failed to generate ${sizeConfig.suffix} size for ${fileName}: ${sizeErrorMsg}`, 'warn');
+            }
+          }
 
           state.media.push({
             originalPath: relativePath,
@@ -290,6 +336,7 @@ export class Processor {
               size: result.size,
               originalSize: stats.size,
             },
+            sizes: sizeVariants.length > 0 ? sizeVariants : undefined,
           });
         } else {
           // Just copy the file

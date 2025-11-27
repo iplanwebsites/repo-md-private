@@ -49,3 +49,4 @@ coverage/
 
 .vercel
 dist_npm
+packages/repo-build-worker-ts/test/webllm/*

@@ -93,6 +93,19 @@ export interface MediaMetadata {
   readonly hash?: string;
 }
 
+export interface MediaSizeVariant {
+  /** Size suffix (xs, sm, md, lg, xl) */
+  readonly suffix: string;
+  /** Output file path relative to output dir */
+  readonly outputPath: string;
+  /** Width of this variant */
+  readonly width: number;
+  /** Height of this variant */
+  readonly height: number;
+  /** File size in bytes */
+  readonly size: number;
+}
+
 export interface ProcessedMedia {
   /** Original file path relative to input */
   readonly originalPath: string;
@@ -108,6 +121,9 @@ export interface ProcessedMedia {
 
   /** File metadata */
   readonly metadata?: MediaMetadata;
+
+  /** Responsive image size variants */
+  readonly sizes?: readonly MediaSizeVariant[];
 
   /** Image embedding vector */
   readonly embedding?: readonly number[];
