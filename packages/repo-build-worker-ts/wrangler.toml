@@ -26,9 +26,15 @@ class_name = "RepoBuildContainer"
 tag = "v1"
 new_sqlite_classes = ["RepoBuildContainer"]
 
+# Workers AI Binding (for text embeddings)
+# https://developers.cloudflare.com/workers-ai/get-started/workers-wrangler/
+[ai]
+binding = "AI"
+
 # Environment Variables
 [vars]
-SKIP_EMBEDDINGS = "true"  # Disable embeddings in CF Workers
+SKIP_EMBEDDINGS = "true"  # Set to "false" to enable Cloudflare AI embeddings
+EMBEDDING_PROVIDER = "cloudflare"  # "cloudflare" or "transformers"
 NODE_ENV = "production"
 PORT = "5522"
 

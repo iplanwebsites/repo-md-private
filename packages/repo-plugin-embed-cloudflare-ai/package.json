@@ -1,0 +1,43 @@
+{
+  "name": "@repo-md/plugin-embed-cloudflare-ai",
+  "version": "0.1.0",
+  "description": "Cloudflare Workers AI text embedding plugin for @repo-md/processor-core",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "@repo-md/processor-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0",
+    "@cloudflare/workers-types": "^4.20241127.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "repo-md",
+    "plugin",
+    "embedding",
+    "cloudflare",
+    "workers-ai",
+    "bge"
+  ],
+  "license": "MIT"
+}
