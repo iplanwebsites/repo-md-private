@@ -5,7 +5,7 @@
   "scripts": {
     "ppp": "npm version patch && git push && npm publish",
     "build": "tsup",
-    "postbuild": "cp -r dist package.json ../repo-build-worker/src/modules/repo-processor/",
+    "postbuild": "cp -r dist package.json ../repo-build-worker-legacy/src/modules/repo-processor/",
     "dev": "npm run build -- --watch",
     "format": "prettier --write src",
     "test": "vitest --run",

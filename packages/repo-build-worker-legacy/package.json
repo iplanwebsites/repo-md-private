@@ -1,5 +1,5 @@
 {
-  "name": "@repo-md/worker",
+  "name": "@repo-md/worker-legacy",
   "version": "1.0.0",
   "type": "module",
   "main": "src/worker.js",
