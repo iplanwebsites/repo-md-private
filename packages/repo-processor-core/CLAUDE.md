@@ -200,6 +200,71 @@ interface ProcessResult {
 }
 ```
 
+## Cover Image Resolution
+
+The processor automatically resolves cover images from frontmatter into a top-level `cover` property on posts. This keeps the frontmatter unchanged while providing resolved media information.
+
+### Supported Frontmatter Fields
+
+The processor checks these fields in order: `cover`, `image`, `thumbnail`, `coverImage`, `cover_image`
+
+### Output Structure
+
+**When cover image is found:**
+```json
+{
+  "title": "My Post",
+  "frontmatter": { "cover": "media/image.jpg" },
+  "cover": {
+    "original": "media/image.jpg",
+    "path": "_media/abc123.webp",
+    "hash": "abc123def456...",
+    "width": 1200,
+    "height": 675,
+    "sizes": [
+      { "suffix": "xs", "path": "_media/abc123-xs.webp", "width": 100, "height": 56 },
+      { "suffix": "sm", "path": "_media/abc123-sm.webp", "width": 300, "height": 169 }
+    ]
+  }
+}
+```
+
+**When cover image is NOT found:**
+```json
+{
+  "title": "My Post",
+  "frontmatter": { "cover": "media/missing.jpg" },
+  "cover": {
+    "original": "media/missing.jpg",
+    "error": "Cover image not found: \"media/missing.jpg\""
+  }
+}
+```
+
+**When no cover specified:** The `cover` property is omitted entirely.
+
+### Type Definitions
+
+```typescript
+interface PostCover {
+  original: string;      // Original path from frontmatter
+  path: string;          // Output path relative to dist
+  url?: string;          // Full URL if domain configured
+  hash?: string;         // Content hash
+  width?: number;        // Image width
+  height?: number;       // Image height
+  sizes?: PostCoverSize[]; // Responsive variants
+}
+
+interface PostCoverError {
+  original: string;      // Original path from frontmatter
+  error: string;         // Error message
+}
+
+// On ProcessedPost:
+cover?: PostCover | PostCoverError;
+```
+
 ## Dependencies
 
 **Production** (minimal):

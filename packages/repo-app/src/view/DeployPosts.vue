@@ -44,6 +44,8 @@ import {
 	Eye,
 	Edit,
 	Clock,
+	ImageIcon,
+	AlertCircle,
 } from "lucide-vue-next";
 // No need to import RepoMD here anymore
 
@@ -366,6 +368,38 @@ const formatTag = (tag) => {
 	return tag.charAt(0).toUpperCase() + tag.slice(1);
 };
 
+// Get cover image URL (preferring xs size for thumbnails)
+const getCoverUrl = (post) => {
+	if (!post.cover) return null;
+
+	// Check if cover has an error
+	if (post.cover.error) {
+		return { error: post.cover.error, original: post.cover.original };
+	}
+
+	// Get the xs size if available, otherwise use the main path
+	const coverPath = post.cover.sizes?.find(s => s.suffix === 'xs')?.path
+		|| post.cover.sizes?.find(s => s.suffix === 'sm')?.path
+		|| post.cover.path;
+
+	if (!coverPath) return null;
+
+	// Construct full URL
+	const baseUrl = "https://static.repo.md";
+	const projectId = props.repoClient?.projectId;
+
+	if (!projectId) {
+		console.warn("No projectId available for cover URL");
+		return null;
+	}
+
+	// Extract just the filename from the path (e.g., "_media/abc123.webp" -> "abc123.webp")
+	const filename = coverPath.split('/').pop();
+	const fullUrl = `${baseUrl}/projects/${projectId}/_shared/medias/${filename}`;
+
+	return { url: fullUrl, width: post.cover.width, height: post.cover.height };
+};
+
 // Determine the repository branch
 const repoBranch = computed(() => {
 	return props.deployment.source?.branch || 
@@ -503,6 +537,29 @@ onMounted(() => {
         :key="post.id"
         class="overflow-hidden flex flex-col h-full group relative"
       >
+        <!-- Cover Image -->
+        <div class="relative h-32 bg-gray-100">
+          <img
+            v-if="getCoverUrl(post)?.url"
+            :src="getCoverUrl(post).url"
+            :alt="post.displayTitle"
+            class="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div
+            v-else-if="getCoverUrl(post)?.error"
+            class="w-full h-full bg-red-50 flex items-center justify-center"
+            :title="getCoverUrl(post).error"
+          >
+            <AlertCircle class="w-8 h-8 text-red-300" />
+          </div>
+          <div
+            v-else
+            class="w-full h-full flex items-center justify-center"
+          >
+            <ImageIcon class="w-8 h-8 text-gray-300" />
+          </div>
+        </div>
         <!-- Card Content -->
         <div class="p-4 flex-grow flex flex-col">
           <div class="text-xs text-muted-foreground mb-2">
@@ -598,6 +655,7 @@ onMounted(() => {
       <table class="w-full border-collapse">
         <thead>
           <tr class="border-b">
+            <th class="text-left p-3 font-medium w-16">Cover</th>
             <th class="text-left p-3 font-medium">Title</th>
             <th class="text-left p-3 font-medium">Slug</th>
             <th class="text-left p-3 font-medium">Published</th>
@@ -614,6 +672,34 @@ onMounted(() => {
             :key="post.id"
             class="border-b hover:bg-accent/20 transition-colors"
           >
+            <!-- Cover Image Column -->
+            <td class="p-2 w-16">
+              <div class="w-12 h-12 flex items-center justify-center">
+                <!-- Has valid cover image -->
+                <img
+                  v-if="getCoverUrl(post)?.url"
+                  :src="getCoverUrl(post).url"
+                  :alt="post.displayTitle"
+                  class="w-12 h-12 object-cover rounded"
+                  loading="lazy"
+                />
+                <!-- Cover specified but not found (error) -->
+                <div
+                  v-else-if="getCoverUrl(post)?.error"
+                  class="w-12 h-12 bg-red-50 rounded flex items-center justify-center"
+                  :title="getCoverUrl(post).error"
+                >
+                  <AlertCircle class="w-5 h-5 text-red-400" />
+                </div>
+                <!-- No cover specified -->
+                <div
+                  v-else
+                  class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center"
+                >
+                  <ImageIcon class="w-5 h-5 text-gray-300" />
+                </div>
+              </div>
+            </td>
             <td class="p-3 cursor-pointer" @click="openPostDetails(post)">
               <div class="font-medium">{{ post.displayTitle }}</div>
               <div class="text-xs text-muted-foreground truncate max-w-xs" v-if="post.excerpt">

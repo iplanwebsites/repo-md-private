@@ -8,7 +8,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import type { ProcessConfig } from '../types/config.js';
-import type { ProcessedPost, ProcessedMedia, ProcessResult, MediaSizeVariant } from '../types/output.js';
+import type { ProcessedPost, ProcessedMedia, ProcessResult, MediaSizeVariant, PostCover, PostCoverError } from '../types/output.js';
 import type { LogLevel, PluginContext } from '../plugins/types.js';
 import { PluginManager } from '../plugins/manager.js';
 import { IssueCollector } from '../services/issueCollector.js';
@@ -524,21 +524,22 @@ export class Processor {
         ? headings[0]!.text
         : fileName);
 
-    // Transform frontmatter to resolve media paths
-    const transformedFrontmatter = this.transformFrontmatterMedia(
+    // Resolve cover image from frontmatter
+    const cover = this.resolveCover(
       result.frontmatter,
       relativePath,
       state.mediaPathMap
     );
 
-    return {
+    // Build the post object
+    const post: ProcessedPost = {
       hash,
       slug: slugInfo.slug,
       fileName,
       title,
       content: result.html,
       markdown: result.markdown,
-      frontmatter: transformedFrontmatter,
+      frontmatter: result.frontmatter,
       plainText,
       excerpt: firstParagraph,
       wordCount,
@@ -550,80 +551,86 @@ export class Processor {
         processedAt: new Date().toISOString(),
       },
     };
+
+    // Add cover if present (either resolved or error)
+    if (cover) {
+      (post as any).cover = cover;
+    }
+
+    return post;
   }
 
   /**
-   * Transform frontmatter media paths (cover, image, etc.) to processed paths
+   * Resolve cover image from frontmatter
+   * Returns PostCover if found, PostCoverError if specified but not found, undefined if not specified
    */
-  private transformFrontmatterMedia(
+  private resolveCover(
     frontmatter: Readonly<Record<string, unknown>>,
     postPath: string,
     mediaPathMap: Map<string, ProcessedMedia>
-  ): Readonly<Record<string, unknown>> {
-    // Fields that may contain media paths
-    const mediaFields = ['cover', 'image', 'thumbnail', 'og_image', 'ogImage'];
-    const postDir = path.dirname(postPath);
+  ): PostCover | PostCoverError | undefined {
+    // Check for cover in frontmatter (support multiple field names)
+    const coverFields = ['cover', 'image', 'thumbnail', 'coverImage', 'cover_image'];
+    let coverValue: string | undefined;
 
-    const transformed: Record<string, unknown> = { ...frontmatter };
-
-    // Log mediaPathMap keys for debugging
-    if (mediaPathMap.size > 0) {
-      const mapKeys = Array.from(mediaPathMap.keys()).slice(0, 10);
-      this.log(`[FrontmatterMedia] mediaPathMap has ${mediaPathMap.size} entries. Sample keys: ${mapKeys.join(', ')}`, 'info');
-    } else {
-      this.log(`[FrontmatterMedia] WARNING: mediaPathMap is EMPTY!`, 'warn');
-    }
-
-    for (const field of mediaFields) {
+    for (const field of coverFields) {
       const value = frontmatter[field];
       if (typeof value === 'string' && value.length > 0) {
-        this.log(`[FrontmatterMedia] Processing "${field}": "${value}" (postPath: ${postPath})`, 'info');
-
-        // Try multiple path resolution strategies:
-        // 1. First try the value as-is (path relative to input root, e.g., "media/image.jpg")
-        // 2. Then try relative to post's directory (e.g., "../media/image.jpg" from posts/)
-        // 3. Then try with leading slash removed
-        const pathsToTry = [
-          normalizePath(value), // Direct path from root
-          normalizePath(path.join(postDir, value)), // Relative to post directory
-          normalizePath(value.replace(/^\//, '')), // Remove leading slash if present
-        ];
-
-        this.log(`[FrontmatterMedia] Trying paths: ${pathsToTry.join(' | ')}`, 'info');
-
-        let mediaInfo: ProcessedMedia | undefined;
-        let matchedPath: string | undefined;
-        for (const tryPath of pathsToTry) {
-          mediaInfo = mediaPathMap.get(tryPath);
-          if (mediaInfo) {
-            matchedPath = tryPath;
-            break;
-          }
-        }
-
-        if (mediaInfo) {
-          this.log(`[FrontmatterMedia] MATCH FOUND for "${field}" at path "${matchedPath}" -> ${mediaInfo.outputPath}`, 'info');
-          // Replace with structured media info
-          transformed[field] = {
-            original: value,
-            path: mediaInfo.outputPath,
-            hash: mediaInfo.metadata?.hash,
-            width: mediaInfo.metadata?.width,
-            height: mediaInfo.metadata?.height,
-            sizes: mediaInfo.sizes?.map((s) => ({
-              suffix: s.suffix,
-              path: s.outputPath,
-              width: s.width,
-              height: s.height,
-            })),
-          };
-        } else {
-          this.log(`[FrontmatterMedia] NO MATCH for "${field}": "${value}". Tried: ${pathsToTry.join(', ')}`, 'warn');
-        }
+        coverValue = value;
+        break;
       }
     }
 
-    return transformed;
+    // No cover specified in frontmatter
+    if (!coverValue) {
+      return undefined;
+    }
+
+    const postDir = path.dirname(postPath);
+
+    // Try multiple path resolution strategies:
+    // 1. First try the value as-is (path relative to input root, e.g., "media/image.jpg")
+    // 2. Then try relative to post's directory (e.g., "../media/image.jpg" from posts/)
+    // 3. Then try with leading slash removed
+    const pathsToTry = [
+      normalizePath(coverValue), // Direct path from root
+      normalizePath(path.join(postDir, coverValue)), // Relative to post directory
+      normalizePath(coverValue.replace(/^\//, '')), // Remove leading slash if present
+    ];
+
+    let mediaInfo: ProcessedMedia | undefined;
+    for (const tryPath of pathsToTry) {
+      mediaInfo = mediaPathMap.get(tryPath);
+      if (mediaInfo) {
+        break;
+      }
+    }
+
+    // Cover specified but image not found
+    if (!mediaInfo) {
+      this.log(`Cover image not found for "${postPath}": "${coverValue}"`, 'warn');
+      return {
+        original: coverValue,
+        error: `Cover image not found: "${coverValue}"`,
+      };
+    }
+
+    // Successfully resolved cover
+    const cover: PostCover = {
+      original: coverValue,
+      path: mediaInfo.outputPath,
+      hash: mediaInfo.metadata?.hash,
+      width: mediaInfo.metadata?.width,
+      height: mediaInfo.metadata?.height,
+      sizes: mediaInfo.sizes?.map((s) => ({
+        suffix: s.suffix,
+        path: s.outputPath,
+        width: s.width,
+        height: s.height,
+      })),
+    };
+
+    return cover;
   }
 
   // --------------------------------------------------------------------------

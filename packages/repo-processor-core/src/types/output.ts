@@ -27,6 +27,47 @@ export interface PostMetadata {
 }
 
 // ============================================================================
+// Post Cover
+// ============================================================================
+
+export interface PostCoverSize {
+  /** Size suffix (xs, sm, md, lg, xl) */
+  readonly suffix: string;
+  /** Output file path relative to output dir */
+  readonly path: string;
+  /** Full URL if domain configured */
+  readonly url?: string;
+  /** Width of this variant */
+  readonly width: number;
+  /** Height of this variant */
+  readonly height: number;
+}
+
+export interface PostCover {
+  /** Original path from frontmatter */
+  readonly original: string;
+  /** Output file path relative to output dir */
+  readonly path: string;
+  /** Full URL if domain configured */
+  readonly url?: string;
+  /** Content hash */
+  readonly hash?: string;
+  /** Image width */
+  readonly width?: number;
+  /** Image height */
+  readonly height?: number;
+  /** Responsive image size variants */
+  readonly sizes?: readonly PostCoverSize[];
+}
+
+export interface PostCoverError {
+  /** Original path from frontmatter */
+  readonly original: string;
+  /** Error message explaining why cover couldn't be resolved */
+  readonly error: string;
+}
+
+// ============================================================================
 // Processed Post
 // ============================================================================
 
@@ -69,6 +110,9 @@ export interface ProcessedPost {
 
   /** Timestamps and metadata */
   readonly metadata: PostMetadata;
+
+  /** Cover image (resolved from frontmatter.cover) */
+  readonly cover?: PostCover | PostCoverError;
 
   /** URL of first image (for cover) */
   readonly firstImage?: string;
