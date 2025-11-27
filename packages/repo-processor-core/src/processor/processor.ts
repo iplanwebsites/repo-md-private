@@ -561,6 +561,28 @@ export class Processor {
   }
 
   /**
+   * Build absolute URL from relative path using domain config
+   * URL structure: {domain}/_shared/medias/{filename}
+   */
+  private buildAbsoluteUrl(relativePath: string): string | undefined {
+    const domain = this.config.media?.domain;
+    if (!domain) {
+      return undefined;
+    }
+
+    // Get the filename from the path (e.g., "_media/abc123.webp" -> "abc123.webp")
+    const filename = relativePath.split('/').pop();
+    if (!filename) {
+      return undefined;
+    }
+
+    // Build URL: domain + /_shared/medias/ + filename
+    const baseUrl = domain.replace(/\/$/, ''); // Remove trailing slash
+
+    return `${baseUrl}/_shared/medias/${filename}`;
+  }
+
+  /**
    * Resolve cover image from frontmatter
    * Returns PostCover if found, PostCoverError if specified but not found, undefined if not specified
    */
@@ -615,16 +637,18 @@ export class Processor {
       };
     }
 
-    // Successfully resolved cover
+    // Successfully resolved cover - build with absolute URLs if domain configured
     const cover: PostCover = {
       original: coverValue,
       path: mediaInfo.outputPath,
+      url: this.buildAbsoluteUrl(mediaInfo.outputPath),
       hash: mediaInfo.metadata?.hash,
       width: mediaInfo.metadata?.width,
       height: mediaInfo.metadata?.height,
       sizes: mediaInfo.sizes?.map((s) => ({
         suffix: s.suffix,
         path: s.outputPath,
+        url: this.buildAbsoluteUrl(s.outputPath),
         width: s.width,
         height: s.height,
       })),

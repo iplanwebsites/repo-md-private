@@ -377,27 +377,33 @@ const getCoverUrl = (post) => {
 		return { error: post.cover.error, original: post.cover.original };
 	}
 
-	// Get the xs size if available, otherwise use the main path
-	const coverPath = post.cover.sizes?.find(s => s.suffix === 'xs')?.path
-		|| post.cover.sizes?.find(s => s.suffix === 'sm')?.path
-		|| post.cover.path;
+	// Get the xs size if available, otherwise use the main cover
+	const xsSize = post.cover.sizes?.find(s => s.suffix === 'xs');
+	const smSize = post.cover.sizes?.find(s => s.suffix === 'sm');
+	const preferredSize = xsSize || smSize;
 
-	if (!coverPath) return null;
+	// Use the url directly if available (from processor), otherwise construct it
+	let coverUrl = preferredSize?.url || post.cover.url;
 
-	// Construct full URL
-	const baseUrl = "https://static.repo.md";
-	const projectId = props.repoClient?.projectId;
+	// Fallback: construct URL if not provided by processor
+	if (!coverUrl) {
+		const coverPath = preferredSize?.path || post.cover.path;
+		if (!coverPath) return null;
 
-	if (!projectId) {
-		console.warn("No projectId available for cover URL");
-		return null;
+		const baseUrl = "https://static.repo.md";
+		const projectId = props.repoClient?.projectId;
+
+		if (!projectId) {
+			console.warn("No projectId available for cover URL");
+			return null;
+		}
+
+		// Extract just the filename from the path (e.g., "_media/abc123.webp" -> "abc123.webp")
+		const filename = coverPath.split('/').pop();
+		coverUrl = `${baseUrl}/projects/${projectId}/_shared/medias/${filename}`;
 	}
 
-	// Extract just the filename from the path (e.g., "_media/abc123.webp" -> "abc123.webp")
-	const filename = coverPath.split('/').pop();
-	const fullUrl = `${baseUrl}/projects/${projectId}/_shared/medias/${filename}`;
-
-	return { url: fullUrl, width: post.cover.width, height: post.cover.height };
+	return { url: coverUrl, width: post.cover.width, height: post.cover.height };
 };
 
 // Determine the repository branch

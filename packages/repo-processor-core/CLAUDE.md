@@ -208,6 +208,22 @@ The processor automatically resolves cover images from frontmatter into a top-le
 
 The processor checks these fields in order: `cover`, `image`, `thumbnail`, `coverImage`, `cover_image`
 
+### URL Generation
+
+The `url` field is only populated when `media.domain` is configured:
+
+```typescript
+const processor = new Processor({
+  config: {
+    dir: { input: './vault', output: './dist' },
+    media: {
+      domain: 'https://static.repo.md/org/project',
+      pathPrefix: '/_media', // default
+    },
+  },
+});
+```
+
 ### Output Structure
 
 **When cover image is found:**
@@ -218,12 +234,13 @@ The processor checks these fields in order: `cover`, `image`, `thumbnail`, `cove
   "cover": {
     "original": "media/image.jpg",
     "path": "_media/abc123.webp",
+    "url": "https://static.repo.md/org/project/_media/abc123.webp",
     "hash": "abc123def456...",
     "width": 1200,
     "height": 675,
     "sizes": [
-      { "suffix": "xs", "path": "_media/abc123-xs.webp", "width": 100, "height": 56 },
-      { "suffix": "sm", "path": "_media/abc123-sm.webp", "width": 300, "height": 169 }
+      { "suffix": "xs", "path": "_media/abc123-xs.webp", "url": "https://static.repo.md/org/project/_media/abc123-xs.webp", "width": 100, "height": 56 },
+      { "suffix": "sm", "path": "_media/abc123-sm.webp", "url": "https://static.repo.md/org/project/_media/abc123-sm.webp", "width": 300, "height": 169 }
     ]
   }
 }
