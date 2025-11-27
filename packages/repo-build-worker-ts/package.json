@@ -6,7 +6,8 @@
   "types": "dist/worker.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch & nodemon --watch dist --exec 'node dist/worker.js'",
+    "predev": "lsof -ti:5522 | xargs kill -9 2>/dev/null || true",
+    "dev": "concurrently -k -n tsc,server -c blue,green \"tsc --watch --preserveWatchOutput\" \"nodemon --watch dist --delay 1 --exec node dist/worker.js\"",
     "start": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "concurrently": "9.2.1",
     "nodemon": "3.1.11",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

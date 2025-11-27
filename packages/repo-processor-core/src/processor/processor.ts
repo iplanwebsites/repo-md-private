@@ -262,7 +262,8 @@ export class Processor {
     this.log(`Found ${mediaFiles.length} media files`, 'info');
 
     // Process each media file
-    const mediaOutputDir = path.join(state.outputDir, this.config.media?.outputFolder ?? '_media');
+    // Use dir.mediaOutput config (default: '_media')
+    const mediaOutputDir = path.join(state.outputDir, this.config.dir.mediaOutput ?? '_media');
     await ensureDir(mediaOutputDir);
 
     // Get image config
@@ -730,9 +731,9 @@ export class Processor {
 
     this.log('Writing output files...', 'info');
 
-    // File paths
+    // File paths (medias.json plural for client compatibility)
     const postsPath = path.join(outputDir, 'posts.json');
-    const mediaPath = path.join(outputDir, 'media.json');
+    const mediaPath = path.join(outputDir, 'medias.json');
     const slugMapPath = path.join(outputDir, 'posts-slug-map.json');
     const pathMapPath = path.join(outputDir, 'posts-path-map.json');
     const issuesPath = path.join(outputDir, 'processor-issues.json');

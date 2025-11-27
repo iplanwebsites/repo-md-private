@@ -135,6 +135,12 @@ async function cleanupTempFolder(
     return;
   }
 
+  // Skip cleanup if KEEP_TMP_BUILD_FOLDER is set
+  if (process.env.KEEP_TMP_BUILD_FOLDER === 'true') {
+    logger.log(`Keeping temp folder (KEEP_TMP_BUILD_FOLDER=true): ${tempPath}`, { jobId });
+    return;
+  }
+
   try {
     logger.log(`Cleaning up temp folder: ${tempPath}`, { jobId });
     await rm(tempPath, { recursive: true, force: true });

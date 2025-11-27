@@ -195,7 +195,7 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       dir: {
         input: inputPath,
         output: distFolder,
-        mediaOutput: '_medias',
+        mediaOutput: '_media',
         postsOutput: '_posts',
       },
       media: {

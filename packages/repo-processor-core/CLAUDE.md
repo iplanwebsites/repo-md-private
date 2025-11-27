@@ -93,11 +93,10 @@ dist/
 ├── posts.json                    # All posts with metadata
 ├── posts-slug-map.json           # slug → hash mapping
 ├── posts-path-map.json           # path → hash mapping
-├── medias.json                   # All media with sizes
-├── media-path-map.json           # path → hash mapping
+├── medias.json                   # All media with sizes (plural for client compatibility)
 ├── _posts/                       # Individual post JSON files
 │   └── {hash}.json
-├── _medias/                      # Processed media files
+├── _media/                       # Processed media files
 │   └── {hash}.{ext}
 │
 # Plugin-generated files:

@@ -37,7 +37,7 @@ export interface DirectoryConfig {
   /** Output directory for generated files (default: input + '/dist') */
   readonly output?: string;
 
-  /** Media output subdirectory (default: '_medias') */
+  /** Media output subdirectory (default: '_media') */
   readonly mediaOutput?: string;
 
   /** Posts output subdirectory for individual post JSON files */
@@ -73,11 +73,8 @@ export interface MediaConfig {
   /** Domain for absolute URLs */
   readonly domain?: string;
 
-  /** Asset path prefix (default: '/_medias') */
+  /** Asset path prefix (default: '/_media') */
   readonly pathPrefix?: string;
-
-  /** Output folder name for media (default: '_media') */
-  readonly outputFolder?: string;
 }
 
 // ============================================================================
@@ -178,7 +175,7 @@ export const withDefaults = (config: ProcessConfig): Required<ProcessConfig> => 
     quality: 80,
     useHash: true,
     useSharding: false,
-    pathPrefix: '/_medias',
+    pathPrefix: '/_media',
     ...config.media,
   },
   content: {
@@ -215,6 +212,6 @@ export const getOutputDir = (config: ProcessConfig): string =>
  */
 export const getMediaOutputDir = (config: ProcessConfig): string => {
   const outputDir = getOutputDir(config);
-  const mediaSubdir = config.dir.mediaOutput ?? '_medias';
+  const mediaSubdir = config.dir.mediaOutput ?? '_media';
   return `${outputDir}/${mediaSubdir}`;
 };

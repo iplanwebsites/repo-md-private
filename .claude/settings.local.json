@@ -71,7 +71,9 @@
       "Bash(npx wrangler containers info:*)",
       "Bash(timeout 5 node:*)",
       "Bash(node dist/worker.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ps:*)",
+      "Bash(kill:*)"
     ],
     "deny": []
   },

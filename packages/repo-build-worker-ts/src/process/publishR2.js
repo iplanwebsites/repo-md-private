@@ -671,7 +671,7 @@ async function publishR2(data) {
     const projectId = data.projectId;
     const orgId = data.orgId;
     const alsoSaveMediasIntoDeploy = data.alsoSaveMediasIntoDeploy || false;
-    const mediaDir = data.mediaDir || "_medias"; // Default media directory name based on buildAssets.js
+    const mediaDir = data.mediaDir || "_media"; // Default media directory name matching processor-core
 
     // Merge optimization configuration
     const optimizationConfig = mergeOptimizationConfig(data.uploadOptimization || {});

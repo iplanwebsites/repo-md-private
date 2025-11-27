@@ -90,6 +90,7 @@ const unsplashResults = ref([]);
 const isSearchingUnsplash = ref(false);
 const selectedUnsplashImage = ref(null);
 const isDownloadingStockPhoto = ref(false);
+const selectedMediaUrl = ref("#"); // Resolved URL for selected media
 
 // Get available size options from first media item with sizes
 const availableSizeOptions = computed(() => {
@@ -523,9 +524,32 @@ const getMediaIcon = (type) => {
 const getAvailableSizes = (media) => {
 	if (!media || !media.sizes) return [];
 
+	// New format: sizes is an array with suffix property
+	if (Array.isArray(media.sizes)) {
+		return media.sizes.map((s) => s.suffix);
+	}
+
+	// Old format: sizes is an object keyed by size
 	return Object.keys(media.sizes).filter(
 		(key) => Array.isArray(media.sizes[key]) && media.sizes[key].length > 0,
 	);
+};
+
+// Get size info for a specific size variant
+const getSizeInfo = (media, sizeKey) => {
+	if (!media || !media.sizes) return null;
+
+	// New format: sizes is an array with suffix property
+	if (Array.isArray(media.sizes)) {
+		return media.sizes.find((s) => s.suffix === sizeKey);
+	}
+
+	// Old format: sizes is an object keyed by size
+	if (media.sizes[sizeKey] && media.sizes[sizeKey].length > 0) {
+		return media.sizes[sizeKey][0];
+	}
+
+	return null;
 };
 
 // Create a reactive ref to store generated URLs for media previews
@@ -533,34 +557,40 @@ const mediaPreviewUrls = ref({});
 
 // Helper to get the best source path for a media item
 const getBestMediaPath = (media, sizeKey = null) => {
-	// Try to get the size-specific path if a size is requested
-	if (
-		sizeKey &&
-		sizeKey !== "ori" &&
-		media.sizes &&
-		media.sizes[sizeKey] &&
-		media.sizes[sizeKey].length > 0
-	) {
-		// Get the hash filename from the size object
-		const sizeObj = media.sizes[sizeKey][0];
-
-		// Look for the hash filename - it should end with -sm.jpg or similar
-		if (sizeObj.hash || sizeObj.publicPath) {
-			const path = sizeObj.hash || sizeObj.publicPath;
-			const parts = path.split("/");
-			return parts[parts.length - 1]; // Return just the filename
+	// Handle both old format (sizes as object keyed by size) and new format (sizes as array)
+	if (sizeKey && sizeKey !== "ori" && media.sizes) {
+		// New format: sizes is an array with suffix property
+		if (Array.isArray(media.sizes)) {
+			const sizeVariant = media.sizes.find((s) => s.suffix === sizeKey);
+			if (sizeVariant && sizeVariant.outputPath) {
+				const parts = sizeVariant.outputPath.split("/");
+				return parts[parts.length - 1]; // Return just the filename
+			}
+		}
+		// Old format: sizes is an object keyed by size
+		else if (media.sizes[sizeKey] && media.sizes[sizeKey].length > 0) {
+			const sizeObj = media.sizes[sizeKey][0];
+			if (sizeObj.hash || sizeObj.publicPath || sizeObj.outputPath) {
+				const path = sizeObj.hash || sizeObj.publicPath || sizeObj.outputPath;
+				const parts = path.split("/");
+				return parts[parts.length - 1];
+			}
 		}
 	}
 
 	// For original size or fallback, use the best available path
-	// We need to find the hash name pattern like: d1d969a20d8b65695e8f4fb4e73a64edddb1662d7090c7fefc02606953382df0-ori.jpeg
+	// First check if outputPath is available (new format)
+	if (media.outputPath) {
+		const parts = media.outputPath.split("/");
+		return parts[parts.length - 1];
+	}
 
-	// First check if hash is available
+	// Check hash (old format)
 	if (media.hash) {
 		return media.hash;
 	}
 
-	// Try publicPath
+	// Try publicPath (old format)
 	if (media.publicPath) {
 		const parts = media.publicPath.split("/");
 		return parts[parts.length - 1];
@@ -765,9 +795,21 @@ watch(
 	{ deep: true },
 );
 
-// Watch for changes in default size
-watch(defaultSize, (newSize) => {
+// Watch for changes in default size - update the selected media URL
+watch(defaultSize, async (newSize) => {
 	console.log("DEBUG: Default size changed to:", newSize);
+	if (selectedMedia.value) {
+		selectedMediaUrl.value = await getPreferredCdnUrl(selectedMedia.value);
+	}
+});
+
+// Watch for changes in selected media - update the resolved URL
+watch(selectedMedia, async (newMedia) => {
+	if (newMedia) {
+		selectedMediaUrl.value = await getPreferredCdnUrl(newMedia);
+	} else {
+		selectedMediaUrl.value = "#";
+	}
 });
 
 // Watch for changes in the repoClient prop
@@ -1425,12 +1467,12 @@ onMounted(() => {
             <div class="text-sm font-medium">Selected Size URL:</div>
             <div class="text-sm break-all flex items-center">
               <span class="truncate flex-grow">{{
-                getPreferredCdnUrl(selectedMedia)
+                selectedMediaUrl
               }}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                @click="copyToClipboard(getPreferredCdnUrl(selectedMedia))"
+                @click="copyToClipboard(selectedMediaUrl)"
                 class="ml-2 flex-shrink-0"
               >
                 <Copy class="w-4 h-4" />
@@ -1488,11 +1530,11 @@ onMounted(() => {
                   </div>
                   <div class="text-sm flex items-center">
                     <span class="truncate flex-grow">
-                      {{ selectedMedia.sizes[sizeKey][0].width }}×{{
-                        selectedMedia.sizes[sizeKey][0].height
+                      {{ getSizeInfo(selectedMedia, sizeKey)?.width }}×{{
+                        getSizeInfo(selectedMedia, sizeKey)?.height
                       }}
                       ({{
-                        formatFileSize(selectedMedia.sizes[sizeKey][0].size)
+                        formatFileSize(getSizeInfo(selectedMedia, sizeKey)?.size)
                       }})
                     </span>
                     <Button
