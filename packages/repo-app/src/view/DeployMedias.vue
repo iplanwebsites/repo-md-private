@@ -95,14 +95,28 @@ const selectedMediaUrl = ref("#"); // Resolved URL for selected media
 // Get available size options from first media item with sizes
 const availableSizeOptions = computed(() => {
 	// Look for the first media with sizes to determine available options
-	const mediaWithSizes = medias.value.find(
-		(media) => media && media.sizes && Object.keys(media.sizes).length > 0,
-	);
+	const mediaWithSizes = medias.value.find((media) => {
+		if (!media || !media.sizes) return false;
+		// Handle both array format (new) and object format (old)
+		if (Array.isArray(media.sizes)) {
+			return media.sizes.length > 0;
+		}
+		return Object.keys(media.sizes).length > 0;
+	});
 
 	if (!mediaWithSizes) return ["ori"]; // Original size only if no sizes found
 
-	// Get all size keys and ensure "ori" is included for original size
-	const sizes = Object.keys(mediaWithSizes.sizes);
+	// Get all size keys based on format
+	let sizes;
+	if (Array.isArray(mediaWithSizes.sizes)) {
+		// New format: sizes is an array with suffix property
+		sizes = mediaWithSizes.sizes.map((s) => s.suffix);
+	} else {
+		// Old format: sizes is an object keyed by size
+		sizes = Object.keys(mediaWithSizes.sizes);
+	}
+
+	// Ensure "ori" is included for original size
 	if (!sizes.includes("ori")) {
 		sizes.push("ori");
 	}
@@ -220,7 +234,19 @@ const enhancedMedias = computed(() => {
 				};
 			}
 
-			const extension = media.fileExt?.toLowerCase();
+			// Get extension - handle both old format (fileExt) and new format (extract from fileName)
+			let extension = media.fileExt?.toLowerCase();
+			if (!extension && media.fileName) {
+				const parts = media.fileName.split(".");
+				if (parts.length > 1) {
+					extension = parts[parts.length - 1].toLowerCase();
+				}
+			}
+			// Also check metadata.format for new format
+			if (!extension && media.metadata?.format) {
+				extension = media.metadata.format.toLowerCase();
+			}
+
 			const mediaType = ["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(
 				extension,
 			)
@@ -231,24 +257,37 @@ const enhancedMedias = computed(() => {
 						? "audio"
 						: "other";
 
-			// Process image sizes and add placeholder CDN urls to each size
-			// Actual URLs will be filled in asynchronously when needed
+			// Process image sizes - handle both old and new formats
+			// Old format: sizes is an object keyed by size suffix
+			// New format: sizes is an array with suffix property
 			const enhancedSizes = {};
 			if (media.sizes) {
-				Object.keys(media.sizes).forEach((sizeKey) => {
-					if (Array.isArray(media.sizes[sizeKey])) {
-						enhancedSizes[sizeKey] = media.sizes[sizeKey].map((size) => {
-							return {
-								...size,
-								// Ensure we have the correct path for the URL
-								publicPath:
-									size.publicPath ||
-									size.path ||
-									`/${media.fileName}-${sizeKey}`,
-							};
-						});
-					}
-				});
+				if (Array.isArray(media.sizes)) {
+					// New format: convert array to object keyed by suffix for compatibility
+					media.sizes.forEach((sizeVariant) => {
+						if (sizeVariant.suffix) {
+							enhancedSizes[sizeVariant.suffix] = [{
+								...sizeVariant,
+								publicPath: sizeVariant.outputPath || sizeVariant.publicPath,
+							}];
+						}
+					});
+				} else {
+					// Old format: sizes is already an object
+					Object.keys(media.sizes).forEach((sizeKey) => {
+						if (Array.isArray(media.sizes[sizeKey])) {
+							enhancedSizes[sizeKey] = media.sizes[sizeKey].map((size) => {
+								return {
+									...size,
+									publicPath:
+										size.publicPath ||
+										size.path ||
+										`/${media.fileName}-${sizeKey}`,
+								};
+							});
+						}
+					});
+				}
 			}
 
 			// We'll use placeholders for URLs and resolve them when needed
@@ -374,10 +413,11 @@ const fetchMedias = async () => {
 		medias.value = Array.isArray(result) ? result : [];
 
 		// Initialize the mediaPreviewUrls for all images with '#' to ensure reactivity
+		// Use originalPath as key (same as media.id in enhancedMedias)
 		const initialUrls = {};
 		medias.value.forEach(media => {
-			if (media && media.fileName) {
-				initialUrls[media.fileName] = '#';
+			if (media && media.originalPath) {
+				initialUrls[media.originalPath] = '#';
 			}
 		});
 		mediaPreviewUrls.value = initialUrls;
