@@ -6,7 +6,7 @@
   "types": "dist/worker.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
+    "dev": "tsc --watch & nodemon --watch dist --exec 'node dist/worker.js'",
     "start": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -24,13 +24,13 @@
   "private": true,
   "description": "TypeScript repository worker service using modern plugin architecture",
   "dependencies": {
-    "@repo-md/processor-core": "*",
-    "@repo-md/plugin-image-sharp": "*",
-    "@repo-md/plugin-embed-transformers": "*",
-    "@repo-md/plugin-embed-clip": "*",
-    "@repo-md/plugin-database-sqlite": "*",
     "@aws-sdk/client-s3": "^3.802.0",
     "@aws-sdk/s3-request-presigner": "^3.802.0",
+    "@repo-md/plugin-database-sqlite": "*",
+    "@repo-md/plugin-embed-clip": "*",
+    "@repo-md/plugin-embed-transformers": "*",
+    "@repo-md/plugin-image-sharp": "*",
+    "@repo-md/processor-core": "*",
     "compute-cosine-similarity": "^1.1.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
@@ -45,6 +45,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "nodemon": "3.1.11",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   },
