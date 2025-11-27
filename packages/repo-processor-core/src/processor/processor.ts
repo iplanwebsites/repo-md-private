@@ -477,10 +477,20 @@ export class Processor {
     // Process markdown with pipeline config
     const pipelineConfig = this.config.pipeline ?? {};
     const result = await processMarkdown(content, {
+      // Basic markdown features
       gfm: pipelineConfig.gfm ?? true,
       allowRawHtml: pipelineConfig.allowRawHtml ?? true,
-      // Note: syntaxHighlighting, parseFormulas, removeDeadLinks require
-      // additional rehype/remark plugins to be added to the pipeline
+      // Obsidian features
+      wikiLinks: pipelineConfig.wikiLinks ?? true,
+      callouts: pipelineConfig.callouts ?? true,
+      // Code & Math
+      syntaxHighlighting: pipelineConfig.syntaxHighlighting ?? true,
+      parseFormulas: pipelineConfig.parseFormulas ?? false,
+      // Links
+      externalLinks: pipelineConfig.externalLinks ?? true,
+      autolinkHeadings: pipelineConfig.autolinkHeadings ?? true,
+      // Embeds
+      youtubeEmbeds: pipelineConfig.youtubeEmbeds ?? true,
     });
 
     // Skip if not published (unless processAllFiles is enabled)

@@ -133,14 +133,33 @@ export interface PipelineConfig {
   /** Allow raw HTML in markdown (default: true) */
   readonly allowRawHtml?: boolean;
 
+  // Obsidian features
+  /** Enable wiki-link syntax [[page]] (default: true) */
+  readonly wikiLinks?: boolean;
+
+  /** Enable Obsidian callouts > [!NOTE] (default: true) */
+  readonly callouts?: boolean;
+
+  // Code & Math
   /** Enable syntax highlighting for code blocks (default: true) */
   readonly syntaxHighlighting?: boolean;
 
   /** Enable LaTeX formula parsing (default: false) */
   readonly parseFormulas?: boolean;
 
+  // Links
+  /** Add target="_blank" to external links (default: true) */
+  readonly externalLinks?: boolean;
+
+  /** Wrap headings with anchor links (default: true) */
+  readonly autolinkHeadings?: boolean;
+
   /** Remove broken/dead links instead of keeping them (default: false) */
   readonly removeDeadLinks?: boolean;
+
+  // Embeds
+  /** Enable YouTube video embeds (default: true) */
+  readonly youtubeEmbeds?: boolean;
 }
 
 // ============================================================================
@@ -221,9 +240,14 @@ export const withDefaults = (config: ProcessConfig): Required<ProcessConfig> => 
   pipeline: {
     gfm: true,
     allowRawHtml: true,
+    wikiLinks: true,
+    callouts: true,
     syntaxHighlighting: true,
     parseFormulas: false,
+    externalLinks: true,
+    autolinkHeadings: true,
     removeDeadLinks: false,
+    youtubeEmbeds: true,
     ...config.pipeline,
   },
   debug: {

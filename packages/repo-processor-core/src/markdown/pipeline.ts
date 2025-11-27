@@ -2,6 +2,7 @@
  * Markdown Processing Pipeline
  *
  * Core unified pipeline for converting markdown to HTML.
+ * Supports Obsidian-style markdown with wiki-links, callouts, and embeds.
  * Extensible through plugins and options.
  */
 
@@ -15,20 +16,77 @@ import rehypeSlug from 'rehype-slug';
 import matter from 'gray-matter';
 import type { Root as MdastRoot } from 'mdast';
 import type { Root as HastRoot } from 'hast';
-import type { VFile } from 'vfile';
+
+// Obsidian & Content plugins
+import remarkCallouts from 'remark-callouts';
+import remarkMath from 'remark-math';
+import { remarkObsidianLink } from 'remark-obsidian-link';
+import remarkYoutube from 'remark-youtube';
+
+// Rehype plugins
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypeExternalLinks from 'rehype-external-links';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeMathjaxChtml from 'rehype-mathjax/chtml';
+
+// Languages for syntax highlighting
+import { all as allLowlightLanguages } from 'lowlight';
 
 // ============================================================================
 // Types
 // ============================================================================
 
 /**
+ * Wiki-link object as passed by remark-obsidian-link
+ */
+export interface WikiLink {
+  value: string;
+  alias?: string;
+}
+
+/**
+ * Wiki-link resolver function type
+ * Takes a wiki-link object and returns the resolved link info
+ */
+export type WikiLinkResolver = (wikiLink: WikiLink) => {
+  value: string;
+  uri: string;
+  exists?: boolean;
+};
+
+/**
  * Options for the markdown pipeline
  */
 export interface PipelineOptions {
-  /** Enable GitHub Flavored Markdown */
+  /** Enable GitHub Flavored Markdown (tables, strikethrough, etc.) */
   readonly gfm?: boolean;
   /** Allow raw HTML in markdown */
   readonly allowRawHtml?: boolean;
+
+  // Obsidian features
+  /** Enable wiki-link syntax [[page]] */
+  readonly wikiLinks?: boolean;
+  /** Custom wiki-link resolver function */
+  readonly wikiLinkResolver?: WikiLinkResolver;
+  /** Enable Obsidian callouts (> [!NOTE]) */
+  readonly callouts?: boolean;
+
+  // Code & Math
+  /** Enable syntax highlighting for code blocks */
+  readonly syntaxHighlighting?: boolean;
+  /** Enable LaTeX math expressions ($..$ and $$..$$) */
+  readonly parseFormulas?: boolean;
+
+  // Links
+  /** Add target="_blank" to external links */
+  readonly externalLinks?: boolean;
+  /** Wrap headings with anchor links */
+  readonly autolinkHeadings?: boolean;
+
+  // Embeds
+  /** Enable YouTube video embeds */
+  readonly youtubeEmbeds?: boolean;
+
   /** Custom remark plugins to add */
   readonly remarkPlugins?: readonly RemarkPlugin[];
   /** Custom rehype plugins to add */
@@ -91,21 +149,52 @@ export const parseFrontmatter = (content: string): FrontmatterResult => {
 };
 
 // ============================================================================
+// Default Wiki-Link Resolver
+// ============================================================================
+
+/**
+ * Default wiki-link resolver that creates simple links
+ * In real usage, this should be replaced with a resolver that knows about the vault
+ */
+const defaultWikiLinkResolver: WikiLinkResolver = (wikiLink: WikiLink) => {
+  const { value, alias } = wikiLink;
+
+  // Simple slugification
+  const slug = value
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-');
+
+  return {
+    value: alias ?? value,
+    uri: `/${slug}`,
+    exists: true,
+  };
+};
+
+// ============================================================================
 // Pipeline Creation
 // ============================================================================
 
 /**
- * Default pipeline options
+ * Default pipeline options - all features enabled for full Obsidian compatibility
  */
 export const DEFAULT_PIPELINE_OPTIONS: PipelineOptions = {
   gfm: true,
   allowRawHtml: true,
+  wikiLinks: true,
+  callouts: true,
+  syntaxHighlighting: true,
+  parseFormulas: false, // Disabled by default (requires MathJax CSS)
+  externalLinks: true,
+  autolinkHeadings: true,
+  youtubeEmbeds: true,
   remarkPlugins: [],
   rehypePlugins: [],
 };
 
 /**
- * Create a basic markdown to HTML processor
+ * Create a markdown to HTML processor with full Obsidian support
  * Uses 'any' for processor type to avoid complex unified generic constraints
  */
 export const createBasePipeline = (options: PipelineOptions = {}): any => {
@@ -113,9 +202,36 @@ export const createBasePipeline = (options: PipelineOptions = {}): any => {
 
   let processor: any = unified().use(remarkParse);
 
-  // Add GFM support
+  // -------------------------------------------------------------------------
+  // Remark plugins (Markdown AST transformations)
+  // -------------------------------------------------------------------------
+
+  // Add GFM support (tables, strikethrough, task lists, autolinks)
   if (opts.gfm) {
     processor = processor.use(remarkGfm);
+  }
+
+  // Add wiki-link support [[page]] and [[page|alias]]
+  if (opts.wikiLinks) {
+    const resolver = opts.wikiLinkResolver ?? defaultWikiLinkResolver;
+    processor = processor.use(remarkObsidianLink, {
+      toLink: (wikiLink: WikiLink) => resolver(wikiLink),
+    });
+  }
+
+  // Add YouTube video embeds
+  if (opts.youtubeEmbeds) {
+    processor = processor.use(remarkYoutube, { noHardcodedSize: true });
+  }
+
+  // Add Obsidian-style callouts (> [!NOTE], > [!WARNING], etc.)
+  if (opts.callouts) {
+    processor = processor.use(remarkCallouts);
+  }
+
+  // Add LaTeX math support ($..$ and $$..$$ blocks)
+  if (opts.parseFormulas) {
+    processor = processor.use(remarkMath);
   }
 
   // Add custom remark plugins
@@ -123,18 +239,56 @@ export const createBasePipeline = (options: PipelineOptions = {}): any => {
     processor = processor.use(plugin as any, pluginOpts);
   }
 
-  // Convert to HAST
+  // -------------------------------------------------------------------------
+  // Convert MDAST to HAST
+  // -------------------------------------------------------------------------
+
   processor = processor.use(remarkRehype, {
     allowDangerousHtml: opts.allowRawHtml,
   });
 
-  // Allow raw HTML
+  // Allow raw HTML passthrough
   if (opts.allowRawHtml) {
     processor = processor.use(rehypeRaw);
   }
 
+  // -------------------------------------------------------------------------
+  // Rehype plugins (HTML AST transformations)
+  // -------------------------------------------------------------------------
+
+  // Add external links handling (target="_blank", rel="noopener")
+  if (opts.externalLinks) {
+    processor = processor.use(rehypeExternalLinks, {
+      target: '_blank',
+      rel: ['noopener', 'noreferrer'],
+    });
+  }
+
   // Add slug IDs to headings (for TOC anchor links)
   processor = processor.use(rehypeSlug);
+
+  // Wrap headings with anchor links
+  if (opts.autolinkHeadings) {
+    processor = processor.use(rehypeAutolinkHeadings, {
+      behavior: 'wrap',
+    });
+  }
+
+  // Add syntax highlighting for code blocks
+  if (opts.syntaxHighlighting) {
+    processor = processor.use(rehypeHighlight, {
+      languages: allLowlightLanguages,
+    });
+  }
+
+  // Render LaTeX math to HTML
+  if (opts.parseFormulas) {
+    processor = processor.use(rehypeMathjaxChtml, {
+      chtml: {
+        fontURL: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/output/chtml/fonts/woff-v2',
+      },
+    });
+  }
 
   // Add custom rehype plugins
   for (const { plugin, options: pluginOpts } of opts.rehypePlugins ?? []) {
@@ -142,7 +296,9 @@ export const createBasePipeline = (options: PipelineOptions = {}): any => {
   }
 
   // Convert to string
-  processor = processor.use(rehypeStringify);
+  processor = processor.use(rehypeStringify, {
+    allowDangerousHtml: opts.allowRawHtml,
+  });
 
   return processor;
 };
@@ -150,8 +306,13 @@ export const createBasePipeline = (options: PipelineOptions = {}): any => {
 /**
  * Parse markdown to MDAST
  */
-export const parseToMdast = (markdown: string): MdastRoot => {
-  const processor = unified().use(remarkParse).use(remarkGfm);
+export const parseToMdast = (markdown: string, options: PipelineOptions = {}): MdastRoot => {
+  let processor: any = unified().use(remarkParse);
+
+  if (options.gfm !== false) {
+    processor = processor.use(remarkGfm);
+  }
+
   return processor.parse(markdown) as MdastRoot;
 };
 
@@ -194,7 +355,7 @@ export const processMarkdown = async (
   const { content: markdown, data: frontmatter } = parseFrontmatter(content);
 
   // Parse to MDAST
-  const mdast = parseToMdast(markdown);
+  const mdast = parseToMdast(markdown, options);
 
   // Create pipeline
   const pipeline = createBasePipeline(options);
