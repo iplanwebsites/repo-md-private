@@ -54,6 +54,8 @@ interface ProcessingState {
   readonly media: ProcessedMedia[];
   readonly slugManager: SlugManager;
   readonly issues: IssueCollector;
+  /** Maps original media paths to processed media info */
+  readonly mediaPathMap: Map<string, ProcessedMedia>;
 }
 
 // ============================================================================
@@ -186,6 +188,7 @@ export class Processor {
       media: [],
       slugManager: new SlugManager('number'),
       issues: this.issues,
+      mediaPathMap: new Map(),
     };
 
     // Step 1: Process media files (if not skipped)
@@ -356,7 +359,7 @@ export class Processor {
             }
           }
 
-          state.media.push({
+          const processedMedia: ProcessedMedia = {
             originalPath: relativePath,
             outputPath: normalizePath(path.relative(state.outputDir, result.outputPath)),
             fileName,
@@ -370,7 +373,10 @@ export class Processor {
               hash: contentHash,
             },
             sizes: sizeVariants.length > 0 ? sizeVariants : undefined,
-          });
+          };
+          state.media.push(processedMedia);
+          // Add to mediaPathMap for frontmatter rewriting
+          state.mediaPathMap.set(relativePath, processedMedia);
         } else {
           // Just copy the file (non-processable files keep original extension)
           const ext = path.extname(mediaPath);
@@ -384,7 +390,7 @@ export class Processor {
 
           await imageProcessor.copy(mediaPath, copyOutputPath);
 
-          state.media.push({
+          const copiedMedia: ProcessedMedia = {
             originalPath: relativePath,
             outputPath: normalizePath(path.relative(state.outputDir, copyOutputPath)),
             fileName,
@@ -394,7 +400,10 @@ export class Processor {
               originalSize: stats.size,
               hash: contentHash,
             },
-          });
+          };
+          state.media.push(copiedMedia);
+          // Add to mediaPathMap for frontmatter rewriting
+          state.mediaPathMap.set(relativePath, copiedMedia);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -514,6 +523,13 @@ export class Processor {
         ? headings[0]!.text
         : fileName);
 
+    // Transform frontmatter to resolve media paths
+    const transformedFrontmatter = this.transformFrontmatterMedia(
+      result.frontmatter,
+      relativePath,
+      state.mediaPathMap
+    );
+
     return {
       hash,
       slug: slugInfo.slug,
@@ -521,7 +537,7 @@ export class Processor {
       title,
       content: result.html,
       markdown: result.markdown,
-      frontmatter: result.frontmatter,
+      frontmatter: transformedFrontmatter,
       plainText,
       excerpt: firstParagraph,
       wordCount,
@@ -533,6 +549,49 @@ export class Processor {
         processedAt: new Date().toISOString(),
       },
     };
+  }
+
+  /**
+   * Transform frontmatter media paths (cover, image, etc.) to processed paths
+   */
+  private transformFrontmatterMedia(
+    frontmatter: Readonly<Record<string, unknown>>,
+    postPath: string,
+    mediaPathMap: Map<string, ProcessedMedia>
+  ): Readonly<Record<string, unknown>> {
+    // Fields that may contain media paths
+    const mediaFields = ['cover', 'image', 'thumbnail', 'og_image', 'ogImage'];
+    const postDir = path.dirname(postPath);
+
+    const transformed: Record<string, unknown> = { ...frontmatter };
+
+    for (const field of mediaFields) {
+      const value = frontmatter[field];
+      if (typeof value === 'string' && value.length > 0) {
+        // Resolve the media path relative to the post's directory
+        const resolvedPath = normalizePath(path.join(postDir, value));
+        const mediaInfo = mediaPathMap.get(resolvedPath);
+
+        if (mediaInfo) {
+          // Replace with structured media info
+          transformed[field] = {
+            original: value,
+            path: mediaInfo.outputPath,
+            hash: mediaInfo.metadata?.hash,
+            width: mediaInfo.metadata?.width,
+            height: mediaInfo.metadata?.height,
+            sizes: mediaInfo.sizes?.map((s) => ({
+              suffix: s.suffix,
+              path: s.outputPath,
+              width: s.width,
+              height: s.height,
+            })),
+          };
+        }
+      }
+    }
+
+    return transformed;
   }
 
   // --------------------------------------------------------------------------
