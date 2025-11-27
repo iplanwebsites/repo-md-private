@@ -474,10 +474,13 @@ export class Processor {
     const relativePath = normalizePath(path.relative(state.inputDir, filePath));
     const fileName = getFileName(filePath);
 
-    // Process markdown
+    // Process markdown with pipeline config
+    const pipelineConfig = this.config.pipeline ?? {};
     const result = await processMarkdown(content, {
-      gfm: true,
-      allowRawHtml: true,
+      gfm: pipelineConfig.gfm ?? true,
+      allowRawHtml: pipelineConfig.allowRawHtml ?? true,
+      // Note: syntaxHighlighting, parseFormulas, removeDeadLinks require
+      // additional rehype/remark plugins to be added to the pipeline
     });
 
     // Skip if not published (unless processAllFiles is enabled)

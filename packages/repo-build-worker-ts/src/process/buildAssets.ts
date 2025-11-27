@@ -252,6 +252,12 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
     const mermaidStrategy = getMermaidStrategyFromSettings(mediaSettings?.mermaidRender);
     const mermaidDark = mediaSettings?.mermaidTheme === 'dark';
 
+    // Get formatting/pipeline settings
+    const formattingSettings = projectSettings?.formatting;
+    const parseFormulas = formattingSettings?.parseFormulas ?? false;
+    const removeDeadLinks = formattingSettings?.removeDeadLinks ?? false;
+    const syntaxHighlighting = formattingSettings?.syntaxHighlighting ?? true;
+
     safeLog(logger, 'log', 'Configuring processor with plugins...', {
       inputPath,
       distFolder,
@@ -263,6 +269,9 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       imageQuality,
       mermaidStrategy,
       mermaidDark,
+      parseFormulas,
+      removeDeadLinks,
+      syntaxHighlighting,
     });
 
     // Build plugin configuration
@@ -305,6 +314,13 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
         enabled: true,
         strategy: mermaidStrategy,
         dark: mermaidDark,
+      },
+      pipeline: {
+        gfm: true,
+        allowRawHtml: true,
+        syntaxHighlighting,
+        parseFormulas,
+        removeDeadLinks,
       },
       plugins,
     };

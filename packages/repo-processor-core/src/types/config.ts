@@ -123,6 +123,27 @@ export interface MermaidConfig {
 }
 
 // ============================================================================
+// Pipeline Configuration
+// ============================================================================
+
+export interface PipelineConfig {
+  /** Enable GitHub Flavored Markdown (default: true) */
+  readonly gfm?: boolean;
+
+  /** Allow raw HTML in markdown (default: true) */
+  readonly allowRawHtml?: boolean;
+
+  /** Enable syntax highlighting for code blocks (default: true) */
+  readonly syntaxHighlighting?: boolean;
+
+  /** Enable LaTeX formula parsing (default: false) */
+  readonly parseFormulas?: boolean;
+
+  /** Remove broken/dead links instead of keeping them (default: false) */
+  readonly removeDeadLinks?: boolean;
+}
+
+// ============================================================================
 // Debug Configuration
 // ============================================================================
 
@@ -153,6 +174,9 @@ export interface ProcessConfig {
 
   /** Mermaid rendering configuration */
   readonly mermaid?: MermaidConfig;
+
+  /** Markdown pipeline configuration */
+  readonly pipeline?: PipelineConfig;
 
   /** Debug configuration */
   readonly debug?: DebugConfig;
@@ -193,6 +217,14 @@ export const withDefaults = (config: ProcessConfig): Required<ProcessConfig> => 
     strategy: 'inline-svg',
     dark: false,
     ...config.mermaid,
+  },
+  pipeline: {
+    gfm: true,
+    allowRawHtml: true,
+    syntaxHighlighting: true,
+    parseFormulas: false,
+    removeDeadLinks: false,
+    ...config.pipeline,
   },
   debug: {
     level: 0,

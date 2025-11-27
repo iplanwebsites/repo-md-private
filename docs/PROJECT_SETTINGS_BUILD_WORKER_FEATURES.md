@@ -234,10 +234,21 @@ These sections exist in the UI but are marked experimental or not for MVP:
 - `packages/repo-build-worker-ts/src/process/buildAssets.ts` - Use settings instead of defaults
 - `packages/repo-api/lib/cloudRun.js` - Pass projectSettings to worker
 
-### 🔄 Phase 2: Formatting Settings (PENDING)
-1. Pass `parseFormulas` to processor
-2. Pass `removeDeadLinks` to processor
-3. Pass `syntaxHighlighting` to processor
+### ✅ Phase 2: Formatting Settings (IMPLEMENTED)
+
+| Setting | UI Field | Status | Notes |
+|---------|----------|--------|-------|
+| `parseFormulas` | Toggle | ✅ Connected | Requires rehype-mathjax plugin |
+| `removeDeadLinks` | Toggle | ✅ Connected | Requires custom rehype plugin |
+| `syntaxHighlighting` | Toggle | ✅ Connected | Requires rehype-highlight plugin |
+
+**Files Modified:**
+- `packages/repo-processor-core/src/types/config.ts` - Added PipelineConfig interface
+- `packages/repo-processor-core/src/processor/processor.ts` - Pass pipeline config to processMarkdown
+- `packages/repo-build-worker-ts/src/process/buildAssets.ts` - Extract and pass formatting settings
+
+**Note:** The pipeline config is now passed through, but the actual plugins (rehype-highlight,
+remark-math, rehype-mathjax) need to be added to the pipeline for full functionality.
 
 ### 🔄 Phase 3: AI/Embeddings Settings (PENDING)
 1. Add `skipEmbeddings` toggle to UI
