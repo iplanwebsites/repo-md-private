@@ -970,6 +970,43 @@ class RepoMD {
     return await this.mediaSimilarity!.getSimilarMediaByHash(hash, count);
   }
 
+  // Embedding-based similarity search methods
+  /**
+   * Search posts by providing an embedding vector directly.
+   * This is a "crude" similarity search that computes cosine similarity
+   * between the provided embedding and all stored post embeddings.
+   *
+   * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 384)
+   * @param limit - Maximum number of results to return (default: 10)
+   * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @returns Array of posts with similarity scores, sorted by similarity descending
+   */
+  async searchPostsByEmbedding(
+    embedding: number[],
+    limit = 10,
+    threshold = 0.0
+  ): Promise<import("./posts/similarity.js").SimilaritySearchResult[]> {
+    return await this.similarity!.searchPostsByEmbedding(embedding, limit, threshold);
+  }
+
+  /**
+   * Search media/images by providing an embedding vector directly.
+   * This is a "crude" similarity search that computes cosine similarity
+   * between the provided embedding and all stored media embeddings (CLIP embeddings).
+   *
+   * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 512 for CLIP)
+   * @param limit - Maximum number of results to return (default: 10)
+   * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @returns Array of media items with similarity scores, sorted by similarity descending
+   */
+  async searchMediaByEmbedding(
+    embedding: number[],
+    limit = 10,
+    threshold = 0.0
+  ): Promise<import("./media/similarity.js").MediaSimilaritySearchResult[]> {
+    return await this.mediaSimilarity!.searchMediaByEmbedding(embedding, limit, threshold);
+  }
+
   // AI Inference methods (using inference module)
   async computeTextEmbedding(text: string, instruction: string | null = null): Promise<import("./inference.js").EmbeddingData> {
     const { computeTextEmbedding } = await import("./inference.js");

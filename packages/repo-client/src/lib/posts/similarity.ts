@@ -20,6 +20,13 @@ export interface PostSimilarityConfig {
   getActiveRev?: (() => string | undefined) | null;
 }
 
+/** Search by embedding result */
+export interface SimilaritySearchResult {
+  hash: string;
+  similarity: number;
+  post?: Post | null;
+}
+
 /** Post similarity service interface */
 export interface PostSimilarityService {
   getPostsEmbeddings: () => Promise<Record<string, number[]>>;
@@ -30,6 +37,7 @@ export interface PostSimilarityService {
   getSimilarPostsByHash: (hash: string, count?: number, options?: AugmentOptions) => Promise<Post[]>;
   getSimilarPostsSlugBySlug: (slug: string, limit?: number) => Promise<string[]>;
   getSimilarPostsBySlug: (slug: string, count?: number, options?: AugmentOptions) => Promise<Post[]>;
+  searchPostsByEmbedding: (embedding: number[], limit?: number, threshold?: number) => Promise<SimilaritySearchResult[]>;
   clearSimilarityCache: () => void;
 }
 
@@ -448,6 +456,109 @@ export function createPostSimilarity(config: PostSimilarityConfig): PostSimilari
     return await getRecentPosts(count);
   }
 
+  /**
+   * Search posts by providing an embedding vector directly
+   * This is a "crude" similarity search that computes cosine similarity
+   * between the provided embedding and all stored post embeddings.
+   *
+   * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 384)
+   * @param limit - Maximum number of results to return (default: 10)
+   * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @returns Array of posts with similarity scores, sorted by similarity descending
+   * @throws If embedding is invalid
+   */
+  async function searchPostsByEmbedding(
+    embedding: number[],
+    limit = 10,
+    threshold = 0.0
+  ): Promise<SimilaritySearchResult[]> {
+    // Validate embedding parameter
+    if (!embedding) {
+      throw new Error('Embedding is required for searchPostsByEmbedding operation');
+    }
+
+    if (!Array.isArray(embedding)) {
+      throw new Error('Embedding must be an array of numbers');
+    }
+
+    if (embedding.length === 0) {
+      throw new Error('Embedding array cannot be empty');
+    }
+
+    // Validate limit parameter
+    if (limit !== undefined && (typeof limit !== 'number' || limit < 0)) {
+      throw new Error('Limit must be a positive number or zero');
+    }
+
+    // Validate threshold parameter
+    if (threshold !== undefined && (typeof threshold !== 'number' || threshold < -1 || threshold > 1)) {
+      throw new Error('Threshold must be a number between -1 and 1');
+    }
+
+    if (debug) {
+      console.log(
+        `${prefix} 🔍 Searching posts by embedding (dim: ${embedding.length}, limit: ${limit}, threshold: ${threshold})`
+      );
+    }
+
+    // Get all post embeddings
+    const embeddingsMap = await getPostsEmbeddings();
+
+    if (!embeddingsMap || Object.keys(embeddingsMap).length === 0) {
+      if (debug) {
+        console.log(`${prefix} ⚠️ No embeddings available for search`);
+      }
+      return [];
+    }
+
+    // Calculate similarities for all posts
+    const results: SimilaritySearchResult[] = [];
+
+    for (const [hash, postEmbedding] of Object.entries(embeddingsMap)) {
+      if (!postEmbedding || !Array.isArray(postEmbedding)) continue;
+
+      const similarity = cosineSimilarity(embedding, postEmbedding);
+
+      if (similarity >= threshold) {
+        results.push({
+          hash,
+          similarity,
+          post: null, // Will be populated if augmentation is needed
+        });
+      }
+    }
+
+    // Sort by similarity (highest first) and limit results
+    const sortedResults = results
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+
+    if (debug) {
+      console.log(
+        `${prefix} ✅ Found ${sortedResults.length} posts matching embedding search (threshold: ${threshold})`
+      );
+    }
+
+    // Optionally augment with full post data
+    if (sortedResults.length > 0) {
+      const hashes = sortedResults.map(r => r.hash);
+      try {
+        const posts = await augmentPostsByProperty(hashes, "hash", { count: limit });
+
+        // Map posts back to results
+        for (const result of sortedResults) {
+          result.post = posts.find(p => p.hash === result.hash) || null;
+        }
+      } catch (error) {
+        if (debug) {
+          console.warn(`${prefix} ⚠️ Could not augment search results with post data:`, error);
+        }
+      }
+    }
+
+    return sortedResults;
+  }
+
   return {
     getPostsEmbeddings,
     getPostsSimilarity,
@@ -457,6 +568,7 @@ export function createPostSimilarity(config: PostSimilarityConfig): PostSimilari
     getSimilarPostsByHash,
     getSimilarPostsSlugBySlug,
     getSimilarPostsBySlug,
+    searchPostsByEmbedding,
     clearSimilarityCache,
   };
 }

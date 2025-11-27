@@ -18,6 +18,13 @@ export interface MediaSimilarityConfig {
   getActiveRev?: (() => string | undefined) | null;
 }
 
+/** Search by embedding result for media */
+export interface MediaSimilaritySearchResult {
+  hash: string;
+  similarity: number;
+  media?: Media | null;
+}
+
 /** Media similarity service interface */
 export interface MediaSimilarityService {
   getMediaEmbeddings: () => Promise<Record<string, number[]>>;
@@ -26,6 +33,7 @@ export interface MediaSimilarityService {
   getTopSimilarMediaHashes: () => Promise<Record<string, string[]> | null>;
   getSimilarMediaHashByHash: (hash: string, limit?: number) => Promise<string[]>;
   getSimilarMediaByHash: (hash: string, count?: number) => Promise<Media[]>;
+  searchMediaByEmbedding: (embedding: number[], limit?: number, threshold?: number) => Promise<MediaSimilaritySearchResult[]>;
   clearSimilarityCache: () => void;
 }
 
@@ -361,6 +369,108 @@ export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimil
     return allMedia.filter((media: Media) => similarHashes.includes(media.hash)).slice(0, count);
   }
 
+  /**
+   * Search media by providing an embedding vector directly
+   * This is a "crude" similarity search that computes cosine similarity
+   * between the provided embedding and all stored media embeddings (CLIP embeddings).
+   *
+   * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 512 for CLIP)
+   * @param limit - Maximum number of results to return (default: 10)
+   * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @returns Array of media with similarity scores, sorted by similarity descending
+   * @throws If embedding is invalid
+   */
+  async function searchMediaByEmbedding(
+    embedding: number[],
+    limit = 10,
+    threshold = 0.0
+  ): Promise<MediaSimilaritySearchResult[]> {
+    // Validate embedding parameter
+    if (!embedding) {
+      throw new Error('Embedding is required for searchMediaByEmbedding operation');
+    }
+
+    if (!Array.isArray(embedding)) {
+      throw new Error('Embedding must be an array of numbers');
+    }
+
+    if (embedding.length === 0) {
+      throw new Error('Embedding array cannot be empty');
+    }
+
+    // Validate limit parameter
+    if (limit !== undefined && (typeof limit !== 'number' || limit < 0)) {
+      throw new Error('Limit must be a positive number or zero');
+    }
+
+    // Validate threshold parameter
+    if (threshold !== undefined && (typeof threshold !== 'number' || threshold < -1 || threshold > 1)) {
+      throw new Error('Threshold must be a number between -1 and 1');
+    }
+
+    if (debug) {
+      console.log(
+        `${prefix} 🔍 Searching media by embedding (dim: ${embedding.length}, limit: ${limit}, threshold: ${threshold})`
+      );
+    }
+
+    // Get all media embeddings
+    const embeddingsMap = await getMediaEmbeddings();
+
+    if (!embeddingsMap || Object.keys(embeddingsMap).length === 0) {
+      if (debug) {
+        console.log(`${prefix} ⚠️ No media embeddings available for search`);
+      }
+      return [];
+    }
+
+    // Calculate similarities for all media
+    const results: MediaSimilaritySearchResult[] = [];
+
+    for (const [hash, mediaEmbedding] of Object.entries(embeddingsMap)) {
+      if (!mediaEmbedding || !Array.isArray(mediaEmbedding)) continue;
+
+      const similarity = cosineSimilarity(embedding, mediaEmbedding);
+
+      if (similarity >= threshold) {
+        results.push({
+          hash,
+          similarity,
+          media: null, // Will be populated below
+        });
+      }
+    }
+
+    // Sort by similarity (highest first) and limit results
+    const sortedResults = results
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+
+    if (debug) {
+      console.log(
+        `${prefix} ✅ Found ${sortedResults.length} media items matching embedding search (threshold: ${threshold})`
+      );
+    }
+
+    // Augment with full media data
+    if (sortedResults.length > 0) {
+      try {
+        const allMedia = await getAllMedia();
+
+        // Map media back to results
+        for (const result of sortedResults) {
+          result.media = allMedia.find(m => m.hash === result.hash) || null;
+        }
+      } catch (error) {
+        if (debug) {
+          console.warn(`${prefix} ⚠️ Could not augment search results with media data:`, error);
+        }
+      }
+    }
+
+    return sortedResults;
+  }
+
   return {
     getMediaEmbeddings,
     getMediaSimilarity,
@@ -368,6 +478,7 @@ export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimil
     getTopSimilarMediaHashes,
     getSimilarMediaHashByHash,
     getSimilarMediaByHash,
+    searchMediaByEmbedding,
     clearSimilarityCache,
   };
 }
