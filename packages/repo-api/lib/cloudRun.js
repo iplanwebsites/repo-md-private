@@ -314,6 +314,11 @@ function processDataForWorker(task, data) {
       workerData.ignoreFiles = data.ignoreFiles;
     }
 
+    // Pass all project settings to the worker
+    if (data.projectSettings) {
+      workerData.projectSettings = data.projectSettings;
+    }
+
     // Ensure repoUrl is included in worker data
     if (data.repoUrl) {
       workerData.repoUrl = data.repoUrl;
@@ -876,6 +881,14 @@ async function createRepoDeployJob(projectId, ctx, commit, branch) {
     const orgSlugValue = project.orgSlug || (project.orgId ? project.orgId.toString() : "_unknown-org-slug");
     const staticDomain = `https://static.repo.md/projects/${project._id.toString()}`;
 
+    // Gather all project settings to pass to the worker
+    const projectSettings = {
+      media: project.media || {},
+      formatting: project.formatting || {},
+      build: project.settings?.build || {},
+      frontmatter: project.frontmatter || {},
+    };
+
     // Create a job to deploy the repository
     const job = await createJob("deploy-repo", {
       projectId,
@@ -896,6 +909,8 @@ async function createRepoDeployJob(projectId, ctx, commit, branch) {
       domain: staticDomain, // Always use absolute paths with static.repo.md
       commitMessage: commit === "latest" ? "Latest commit" : `Commit: ${commit}`,
       triggeredBy: ctx.user.email || ctx.user.id,
+      // Pass all project settings for the worker to use
+      projectSettings,
     });
 
     console.log("Deploy job created successfully:", {
