@@ -4,6 +4,61 @@
 
 This analysis identifies opportunities to improve modularity, reduce duplication, and make `@repo-md/processor` more suitable for open-source npm distribution by implementing a plugin architecture for image processing, embeddings, and other extensible components.
 
+**Key Insight**: The Processor should be the **single source of file generation**. The Worker should only **orchestrate** (configure + run the processor).
+
+---
+
+## Current Architecture Problems
+
+### The "Many Writers" Problem
+
+Currently, both packages write to the same `dist/` folder independently:
+
+```
+Worker receives job
+    │
+    ├─► processor.process()      → writes posts.json, media files
+    ├─► computePostEmbeddings()  → writes embedding files (WORKER CODE)
+    ├─► computeImageEmbeddings() → writes image embedding files (WORKER CODE)
+    ├─► createVectraIndex()      → writes vectra index (WORKER CODE)
+    ├─► buildSqliteDatabase()    → writes sqlite db (WORKER CODE)
+    └─► publishR2()              → uploads to R2
+```
+
+**Problems**:
+- Worker has file generation logic that should be in processor
+- Tight coupling between worker and output structure
+- Can't use processor independently for embeddings/database
+- Hard to test, hard to extend
+
+### Proposed Architecture
+
+```
+Worker receives job
+    │
+    ├─► Configure processor with plugins
+    │       • imageProcessor: SharpImageProcessor
+    │       • textEmbedder: HuggingFaceTextEmbedder
+    │       • imageEmbedder: ClipImageEmbedder
+    │       • similarity: SimilarityPlugin (requires: textEmbedder)
+    │       • database: SqlitePlugin (requires: textEmbedder)
+    │
+    ├─► processor.process()  → ALL FILES GENERATED HERE
+    │       • posts.json
+    │       • media files
+    │       • embeddings (if plugin provided)
+    │       • similarity maps (if plugin provided)
+    │       • sqlite database (if plugin provided)
+    │
+    └─► publishR2()  → uploads result
+```
+
+**Benefits**:
+- Single source of file generation
+- Worker is pure orchestration
+- Processor can be used standalone with any combination of plugins
+- Clear plugin dependencies
+
 ---
 
 ## Current Architecture Overview
@@ -12,14 +67,6 @@ This analysis identifies opportunities to improve modularity, reduce duplication
 
 **Purpose**: Markdown processing library that converts Obsidian vaults to structured JSON.
 
-**Core Responsibilities**:
-- Parse markdown with unified.js pipeline (remark/rehype)
-- Resolve wiki-links and markdown links
-- Process media files (images, videos)
-- Generate slugs and hashes
-- Handle frontmatter parsing
-- Render mermaid diagrams
-
 **Key Dependencies** (26 production deps):
 | Dependency | Size Impact | Purpose | Pluggable? |
 |------------|-------------|---------|------------|
@@ -27,33 +74,22 @@ This analysis identifies opportunities to improve modularity, reduce duplication
 | `playwright` | ~200MB+ | Mermaid server-side rendering | **No** (hard-coded) |
 | `unified/remark/rehype` | ~2MB | Markdown pipeline | Core, keep |
 | `gray-matter` | ~50KB | Frontmatter parsing | Core, keep |
-| `@sindresorhus/slugify` | ~20KB | Slug generation | Core, keep |
 
-**Bundle Size Concern**: The current processor is **~300MB+ installed** due to Sharp and Playwright.
+**Bundle Size Concern**: ~300MB+ installed due to Sharp and Playwright.
 
 ### @repo-md/worker
 
-**Purpose**: Full build pipeline orchestrator with proprietary features.
+**Purpose**: Full build pipeline orchestrator.
 
-**Core Responsibilities**:
-- Invoke processor for markdown/media processing
-- Generate text embeddings (HuggingFace Transformers)
-- Generate image embeddings (CLIP models)
-- Build SQLite databases with vector search
-- Compute post similarity
-- Deploy to R2 storage
-- WordPress import
-- AI-powered project generation
-
-**Key Dependencies**:
-| Dependency | Purpose | Should Stay in Worker? |
-|------------|---------|------------------------|
-| `@huggingface/transformers` | Text/image embeddings | **Yes** (proprietary) |
-| `better-sqlite3` | SQLite database | **Yes** (proprietary) |
-| `sqlite-vec` | Vector search | **Yes** (proprietary) |
-| `vectra` | Vector database | **Yes** (proprietary) |
-| `openai` | AI features | **Yes** (proprietary) |
-| `@anthropic-ai/claude-code` | AI features | **Yes** (proprietary) |
+**Current Responsibilities** (should be reduced):
+- ~~Generate text embeddings~~ → Move to processor plugin
+- ~~Generate image embeddings~~ → Move to processor plugin
+- ~~Build SQLite databases~~ → Move to processor plugin
+- ~~Compute post similarity~~ → Move to processor plugin
+- Invoke processor ✓ (keep)
+- Deploy to R2 ✓ (keep)
+- WordPress import ✓ (keep)
+- AI-powered project generation ✓ (keep)
 
 ---
 
@@ -64,105 +100,33 @@ This analysis identifies opportunities to improve modularity, reduce duplication
 **Location A**: `packages/repo-processor/src/services/issueCollector.ts` (338 lines)
 **Location B**: `packages/repo-build-worker/src/services/issueCollector.js` (232 lines)
 
-**Analysis**:
-- Both implement similar patterns for collecting processing issues
-- Processor version is TypeScript with rich typing
-- Worker version is JavaScript with worker-specific error types (embedding, database, deployment)
-
-**Recommendation**: Create a shared base interface/class, extend for specific needs:
-```typescript
-// @repo-md/processor-core
-export interface IssueCollectorBase { ... }
-
-// Processor adds: broken-link, missing-media, mermaid-error
-// Worker adds: embedding-error, database-error, deployment-error
-```
+**Recommendation**: Single implementation in processor, extended by worker-specific error types.
 
 ### 2. Image Size Configurations
 
 **Location A**: `packages/repo-processor/src/process/processMedia.ts:37-44`
 ```javascript
 const DEFAULT_IMAGE_SIZES = [
-  { width: 320, height: null, suffix: "xs" },
-  { width: 640, height: null, suffix: "sm" },
-  { width: 1024, height: null, suffix: "md" },
-  { width: 1920, height: null, suffix: "lg" },
-  { width: 3840, height: null, suffix: "xl" },
+  { width: 320, suffix: "xs" }, { width: 640, suffix: "sm" },
+  { width: 1024, suffix: "md" }, { width: 1920, suffix: "lg" },
+  { width: 3840, suffix: "xl" }
 ];
 ```
 
 **Location B**: `packages/repo-build-worker/src/process/buildAssets.js:278-292`
 ```javascript
 const DEFAULT_IMAGE_SIZES = [
-  { width: 100, height: null, suffix: "xs" },
-  { width: 300, height: null, suffix: "sm" },
-  { width: 700, height: null, suffix: "md" },
-  { width: 1400, height: null, suffix: "lg" },
-  { width: 2160, height: null, suffix: "xl" },
+  { width: 100, suffix: "xs" }, { width: 300, suffix: "sm" },
+  { width: 700, suffix: "md" }, { width: 1400, suffix: "lg" },
+  { width: 2160, suffix: "xl" }
 ];
 ```
 
-**Issue**: Different defaults in each location, worker overrides processor defaults.
-
-**Recommendation**: Single source of truth with ability to override via config.
+**Issue**: Different defaults, worker overrides processor.
 
 ### 3. Hash Calculation Utilities
 
-**Location A**: `packages/repo-processor/src/lib/utility.ts:38-54`
-**Location B**: `packages/repo-build-worker/src/process/computeImageEmbeddings.js:400-450`
-
-Both implement SHA-256 hashing with slightly different approaches.
-
-**Recommendation**: Export from processor, import in worker.
-
----
-
-## Tight Coupling Issues
-
-### 1. Direct File Copy Pattern
-
-```json
-// repo-processor/package.json:8
-"postbuild": "cp -r dist package.json ../repo-build-worker/src/modules/repo-processor/"
-```
-
-The processor is literally copied into the worker's source tree, creating:
-- Version synchronization issues
-- Duplicate code in the monorepo
-- Unclear dependency boundaries
-
-### 2. Local File Dependency
-
-```json
-// repo-build-worker/package.json:69
-"@repo-md/processor": "file:../repo-processor"
-```
-
-This prevents:
-- Independent versioning
-- npm publication
-- External consumption
-
-### 3. Hard-Coded Sharp Dependency
-
-`processMedia.ts` directly imports and uses Sharp:
-```typescript
-import sharp from "sharp";
-// ... used directly throughout
-```
-
-Sharp has known issues:
-- Native compilation requirements
-- Platform-specific builds
-- Heavy bundle size (~100MB)
-- Doesn't work in Cloudflare Workers, some serverless environments
-
-### 4. Hard-Coded Playwright Dependency
-
-`rehypeMermaidWrapper.ts` depends on Playwright for server-side mermaid rendering:
-- Requires browser binary installation
-- ~200MB+ disk space
-- Not suitable for edge/serverless
+Both packages implement SHA-256 hashing with slightly different approaches.
 
 ---
 
@@ -170,362 +134,462 @@ Sharp has known issues:
 
 ### Core Design Principles
 
-1. **Interface-First Design**: Define contracts before implementations
-2. **Optional Heavy Dependencies**: Image processing, mermaid rendering should be opt-in
-3. **Sensible Defaults**: Work out-of-box with no plugins (skip processing)
-4. **Dependency Injection**: Pass plugins via configuration
+1. **Processor = Single File Generator**: All output files come from processor
+2. **Worker = Orchestrator**: Configure and run processor, then deploy
+3. **Plugins Have Dependencies**: Some plugins require others
+4. **Separate Concerns**: Text embeddings ≠ Image embeddings
 
-### Package Restructuring
+### Package Structure
 
 ```
-@repo-md/processor-core      # Core markdown processing (~2MB)
-@repo-md/image-sharp         # Sharp-based image processing
-@repo-md/image-jimp          # Jimp-based image processing (pure JS)
-@repo-md/image-cloudinary    # Cloud-based image processing
-@repo-md/mermaid-playwright  # Playwright mermaid renderer
-@repo-md/mermaid-kroki       # Kroki.io mermaid renderer
-@repo-md/embeddings          # Embedding interfaces & implementations
-@repo-md/worker              # Full orchestrator (proprietary)
+@repo-md/processor              # Core + plugin system (~2MB base)
+├── plugins/
+│   ├── image/                  # Image processing plugins
+│   ├── embeddings/             # Embedding plugins
+│   ├── database/               # Database plugins
+│   └── mermaid/                # Mermaid rendering plugins
+
+# Separate npm packages for heavy dependencies:
+@repo-md/plugin-image-sharp         # Sharp-based image processing
+@repo-md/plugin-image-jimp          # Pure JS alternative
+@repo-md/plugin-embed-hf            # HuggingFace text embeddings
+@repo-md/plugin-embed-openai        # OpenAI text embeddings
+@repo-md/plugin-embed-cloudflare    # Cloudflare AI Gateway embeddings
+@repo-md/plugin-embed-clip          # CLIP image embeddings
+@repo-md/plugin-database-sqlite     # SQLite + vector search
+@repo-md/plugin-mermaid-playwright  # Playwright mermaid
+@repo-md/plugin-mermaid-kroki       # Kroki.io API
+
+@repo-md/worker                     # Orchestrator (proprietary)
 ```
 
-### 1. Image Processor Plugin Interface
+---
+
+## Plugin Interfaces
+
+### 1. Base Plugin Interface
 
 ```typescript
-// @repo-md/processor-core/src/plugins/imageProcessor.ts
+// @repo-md/processor/src/plugins/base.ts
 
-export interface ImageSize {
-  width: number | null;
-  height: number | null;
-  suffix: string;
+export interface PluginContext {
+  /** Output directory for all generated files */
+  outputDir: string;
+  /** Issue collector for reporting problems */
+  issues: IssueCollector;
+  /** Logger */
+  log: (level: number, message: string) => void;
+  /** Access to other plugins (for dependencies) */
+  getPlugin<T>(name: string): T | undefined;
 }
 
-export interface ImageFormat {
-  format: 'webp' | 'avif' | 'jpeg' | 'png';
-  quality?: number;
-  options?: Record<string, unknown>;
-}
-
-export interface ImageProcessorResult {
-  outputPath: string;
-  publicPath: string;
-  width: number;
-  height: number;
-  format: string;
-  size: number;
-}
-
-export interface ImageProcessorPlugin {
+export interface Plugin {
+  /** Unique plugin name */
   name: string;
 
-  /** Check if this processor can handle the file */
-  canProcess(filePath: string, mimeType: string): boolean;
+  /** Plugin dependencies (other plugin names required) */
+  requires?: string[];
 
-  /** Get image metadata without processing */
+  /** Initialize plugin with context */
+  initialize(context: PluginContext): Promise<void>;
+
+  /** Check if plugin is ready */
+  isReady(): boolean;
+}
+```
+
+### 2. Image Processor Plugin
+
+```typescript
+// @repo-md/processor/src/plugins/image/types.ts
+
+export interface ImageProcessorPlugin extends Plugin {
+  name: 'imageProcessor';
+
+  canProcess(filePath: string): boolean;
+
   getMetadata(filePath: string): Promise<{
     width: number;
     height: number;
     format: string;
   }>;
 
-  /** Process/optimize an image */
-  process(
-    inputPath: string,
-    outputPath: string,
-    options: {
-      size: ImageSize;
-      format: ImageFormat;
-    }
-  ): Promise<ImageProcessorResult>;
+  process(input: string, output: string, options: {
+    width?: number;
+    height?: number;
+    format: 'webp' | 'avif' | 'jpeg' | 'png';
+    quality?: number;
+  }): Promise<ImageResult>;
 
-  /** Copy file without processing (for non-images) */
-  copy(inputPath: string, outputPath: string): Promise<void>;
+  copy(input: string, output: string): Promise<void>;
 }
 
-// No-op implementation for when no processor is configured
-export class NoOpImageProcessor implements ImageProcessorPlugin {
-  name = 'noop';
+// No-op default - just copies files
+export class CopyOnlyImageProcessor implements ImageProcessorPlugin {
+  name = 'imageProcessor' as const;
 
   canProcess() { return false; }
-
-  async getMetadata() {
-    return { width: 0, height: 0, format: 'unknown' };
-  }
-
-  async process() {
-    throw new Error('No image processor configured');
-  }
-
-  async copy(inputPath: string, outputPath: string) {
-    // Just copy the file as-is
-    await fs.copyFile(inputPath, outputPath);
-  }
+  async getMetadata() { return { width: 0, height: 0, format: 'unknown' }; }
+  async process() { throw new Error('No image processor - use copy()'); }
+  async copy(input, output) { await fs.copyFile(input, output); }
 }
 ```
 
-### 2. Sharp Implementation (Separate Package)
+### 3. Text Embedding Plugin (Separate from Image!)
 
 ```typescript
-// @repo-md/image-sharp/src/index.ts
+// @repo-md/processor/src/plugins/embeddings/text.ts
 
-import sharp from 'sharp';
-import type { ImageProcessorPlugin, ImageSize, ImageFormat } from '@repo-md/processor-core';
+export interface TextEmbeddingPlugin extends Plugin {
+  name: 'textEmbedder';
 
-export class SharpImageProcessor implements ImageProcessorPlugin {
-  name = 'sharp';
-
-  canProcess(filePath: string, mimeType: string): boolean {
-    return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(filePath);
-  }
-
-  async getMetadata(filePath: string) {
-    const meta = await sharp(filePath).metadata();
-    return {
-      width: meta.width || 0,
-      height: meta.height || 0,
-      format: meta.format || 'unknown'
-    };
-  }
-
-  async process(inputPath: string, outputPath: string, options: {
-    size: ImageSize;
-    format: ImageFormat;
-  }) {
-    let pipeline = sharp(inputPath);
-
-    // Resize
-    if (options.size.width || options.size.height) {
-      pipeline = pipeline.resize({
-        width: options.size.width || undefined,
-        height: options.size.height || undefined,
-        withoutEnlargement: true,
-        fit: 'inside'
-      });
-    }
-
-    // Convert format
-    switch (options.format.format) {
-      case 'webp':
-        pipeline = pipeline.webp({ quality: options.format.quality || 80 });
-        break;
-      case 'avif':
-        pipeline = pipeline.avif({ quality: options.format.quality || 65 });
-        break;
-      case 'jpeg':
-        pipeline = pipeline.jpeg({ quality: options.format.quality || 85 });
-        break;
-      case 'png':
-        pipeline = pipeline.png(options.format.options);
-        break;
-    }
-
-    await pipeline.toFile(outputPath);
-
-    const stats = await fs.stat(outputPath);
-    const meta = await this.getMetadata(outputPath);
-
-    return {
-      outputPath,
-      publicPath: '', // Set by caller
-      width: meta.width,
-      height: meta.height,
-      format: options.format.format,
-      size: stats.size
-    };
-  }
-
-  async copy(inputPath: string, outputPath: string) {
-    await fs.copyFile(inputPath, outputPath);
-  }
-}
-```
-
-### 3. Mermaid Renderer Plugin Interface
-
-```typescript
-// @repo-md/processor-core/src/plugins/mermaidRenderer.ts
-
-export type MermaidStrategy = 'img-png' | 'img-svg' | 'inline-svg' | 'pre-mermaid';
-
-export interface MermaidRendererPlugin {
-  name: string;
-
-  /** Render mermaid code to the specified format */
-  render(
-    code: string,
-    options: {
-      strategy: MermaidStrategy;
-      dark?: boolean;
-    }
-  ): Promise<{
-    output: string;  // SVG string, PNG base64, or original code
-    strategy: MermaidStrategy;
-  }>;
-
-  /** Check if renderer is available */
-  isAvailable(): Promise<boolean>;
-}
-
-// Default: passthrough (keep as code block)
-export class PassthroughMermaidRenderer implements MermaidRendererPlugin {
-  name = 'passthrough';
-
-  async render(code: string) {
-    return {
-      output: code,
-      strategy: 'pre-mermaid' as const
-    };
-  }
-
-  async isAvailable() {
-    return true;
-  }
-}
-```
-
-### 4. Embedding Provider Plugin Interface
-
-```typescript
-// @repo-md/embeddings/src/index.ts
-
-export interface TextEmbeddingProvider {
-  name: string;
+  /** Model identifier */
   model: string;
+
+  /** Embedding dimensions */
   dimensions: number;
 
-  /** Generate embedding for text */
+  /** Embed single text */
   embed(text: string): Promise<number[]>;
 
-  /** Batch embed multiple texts */
+  /** Embed multiple texts (batch) */
   batchEmbed(texts: string[]): Promise<number[][]>;
-
-  /** Check if provider is ready */
-  isReady(): Promise<boolean>;
-
-  /** Initialize provider (load models, etc.) */
-  initialize(): Promise<void>;
 }
 
-export interface ImageEmbeddingProvider {
-  name: string;
-  model: string;
-  dimensions: number;
+// --- IMPLEMENTATIONS IN SEPARATE PACKAGES ---
 
-  /** Generate embedding for image file */
-  embedFile(filePath: string): Promise<number[]>;
-
-  /** Generate embedding for image buffer */
-  embedBuffer(buffer: Buffer, mimeType: string): Promise<number[]>;
-
-  /** Check if provider is ready */
-  isReady(): Promise<boolean>;
-
-  /** Initialize provider */
-  initialize(): Promise<void>;
-}
-
-// HuggingFace implementation
-export class HuggingFaceTextEmbedder implements TextEmbeddingProvider {
-  name = 'huggingface';
+// @repo-md/plugin-embed-hf
+export class HuggingFaceTextEmbedder implements TextEmbeddingPlugin {
+  name = 'textEmbedder' as const;
   model = 'Xenova/all-MiniLM-L6-v2';
   dimensions = 384;
-
-  private pipeline: any = null;
-
-  async initialize() {
-    const { pipeline } = await import('@huggingface/transformers');
-    this.pipeline = await pipeline('feature-extraction', this.model);
-  }
-
-  async isReady() {
-    return this.pipeline !== null;
-  }
-
-  async embed(text: string): Promise<number[]> {
-    if (!this.pipeline) await this.initialize();
-    const result = await this.pipeline(text, { pooling: 'mean', normalize: true });
-    return result.tolist()[0];
-  }
-
-  async batchEmbed(texts: string[]): Promise<number[][]> {
-    return Promise.all(texts.map(t => this.embed(t)));
-  }
+  // Uses @huggingface/transformers
 }
 
-// OpenAI implementation
-export class OpenAITextEmbedder implements TextEmbeddingProvider {
-  name = 'openai';
+// @repo-md/plugin-embed-openai
+export class OpenAITextEmbedder implements TextEmbeddingPlugin {
+  name = 'textEmbedder' as const;
   model = 'text-embedding-3-small';
   dimensions = 1536;
+  // Uses OpenAI API
+}
 
-  constructor(private apiKey: string) {}
+// @repo-md/plugin-embed-cloudflare
+export class CloudflareTextEmbedder implements TextEmbeddingPlugin {
+  name = 'textEmbedder' as const;
+  model = '@cf/baai/bge-base-en-v1.5';
+  dimensions = 768;
 
-  async initialize() {}
-  async isReady() { return true; }
+  constructor(private config: {
+    accountId: string;
+    apiToken: string;
+    gateway?: string;  // AI Gateway for caching/rate limiting
+  }) {}
 
   async embed(text: string): Promise<number[]> {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ input: text, model: this.model })
-    });
-    const data = await response.json();
-    return data.data[0].embedding;
-  }
+    const url = this.config.gateway
+      ? `https://gateway.ai.cloudflare.com/v1/${this.config.accountId}/${this.config.gateway}/workers-ai/@cf/baai/bge-base-en-v1.5`
+      : `https://api.cloudflare.com/client/v4/accounts/${this.config.accountId}/ai/run/@cf/baai/bge-base-en-v1.5`;
 
-  async batchEmbed(texts: string[]): Promise<number[][]> {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ input: texts, model: this.model })
+      headers: { 'Authorization': `Bearer ${this.config.apiToken}` },
+      body: JSON.stringify({ text: [text] })
     });
     const data = await response.json();
-    return data.data.map((d: any) => d.embedding);
+    return data.result.data[0];
   }
 }
 ```
 
-### 5. Updated ProcessConfig with Plugins
+### 4. Image Embedding Plugin (Separate!)
 
 ```typescript
-// @repo-md/processor-core/src/types/config.ts
+// @repo-md/processor/src/plugins/embeddings/image.ts
 
-import type { ImageProcessorPlugin } from '../plugins/imageProcessor';
-import type { MermaidRendererPlugin } from '../plugins/mermaidRenderer';
+export interface ImageEmbeddingPlugin extends Plugin {
+  name: 'imageEmbedder';
+
+  model: string;
+  dimensions: number;
+
+  /** Embed image from file path */
+  embedFile(filePath: string): Promise<number[]>;
+
+  /** Embed image from buffer */
+  embedBuffer(buffer: Buffer, mimeType: string): Promise<number[]>;
+}
+
+// @repo-md/plugin-embed-clip
+export class ClipImageEmbedder implements ImageEmbeddingPlugin {
+  name = 'imageEmbedder' as const;
+  model = 'Xenova/mobileclip_s0';
+  dimensions = 512;
+  // Uses @huggingface/transformers CLIP models
+}
+
+// @repo-md/plugin-embed-cloudflare-image
+export class CloudflareImageEmbedder implements ImageEmbeddingPlugin {
+  name = 'imageEmbedder' as const;
+  model = '@cf/openai/clip-vit-base-patch32';
+  dimensions = 512;
+  // Uses Cloudflare AI
+}
+```
+
+### 5. Similarity Plugin (Has Dependency!)
+
+```typescript
+// @repo-md/processor/src/plugins/similarity/types.ts
+
+export interface SimilarityPlugin extends Plugin {
+  name: 'similarity';
+
+  /** THIS PLUGIN REQUIRES textEmbedder */
+  requires: ['textEmbedder'];
+
+  /** Compute similarity between two posts */
+  computeSimilarity(embeddingA: number[], embeddingB: number[]): number;
+
+  /** Generate similarity map for all posts */
+  generateSimilarityMap(posts: ProcessedPost[]): Promise<{
+    /** pairKey (hash1-hash2) -> similarity score */
+    similarityMap: Record<string, number>;
+    /** hash -> array of similar post hashes (sorted by similarity) */
+    similarPostsMap: Record<string, string[]>;
+  }>;
+}
+
+export class CosineSimilarityPlugin implements SimilarityPlugin {
+  name = 'similarity' as const;
+  requires = ['textEmbedder'] as const;
+
+  private textEmbedder!: TextEmbeddingPlugin;
+
+  async initialize(context: PluginContext) {
+    // Get required plugin
+    this.textEmbedder = context.getPlugin<TextEmbeddingPlugin>('textEmbedder')!;
+    if (!this.textEmbedder) {
+      throw new Error('SimilarityPlugin requires textEmbedder plugin');
+    }
+  }
+
+  computeSimilarity(a: number[], b: number[]): number {
+    // Cosine similarity
+    let dot = 0, normA = 0, normB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+
+  async generateSimilarityMap(posts: ProcessedPost[]) {
+    // Generate embeddings using the textEmbedder plugin
+    const embeddings = await Promise.all(
+      posts.map(p => this.textEmbedder.embed(p.plain || ''))
+    );
+
+    // Compute pairwise similarity...
+    // Return maps...
+  }
+}
+```
+
+### 6. Database Plugin (Has Dependencies!)
+
+```typescript
+// @repo-md/processor/src/plugins/database/types.ts
+
+export interface DatabasePlugin extends Plugin {
+  name: 'database';
+
+  /** Can optionally use embeddings for vector search */
+  requires?: ['textEmbedder'];  // Optional dependency
+
+  /** Build database from processed data */
+  build(data: {
+    posts: ProcessedPost[];
+    media: ProcessedMedia[];
+    embeddings?: Record<string, number[]>;  // If textEmbedder available
+  }): Promise<{
+    databasePath: string;
+    tables: string[];
+    rowCounts: Record<string, number>;
+  }>;
+}
+
+// @repo-md/plugin-database-sqlite
+export class SqliteDatabasePlugin implements DatabasePlugin {
+  name = 'database' as const;
+  requires = ['textEmbedder'];  // Optional but recommended
+
+  private textEmbedder?: TextEmbeddingPlugin;
+
+  async initialize(context: PluginContext) {
+    // textEmbedder is optional - vector search disabled without it
+    this.textEmbedder = context.getPlugin<TextEmbeddingPlugin>('textEmbedder');
+    if (!this.textEmbedder) {
+      context.log(1, '⚠️ No textEmbedder plugin - vector search disabled');
+    }
+  }
+
+  async build(data) {
+    const db = new Database(path.join(this.outputDir, 'repo.db'));
+
+    // Create tables...
+    // If textEmbedder available, create vector search table...
+
+    return { databasePath: '...', tables: [...], rowCounts: {...} };
+  }
+}
+```
+
+---
+
+## Updated Processor Configuration
+
+```typescript
+// @repo-md/processor/src/types/config.ts
 
 export interface ProcessConfig {
-  // ... existing config options ...
+  dir: {
+    input: string;
+    output?: string;
+  };
 
-  /** Plugin configuration */
+  // ... existing options ...
+
+  /** Plugins to use */
   plugins?: {
-    /** Image processor plugin (default: NoOpImageProcessor) */
+    /** Image processor (default: CopyOnlyImageProcessor) */
     imageProcessor?: ImageProcessorPlugin;
 
-    /** Mermaid renderer plugin (default: PassthroughMermaidRenderer) */
+    /** Text embedding provider */
+    textEmbedder?: TextEmbeddingPlugin;
+
+    /** Image embedding provider */
+    imageEmbedder?: ImageEmbeddingPlugin;
+
+    /** Post similarity generator (requires: textEmbedder) */
+    similarity?: SimilarityPlugin;
+
+    /** Database generator */
+    database?: DatabasePlugin;
+
+    /** Mermaid renderer */
     mermaidRenderer?: MermaidRendererPlugin;
   };
 }
 ```
 
-### 6. Usage Example
+---
+
+## Processor Output Structure
+
+With the new architecture, the processor generates ALL files:
+
+```
+dist/
+├── posts.json                    # Always generated
+├── posts-slug-map.json           # Always generated
+├── posts-path-map.json           # Always generated
+├── _posts/                       # If exportPosts enabled
+│   └── {hash}.json
+├── _medias/                      # Always generated (copies or optimized)
+│   └── {hash}.{ext}
+├── medias.json                   # Always generated
+├── media-path-map.json           # Always generated
+│
+│ # --- PLUGIN-GENERATED FILES ---
+│
+├── posts-embedding-hash-map.json # If textEmbedder plugin
+├── media-embedding-hash-map.json # If imageEmbedder plugin
+├── posts-similarity.json         # If similarity plugin
+├── posts-similar-hash.json       # If similarity plugin
+├── repo.db                       # If database plugin
+├── graph.json                    # If relationship tracking
+└── processor-issues.json         # Always generated
+```
+
+---
+
+## Worker Simplification
+
+The worker becomes pure orchestration:
 
 ```typescript
-// User code - minimal dependencies
-import { RepoProcessor } from '@repo-md/processor-core';
+// @repo-md/worker/src/process/buildAssets.js
 
+import { RepoProcessor } from '@repo-md/processor';
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
+import { HuggingFaceTextEmbedder } from '@repo-md/plugin-embed-hf';
+import { ClipImageEmbedder } from '@repo-md/plugin-embed-clip';
+import { CosineSimilarityPlugin } from '@repo-md/processor/plugins/similarity';
+import { SqliteDatabasePlugin } from '@repo-md/plugin-database-sqlite';
+
+async function buildAssets(data) {
+  const logger = data.logger;
+
+  // Configure processor with plugins
+  const processor = new RepoProcessor({
+    dir: {
+      input: data.repoInfo.path,
+      output: data.repoInfo.distPath
+    },
+    plugins: {
+      imageProcessor: new SharpImageProcessor(),
+      textEmbedder: new HuggingFaceTextEmbedder(),
+      imageEmbedder: new ClipImageEmbedder(),
+      similarity: new CosineSimilarityPlugin(),
+      database: new SqliteDatabasePlugin()
+    }
+  });
+
+  // Single call generates EVERYTHING
+  const result = await processor.process();
+
+  // Worker just returns the result
+  return {
+    ...data,
+    assets: {
+      processed: true,
+      distFolder: result.buildDir,
+      filesCount: result.vaultData.length,
+      mediaCount: result.mediaData.length,
+      // Plugin results included automatically
+      hasEmbeddings: !!result.textEmbeddings,
+      hasSimilarity: !!result.similarity,
+      hasDatabase: !!result.database
+    }
+  };
+}
+```
+
+---
+
+## Usage Examples
+
+### Minimal (Open Source Friendly)
+
+```typescript
+import { RepoProcessor } from '@repo-md/processor';
+
+// No plugins = minimal processing
 const processor = new RepoProcessor({
-  dir: { input: './vault' },
-  // No plugins = no image optimization, mermaid passthrough
+  dir: { input: './vault' }
 });
 
-// User code - with image processing
-import { RepoProcessor } from '@repo-md/processor-core';
-import { SharpImageProcessor } from '@repo-md/image-sharp';
+const result = await processor.process();
+// Generates: posts.json, media copies (not optimized)
+```
+
+### With Image Optimization
+
+```typescript
+import { RepoProcessor } from '@repo-md/processor';
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
 
 const processor = new RepoProcessor({
   dir: { input: './vault' },
@@ -533,82 +597,114 @@ const processor = new RepoProcessor({
     imageProcessor: new SharpImageProcessor()
   }
 });
+```
 
-// User code - full featured
-import { RepoProcessor } from '@repo-md/processor-core';
-import { SharpImageProcessor } from '@repo-md/image-sharp';
-import { PlaywrightMermaidRenderer } from '@repo-md/mermaid-playwright';
+### With Text Embeddings (HuggingFace)
+
+```typescript
+import { RepoProcessor } from '@repo-md/processor';
+import { HuggingFaceTextEmbedder } from '@repo-md/plugin-embed-hf';
+
+const processor = new RepoProcessor({
+  dir: { input: './vault' },
+  plugins: {
+    textEmbedder: new HuggingFaceTextEmbedder()
+  }
+});
+
+// Generates: posts-embedding-hash-map.json
+```
+
+### With Text Embeddings (Cloudflare AI Gateway)
+
+```typescript
+import { RepoProcessor } from '@repo-md/processor';
+import { CloudflareTextEmbedder } from '@repo-md/plugin-embed-cloudflare';
+
+const processor = new RepoProcessor({
+  dir: { input: './vault' },
+  plugins: {
+    textEmbedder: new CloudflareTextEmbedder({
+      accountId: process.env.CF_ACCOUNT_ID,
+      apiToken: process.env.CF_API_TOKEN,
+      gateway: 'my-ai-gateway'  // Optional: use AI Gateway
+    })
+  }
+});
+```
+
+### Full Featured (Worker Default)
+
+```typescript
+import { RepoProcessor } from '@repo-md/processor';
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
+import { HuggingFaceTextEmbedder } from '@repo-md/plugin-embed-hf';
+import { ClipImageEmbedder } from '@repo-md/plugin-embed-clip';
+import { CosineSimilarityPlugin } from '@repo-md/processor/plugins/similarity';
+import { SqliteDatabasePlugin } from '@repo-md/plugin-database-sqlite';
+import { PlaywrightMermaidRenderer } from '@repo-md/plugin-mermaid-playwright';
 
 const processor = new RepoProcessor({
   dir: { input: './vault' },
   plugins: {
     imageProcessor: new SharpImageProcessor(),
+    textEmbedder: new HuggingFaceTextEmbedder(),
+    imageEmbedder: new ClipImageEmbedder(),
+    similarity: new CosineSimilarityPlugin(),  // Requires textEmbedder
+    database: new SqliteDatabasePlugin(),       // Uses textEmbedder if available
     mermaidRenderer: new PlaywrightMermaidRenderer()
   }
 });
+
+// Generates ALL files
+const result = await processor.process();
 ```
 
 ---
 
-## Worker Proprietary Features
+## Plugin Dependency Resolution
 
-Keep these **exclusive** to `@repo-md/worker`:
+The processor validates and initializes plugins in order:
 
-1. **Embeddings Pipeline**
-   - Text embeddings (HuggingFace/OpenAI)
-   - Image embeddings (CLIP)
-   - Similarity computation
-   - Vector database (Vectra)
+```typescript
+// @repo-md/processor/src/plugins/manager.ts
 
-2. **Database Features**
-   - SQLite generation with `better-sqlite3`
-   - Vector search with `sqlite-vec`
-   - Frontmatter schema extraction
+class PluginManager {
+  private plugins = new Map<string, Plugin>();
+  private context: PluginContext;
 
-3. **Deployment Features**
-   - R2 upload/management
-   - Asset optimization
-   - Cache invalidation
+  async loadPlugins(config: ProcessConfig['plugins']) {
+    // 1. Collect all plugins
+    const allPlugins = Object.values(config || {}).filter(Boolean);
 
-4. **AI Features**
-   - Project generation from briefs
-   - WordPress import
-   - Content enrichment
+    // 2. Build dependency graph
+    const graph = this.buildDependencyGraph(allPlugins);
 
----
+    // 3. Topological sort (dependencies first)
+    const ordered = this.topologicalSort(graph);
 
-## Implementation Roadmap
+    // 4. Initialize in order
+    for (const plugin of ordered) {
+      // Validate dependencies are satisfied
+      for (const dep of plugin.requires || []) {
+        if (!this.plugins.has(dep)) {
+          throw new Error(
+            `Plugin "${plugin.name}" requires "${dep}" plugin which is not configured`
+          );
+        }
+      }
 
-### Phase 1: Extract Core (2-3 weeks)
+      // Initialize with context
+      await plugin.initialize(this.context);
+      this.plugins.set(plugin.name, plugin);
+    }
+  }
 
-1. Create `@repo-md/processor-core` package
-2. Move markdown pipeline (remark/rehype) to core
-3. Define plugin interfaces
-4. Implement no-op default plugins
-5. Remove Sharp/Playwright from core
-
-**Result**: Core package installable with `npm install @repo-md/processor-core` at ~2MB
-
-### Phase 2: Create Plugin Packages (1-2 weeks)
-
-1. `@repo-md/image-sharp` - Sharp implementation
-2. `@repo-md/image-jimp` - Pure JS alternative
-3. `@repo-md/mermaid-playwright` - Playwright implementation
-4. `@repo-md/mermaid-kroki` - Kroki.io API implementation
-
-### Phase 3: Refactor Worker (1-2 weeks)
-
-1. Update worker to use new plugin architecture
-2. Remove duplicate code
-3. Keep embeddings/database as worker-exclusive
-4. Clean up issue collector duplication
-
-### Phase 4: Documentation & Publication (1 week)
-
-1. Document plugin APIs
-2. Create migration guide
-3. Publish packages to npm
-4. Update README examples
+  getPlugin<T extends Plugin>(name: string): T | undefined {
+    return this.plugins.get(name) as T | undefined;
+  }
+}
+```
 
 ---
 
@@ -617,33 +713,67 @@ Keep these **exclusive** to `@repo-md/worker`:
 | Aspect | Current | After Refactoring |
 |--------|---------|-------------------|
 | Core Install Size | ~300MB | ~2MB |
+| File Generation | Split (processor + worker) | **Unified (processor only)** |
+| Worker Responsibility | Generation + Orchestration | **Orchestration only** |
+| Plugin Dependencies | N/A | **Explicit & validated** |
+| Text vs Image Embeddings | Mixed in one module | **Separate plugins** |
+| Embedding Providers | HuggingFace only | **Multiple (HF, OpenAI, Cloudflare, etc.)** |
 | npm Publishable | No | Yes |
-| Open Source Ready | No (heavy deps) | Yes (core) |
-| Edge/Serverless | No | Yes (core) |
-| Customizable | No | Yes (plugins) |
-| Duplicate Code | Yes | Minimal |
+| Open Source Ready | No | Yes (core) |
 
 ---
 
-## Risks & Mitigations
+## Implementation Roadmap
 
-| Risk | Mitigation |
-|------|------------|
-| Breaking changes for existing users | Provide migration guide, keep old package as wrapper |
-| Plugin API too rigid | Design for extensibility, use interfaces not classes |
-| Performance overhead from plugins | Lazy loading, optional async initialization |
-| Documentation debt | Document as we build |
+### Phase 1: Plugin System (1-2 weeks)
+
+1. Define plugin interfaces in processor
+2. Implement PluginManager with dependency resolution
+3. Create no-op default plugins
+4. Refactor processor to use plugin hooks
+
+### Phase 2: Extract Image Processing (1 week)
+
+1. Create `@repo-md/plugin-image-sharp`
+2. Make Sharp optional in core
+3. Implement CopyOnlyImageProcessor default
+
+### Phase 3: Extract Embeddings (1-2 weeks)
+
+1. Create `@repo-md/plugin-embed-hf` (text)
+2. Create `@repo-md/plugin-embed-openai` (text)
+3. Create `@repo-md/plugin-embed-cloudflare` (text)
+4. Create `@repo-md/plugin-embed-clip` (image)
+5. Move embedding logic from worker to plugins
+
+### Phase 4: Extract Database & Similarity (1 week)
+
+1. Create similarity plugin (move from worker)
+2. Create `@repo-md/plugin-database-sqlite`
+3. Move SQLite/vector logic from worker
+
+### Phase 5: Simplify Worker (1 week)
+
+1. Remove all file generation from worker
+2. Worker only configures and runs processor
+3. Clean up duplication
 
 ---
 
-## Next Steps
+## Worker Proprietary Features (Post-Refactor)
 
-1. **Review this proposal** with the team
-2. **Decide on package names** and structure
-3. **Start Phase 1** with core extraction
-4. **Set up CI/CD** for multi-package publishing
+After refactoring, worker keeps **orchestration-only** responsibilities:
+
+1. **Job Queue Management** - Receive jobs, manage callbacks
+2. **R2 Deployment** - Upload generated files
+3. **AI Content Generation** - Project from brief (uses Claude/GPT)
+4. **WordPress Import** - Convert WP exports
+5. **GitHub Integration** - Clone repos, create repos
+6. **Plugin Configuration** - Choose which plugins based on plan/features
+
+The **proprietary value** shifts from "we generate embeddings" to "we orchestrate the full pipeline with premium plugins and deployment".
 
 ---
 
-*Generated: 2025-01-27*
+*Updated: 2025-01-27*
 *Author: Claude Code Analysis*
