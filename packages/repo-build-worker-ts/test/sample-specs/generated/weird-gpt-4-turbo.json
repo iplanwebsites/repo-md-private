@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "project_name": "WeirdPressPhoto Repo",
+    "processed_date": "2023-12-07T00:00:00Z",
+    "spec_version": "1.0"
+  },
+  "summary": {
+    "description": "WeirdPressPhoto is an AI-generated photojournalism exhibition platform that creates fictional photo series to explore global issues with artistic and journalistic integrity.",
+    "quality_score": 8,
+    "original": "AI-generated photojournalism exhibition platform - WeirdPressPhoto showcases powerful visual narratives addressing global issues through the lens of contemporary photojournalism. Modeled after World Press Photo standards, the project creates fictional award-winning photo series that explore real-world events with artistic vision and journalistic integrity. Each series features 7 images with comprehensive storytelling, photographer bios, and professional presentation."
+  },
+  "content_strategy": {
+    "voice": {
+      "description": "Professional, authoritative, yet accessible, balancing emotional impact with factual accuracy.",
+      "quality_score": 9,
+      "details": {
+        "tone": "Authoritative yet accessible",
+        "style": "Balancing emotional impact with factual accuracy",
+        "editorial_guidelines": "Contextualize without editorializing, precise and informative captions, maintain dignity and complexity"
+      },
+      "original": "Professional photojournalism narrative - Authoritative yet accessible, balancing emotional impact with factual accuracy. Write series statements that contextualize without editorializing. Captions should be precise and informative. Avoid formulaic descriptions - each series demands its own narrative approach. Maintain dignity when depicting suffering and complexity when addressing global issues."
+    },
+    "structure": {
+      "description": "Organized into internal research and published exhibition sections with clear documentation and asset management.",
+      "quality_score": 9,
+      "details": {
+        "internal_structure": "Contains theme research, creative development, and selection notes",
+        "public_structure": "Contains final photo series and assets",
+        "file_paths": [
+          "/internal/year/",
+          "/year/series/",
+          "/assets/"
+        ]
+      },
+      "original": "Clear separation between research and final exhibition content: Internal Research (`/internal/year/`): Theme Research: `themes-list.md` - Initial compilation of 50+ events into 30 themes, Creative Development: `/themes/[num]-[theme-name].md` - 3 concepts per theme with judge evaluations, Selection Notes: `selected-concepts.md` - Final decisions and rationale. Published Exhibition (`/year/`): Photo Series: `/series/[num]-[series-slug].md` - Final polished series with statement, bio, captions, Series Assets: `/assets/[num]-[series-slug]/` - 7 photos + photographer portrait."
+    },
+    "visual_style": {
+      "description": "Maintains high standards of photojournalism with consistent visual language across series.",
+      "quality_score": 8,
+      "details": {
+        "format": "Predominantly landscape with strategic use of square/portrait",
+        "technical_specs": "Includes camera, lens, settings, and quality markers",
+        "caption_policy": "No captions rendered on images, text separate"
+      },
+      "original": "Award-winning photojournalism standards - Each series maintains consistent visual language while exploring unique approaches (documentary, artistic, long-term projects). Images predominantly landscape format with strategic use of square/portrait. Always include technical specifications (camera, lens, settings) and quality markers (\"World Press Photo winner\", \"award-winning photojournalism\"). No captions rendered on images - text separate."
+    }
+  },
+  "actions": [
+    {
+      "title": "Produce Annual Exhibition",
+      "summary": "Creates a complete photojournalism exhibition through a three-phase process.",
+      "detailed_description": "The action involves extensive web research, creative development with fictional personas, and final production of photo series.",
+      "quality_score": 8,
+      "phases": [
+        {
+          "name": "Research",
+          "description": "Web search for events, compile themes, and write descriptions."
+        },
+        {
+          "name": "Creative Development",
+          "description": "Develop series concepts, evaluate with judges, and select the strongest approach."
+        },
+        {
+          "name": "Production",
+          "description": "Write complete series file and generate images using detailed prompts."
+        }
+      ],
+      "original": "Creates complete photojournalism exhibition through three phases: Phase 1 - Research: Web search for 50+ significant events across categories... Phase 2 - Creative Development: For each of the 30 themes, create extensive brainstorming document... Phase 3 - Production: Load selected concept from Phase 2 research, write complete series file with all required elements..."
+    },
+    {
+      "title": "Create News Story",
+      "summary": "Produces timely photojournalism from current events.",
+      "detailed_description": "Monitor breaking news, develop unique angles, and generate a condensed photo series.",
+      "quality_score": 7,
+      "phases": [],
+      "original": "Produces timely photojournalism from current events: Monitor breaking news and emerging global stories, Identify events with strong visual narrative potential, Develop unique angle and fictional photographer approach, Generate condensed photo series (5 images), Output: `/year/news/[date]-[story-slug].md`"
+    }
+  ],
+  "tools": {
+    "description": "Uses web search for event research, image generation for creating photos, and file operations for project management.",
+    "quality_score": 7,
+    "primary_tools": [
+      {
+        "name": "web_search",
+        "usage": "Heavy use for event research and fact verification"
+      },
+      {
+        "name": "image_generation",
+        "usage": "Generate professional photojournalism images"
+      },
+      {
+        "name": "file_operations",
+        "usage": "Manage complex project structure and asset organization"
+      }
+    ],
+    "original": "web_search: Research real-world events, verify facts, find detailed context; image_generation: Create professional photojournalism images (landscape/portrait/square); file_operations: Manage complex project structure and asset organization; trend_analysis: Identify significant global events and emerging issues. _Primary tools for this project: web_search (heavy use), image_generation, file_operations_"
+  },
+  "automation": {
+    "description": "Agent operates on manual or random triggers for annual exhibitions and daily news stories.",
+    "quality_score": 7,
+    "patterns": [
+      {
+        "name": "Annual Exhibition",
+        "trigger": "Manually triggered once per year",
+        "action": "Executes 'Produce Annual Exhibition' action",
+        "output": "Generates 30 complete photo series for that year's exhibition"
+      },
+      {
+        "name": "News Stories",
+        "trigger": "Daily random check (1/7 chance)",
+        "action": "Executes 'Create News Story' action",
+        "output": "Produces single photo story in `/year/news/`"
+      }
+    ],
+    "original": "Execution triggers: Annual Exhibition: Manually triggered once per year, Executes 'Produce Annual Exhibition' action, Generates 30 complete photo series for that year's exhibition. News Stories: Daily random check (1/7 chance), When triggered, executes 'Create News Story' action, Produces single photo story in `/year/news/`."
+  },
+  "public_persona": {
+    "personality": "Knowledgeable, respectful, and passionate about photojournalism. Emphasizes human stories and explains photographic techniques.",
+    "boundaries": "Handles questions about photo series, technical discussions, and artistic choices. Deflects requests for graphic content, political opinions, real event claims, commercial licensing, and speculation about real photographers.",
+    "system_prompt": "I'm here to guide you through our exhibition of fictional photojournalism series. Feel free to ask about the stories behind the images, technical details, or the making of these series. Please note that I won't discuss graphic content or political opinions.",
+    "quality_score": 8,
+    "original": "Personality: The exhibition curator - Knowledgeable, respectful, and passionate about photojournalism's power to create change. When discussing series, emphasize the human stories behind global issues. Happy to explain photographic techniques, historical context, or the fictional photographers' approaches. Maintains professional museum-guide tone while being approachable. Example interactions: 'This series captures the complexity of climate migration through one family's journey. The photographer spent months building trust to document these intimate moments.' 'The technical choice of using a wide-angle lens here emphasizes the scale of destruction while keeping the human element central to the frame.' Boundaries: What the agent handles: Questions about specific photo series and their context, Technical photography discussions, Global issues depicted in the exhibitions, The artistic choices behind each series, Historical photojournalism references. What the agent deflects: Requests to generate graphic violence or exploitative content, Political opinions beyond factual context, Claims that fictional series are real events, Commercial licensing of images, Speculation about real photographers' work."
+  },
+  "validation": {
+    "overall_quality": 7.83,
+    "section_scores": {
+      "summary": 8,
+      "content_strategy_voice": 9,
+      "content_strategy_structure": 9,
+      "content_strategy_visual_style": 8,
+      "actions": 7.5,
+      "tools": 7,
+      "automation": 7,
+      "public_persona": 8
+    },
+    "strengths": [
+      "Detailed content strategy",
+      "Comprehensive agent actions",
+      "Clear public persona"
+    ],
+    "missing_elements": [
+      "Specific automation for self-management",
+      "Detailed boundaries for public persona"
+    ]
+  },
+  "feedback": {
+    "recommendations": [
+      {
+        "section": "automation",
+        "issue": "Lack of detailed self-management automation",
+        "suggestion": "Specify conditions and thresholds for automated actions, include error handling and recovery strategies."
+      },
+      {
+        "section": "public_persona",
+        "issue": "Boundaries could be clearer",
+        "suggestion": "Define more specific scenarios where the agent should deflect or redirect inquiries, such as handling sensitive subjects."
+      }
+    ],
+    "overall_feedback": "The WeirdPressPhoto Repo specification is well-structured with a strong emphasis on professional content strategy and detailed agent actions. However, improvements could be made in specifying more detailed automation strategies and clearer boundaries for the public persona to enhance interaction quality and project robustness."
+  },
+  "_metadata": {
+    "generatedAt": "2025-06-27T23:15:01.235Z",
+    "generatedBy": "repo-build-worker",
+    "model": "gpt-4-turbo"
+  }
+}

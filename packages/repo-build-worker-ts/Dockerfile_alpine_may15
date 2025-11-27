@@ -1,0 +1,73 @@
+# Build stage
+# FROM node:22-alpine AS builder
+FROM nikolaik/python-nodejs:python3.13-nodejs22-alpine AS builder
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install build dependencies for better-sqlite3 and other native modules
+RUN apk add --no-cache \
+    build-base \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev \
+    pixman-dev \
+    freetype-dev \
+    fontconfig \
+    ttf-dejavu \
+    ttf-freefont \
+    python3 \
+    vips-dev \
+    sqlite-dev \
+    git \
+    libc6-compat \
+    gcompat
+
+# No need for special repo-processor handling - it's included with the rest of the source code
+
+# Install dependencies with proper flags for native modules
+RUN npm ci --omit=dev --unsafe-perm=true || (cat /root/.npm/_logs/*-debug-0.log && exit 1)
+
+# Install sharp first
+RUN npm install --platform=linuxmusl sharp --unsafe-perm=true
+
+# Install transformers with --ignore-scripts to skip all install scripts
+RUN npm install --platform=linuxmusl --ignore-scripts @xenova/transformers --unsafe-perm=true
+
+# Production stage
+FROM node:22-alpine
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache vips-dev sqlite libc6-compat gcompat
+
+# Copy node modules from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5522
+ENV TRANSFORMERS_CACHE="/app/models"
+# Disable AI model loading by setting empty string
+ENV AI_MODELS=""
+#ENV AI_MODELS="XENOVA/DISTILBERT-BASE-UNCASED-FINETUNED-SST-2-ENGLISH,XENOVA/ALL-MINILM-L6-V2"
+
+ENV USE_PERSISTENT_MODELS="false"
+
+# Create directory for models
+RUN mkdir -p /app/models
+
+# Create start script using a separate file
+COPY scripts/docker-start.sh /app/start.sh
+
+# Make sure the script is executable
+RUN chmod +x /app/start.sh && cat /app/start.sh
+
+# Start using npm directly for simplified dockerization
+CMD ["/bin/sh", "/app/start.sh"]

@@ -1,0 +1,66 @@
+{
+  "issues": [
+    {
+      "severity": "warning",
+      "category": "broken-link",
+      "module": "link-resolver",
+      "message": "Broken wiki link: [[broken-link]] - target file not found",
+      "filePath": "posts/test.md",
+      "context": {
+        "linkText": "broken-link",
+        "linkTarget": "broken-link",
+        "linkType": "wiki"
+      },
+      "timestamp": "2025-06-28T23:51:13.143Z"
+    },
+    {
+      "severity": "warning",
+      "category": "broken-link",
+      "module": "link-resolver",
+      "message": "Broken wiki link: [[Another Missing Link]] - target file not found",
+      "filePath": "posts/test.md",
+      "context": {
+        "linkText": "Another Missing Link",
+        "linkTarget": "Another Missing Link",
+        "linkType": "wiki"
+      },
+      "timestamp": "2025-06-28T23:51:13.143Z"
+    }
+  ],
+  "summary": {
+    "totalIssues": 2,
+    "errorCount": 0,
+    "warningCount": 2,
+    "infoCount": 0,
+    "filesAffected": 1,
+    "categoryCounts": {
+      "broken-link": 2,
+      "missing-media": 0,
+      "media-processing": 0,
+      "slug-conflict": 0,
+      "mermaid-error": 0,
+      "frontmatter-error": 0,
+      "parse-error": 0,
+      "file-access": 0,
+      "configuration": 0,
+      "other": 0
+    },
+    "moduleCounts": {
+      "markdown-parser": 0,
+      "image-processor": 0,
+      "embed-mermaid": 0,
+      "embed-media": 0,
+      "link-resolver": 2,
+      "slug-generator": 0,
+      "frontmatter-parser": 0,
+      "file-system": 0,
+      "config-validator": 0,
+      "post-processor": 0,
+      "other": 0
+    }
+  },
+  "metadata": {
+    "processStartTime": "2025-06-28T23:51:12.971Z",
+    "processEndTime": "2025-06-28T23:51:13.155Z"
+  }
+}

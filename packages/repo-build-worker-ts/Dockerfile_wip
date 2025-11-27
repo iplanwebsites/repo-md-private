@@ -1,0 +1,76 @@
+# Build stage
+# Switch to a Debian-based image which uses glibc instead of musl
+FROM nikolaik/python-nodejs:python3.13-nodejs20-slim AS builder
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install build dependencies for better-sqlite3 and other native modules
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    libpixman-1-dev \
+    libfreetype6-dev \
+    fontconfig \
+    fonts-dejavu \
+    git \
+    libvips-dev \
+    libsqlite3-dev \
+    python3
+
+# Install dependencies without the platform flag since we're not on musl anymore
+RUN npm ci --omit=dev --unsafe-perm=true || (cat /root/.npm/_logs/*-debug-0.log && exit 1)
+
+# Install sharp
+RUN npm install sharp --unsafe-perm=true
+
+# Install transformers with --ignore-scripts to skip all install scripts
+RUN npm install --ignore-scripts @xenova/transformers --unsafe-perm=true
+
+# Production stage
+FROM node:20-slim
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libvips \
+    libsqlite3-0 \
+    libcairo2 \
+    libpango-1.0-0 \
+    libjpeg62-turbo \
+    libgif7 \
+    librsvg2-2 \
+    fontconfig \
+    fonts-dejavu \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy node modules from builder stage
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5522
+ENV TRANSFORMERS_CACHE="/app/models"
+# Disable AI model loading by setting empty string
+ENV AI_MODELS=""
+ENV USE_PERSISTENT_MODELS="false"
+
+# Create directory for models
+RUN mkdir -p /app/models
+
+# Create start script using a separate file
+COPY scripts/docker-start.sh /app/start.sh
+
+# Make sure the script is executable
+RUN chmod +x /app/start.sh && cat /app/start.sh
+
+# Start using npm directly for simplified dockerization
+CMD ["/bin/sh", "/app/start.sh"]

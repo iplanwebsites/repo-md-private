@@ -1,0 +1,45 @@
+{
+  "name": "@repo-md/plugin-database-sqlite",
+  "version": "0.1.0",
+  "description": "SQLite database plugin with vector search for @repo-md/processor-core",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0"
+  },
+  "peerDependencies": {
+    "@repo-md/processor-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^22.0.0",
+    "@types/better-sqlite3": "^7.6.11"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "repo-md",
+    "plugin",
+    "database",
+    "sqlite",
+    "vector-search"
+  ],
+  "license": "MIT"
+}
