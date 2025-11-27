@@ -124,6 +124,25 @@ const availableSizeOptions = computed(() => {
 	return sizes.sort(); // Sort sizes (usually will be sm, md, lg, ori)
 });
 
+// Helper to get extension from media item - handles both old and new formats
+const getMediaExtension = (media) => {
+	if (!media) return null;
+	// Old format: fileExt property
+	if (media.fileExt) return media.fileExt.toLowerCase();
+	// New format: extract from fileName
+	if (media.fileName) {
+		const parts = media.fileName.split(".");
+		if (parts.length > 1) {
+			return parts[parts.length - 1].toLowerCase();
+		}
+	}
+	// Also check metadata.format
+	if (media.metadata?.format) {
+		return media.metadata.format.toLowerCase();
+	}
+	return null;
+};
+
 // Media types for filtering
 const mediaTypes = computed(() => {
 	console.log("DEBUG: Computing mediaTypes from medias:", medias.value);
@@ -133,7 +152,7 @@ const mediaTypes = computed(() => {
 				console.warn("DEBUG: Found media with missing filename:", media);
 				return "unknown";
 			}
-			const extension = media.fileExt?.toLowerCase();
+			const extension = getMediaExtension(media);
 			console.log(
 				"DEBUG: Media extension:",
 				extension,
@@ -320,7 +339,7 @@ const enhancedMedias = computed(() => {
 				...media,
 				id: media.originalPath || media.fileName, // Using originalPath as unique id, fallback to fileName
 				mediaType,
-				extension: media.fileExt,
+				extension, // Use the computed extension variable (handles both old and new formats)
 				fullUrl: originalCdnUrl,
 				originalCdnUrl, // Store the original URL
 				cdnUrl: originalCdnUrl, // Will be computed dynamically based on defaultSize
@@ -642,9 +661,20 @@ const getBestMediaPath = (media, sizeKey = null) => {
 		return parts[parts.length - 1];
 	}
 
-	// Last resort: use filename with extension
-	if (media.fileName && media.fileExt) {
-		return `${media.fileName}.${media.fileExt}`;
+	// Last resort: use filename
+	// New format: fileName already includes extension (e.g., "test.jpg")
+	// Old format: fileName + fileExt (e.g., "test" + "jpg")
+	if (media.fileName) {
+		// Check if fileName already has an extension
+		const hasExtension = media.fileName.includes(".");
+		if (hasExtension) {
+			return media.fileName;
+		}
+		// Old format: combine fileName with fileExt
+		if (media.fileExt) {
+			return `${media.fileName}.${media.fileExt}`;
+		}
+		return media.fileName;
 	}
 
 	return null;

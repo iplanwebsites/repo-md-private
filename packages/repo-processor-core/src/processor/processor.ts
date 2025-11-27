@@ -566,14 +566,43 @@ export class Processor {
 
     const transformed: Record<string, unknown> = { ...frontmatter };
 
+    // Log mediaPathMap keys for debugging
+    if (mediaPathMap.size > 0) {
+      const mapKeys = Array.from(mediaPathMap.keys()).slice(0, 10);
+      this.log(`[FrontmatterMedia] mediaPathMap has ${mediaPathMap.size} entries. Sample keys: ${mapKeys.join(', ')}`, 'info');
+    } else {
+      this.log(`[FrontmatterMedia] WARNING: mediaPathMap is EMPTY!`, 'warn');
+    }
+
     for (const field of mediaFields) {
       const value = frontmatter[field];
       if (typeof value === 'string' && value.length > 0) {
-        // Resolve the media path relative to the post's directory
-        const resolvedPath = normalizePath(path.join(postDir, value));
-        const mediaInfo = mediaPathMap.get(resolvedPath);
+        this.log(`[FrontmatterMedia] Processing "${field}": "${value}" (postPath: ${postPath})`, 'info');
+
+        // Try multiple path resolution strategies:
+        // 1. First try the value as-is (path relative to input root, e.g., "media/image.jpg")
+        // 2. Then try relative to post's directory (e.g., "../media/image.jpg" from posts/)
+        // 3. Then try with leading slash removed
+        const pathsToTry = [
+          normalizePath(value), // Direct path from root
+          normalizePath(path.join(postDir, value)), // Relative to post directory
+          normalizePath(value.replace(/^\//, '')), // Remove leading slash if present
+        ];
+
+        this.log(`[FrontmatterMedia] Trying paths: ${pathsToTry.join(' | ')}`, 'info');
+
+        let mediaInfo: ProcessedMedia | undefined;
+        let matchedPath: string | undefined;
+        for (const tryPath of pathsToTry) {
+          mediaInfo = mediaPathMap.get(tryPath);
+          if (mediaInfo) {
+            matchedPath = tryPath;
+            break;
+          }
+        }
 
         if (mediaInfo) {
+          this.log(`[FrontmatterMedia] MATCH FOUND for "${field}" at path "${matchedPath}" -> ${mediaInfo.outputPath}`, 'info');
           // Replace with structured media info
           transformed[field] = {
             original: value,
@@ -588,6 +617,8 @@ export class Processor {
               height: s.height,
             })),
           };
+        } else {
+          this.log(`[FrontmatterMedia] NO MATCH for "${field}": "${value}". Tried: ${pathsToTry.join(', ')}`, 'warn');
         }
       }
     }
