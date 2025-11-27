@@ -979,14 +979,16 @@ class RepoMD {
    * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 384)
    * @param limit - Maximum number of results to return (default: 10)
    * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @param maxCandidates - Maximum embeddings to compare against for performance (default: 200, 0 = unlimited)
    * @returns Array of posts with similarity scores, sorted by similarity descending
    */
   async searchPostsByEmbedding(
     embedding: number[],
     limit = 10,
-    threshold = 0.0
+    threshold = 0.0,
+    maxCandidates = 200
   ): Promise<import("./posts/similarity.js").SimilaritySearchResult[]> {
-    return await this.similarity!.searchPostsByEmbedding(embedding, limit, threshold);
+    return await this.similarity!.searchPostsByEmbedding(embedding, limit, threshold, maxCandidates);
   }
 
   /**
@@ -997,14 +999,16 @@ class RepoMD {
    * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 512 for CLIP)
    * @param limit - Maximum number of results to return (default: 10)
    * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @param maxCandidates - Maximum embeddings to compare against for performance (default: 200, 0 = unlimited)
    * @returns Array of media items with similarity scores, sorted by similarity descending
    */
   async searchMediaByEmbedding(
     embedding: number[],
     limit = 10,
-    threshold = 0.0
+    threshold = 0.0,
+    maxCandidates = 200
   ): Promise<import("./media/similarity.js").MediaSimilaritySearchResult[]> {
-    return await this.mediaSimilarity!.searchMediaByEmbedding(embedding, limit, threshold);
+    return await this.mediaSimilarity!.searchMediaByEmbedding(embedding, limit, threshold, maxCandidates);
   }
 
   // AI Inference methods (using inference module)

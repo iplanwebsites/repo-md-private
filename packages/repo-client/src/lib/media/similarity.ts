@@ -33,7 +33,7 @@ export interface MediaSimilarityService {
   getTopSimilarMediaHashes: () => Promise<Record<string, string[]> | null>;
   getSimilarMediaHashByHash: (hash: string, limit?: number) => Promise<string[]>;
   getSimilarMediaByHash: (hash: string, count?: number) => Promise<Media[]>;
-  searchMediaByEmbedding: (embedding: number[], limit?: number, threshold?: number) => Promise<MediaSimilaritySearchResult[]>;
+  searchMediaByEmbedding: (embedding: number[], limit?: number, threshold?: number, maxCandidates?: number) => Promise<MediaSimilaritySearchResult[]>;
   clearSimilarityCache: () => void;
 }
 
@@ -377,13 +377,15 @@ export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimil
    * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 512 for CLIP)
    * @param limit - Maximum number of results to return (default: 10)
    * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @param maxCandidates - Maximum number of embeddings to compare against (default: 200, 0 = unlimited)
    * @returns Array of media with similarity scores, sorted by similarity descending
    * @throws If embedding is invalid
    */
   async function searchMediaByEmbedding(
     embedding: number[],
     limit = 10,
-    threshold = 0.0
+    threshold = 0.0,
+    maxCandidates = 200
   ): Promise<MediaSimilaritySearchResult[]> {
     // Validate embedding parameter
     if (!embedding) {
@@ -410,7 +412,7 @@ export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimil
 
     if (debug) {
       console.log(
-        `${prefix} 🔍 Searching media by embedding (dim: ${embedding.length}, limit: ${limit}, threshold: ${threshold})`
+        `${prefix} 🔍 Searching media by embedding (dim: ${embedding.length}, limit: ${limit}, threshold: ${threshold}, maxCandidates: ${maxCandidates || 'unlimited'})`
       );
     }
 
@@ -424,10 +426,21 @@ export function createMediaSimilarity(config: MediaSimilarityConfig): MediaSimil
       return [];
     }
 
-    // Calculate similarities for all media
+    // Get entries and optionally limit candidates for performance
+    let entries = Object.entries(embeddingsMap);
+    if (maxCandidates > 0 && entries.length > maxCandidates) {
+      if (debug) {
+        console.log(
+          `${prefix} ⚠️ Limiting search to ${maxCandidates} of ${entries.length} embeddings for performance`
+        );
+      }
+      entries = entries.slice(0, maxCandidates);
+    }
+
+    // Calculate similarities for media
     const results: MediaSimilaritySearchResult[] = [];
 
-    for (const [hash, mediaEmbedding] of Object.entries(embeddingsMap)) {
+    for (const [hash, mediaEmbedding] of entries) {
       if (!mediaEmbedding || !Array.isArray(mediaEmbedding)) continue;
 
       const similarity = cosineSimilarity(embedding, mediaEmbedding);

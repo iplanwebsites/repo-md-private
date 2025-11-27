@@ -37,7 +37,7 @@ export interface PostSimilarityService {
   getSimilarPostsByHash: (hash: string, count?: number, options?: AugmentOptions) => Promise<Post[]>;
   getSimilarPostsSlugBySlug: (slug: string, limit?: number) => Promise<string[]>;
   getSimilarPostsBySlug: (slug: string, count?: number, options?: AugmentOptions) => Promise<Post[]>;
-  searchPostsByEmbedding: (embedding: number[], limit?: number, threshold?: number) => Promise<SimilaritySearchResult[]>;
+  searchPostsByEmbedding: (embedding: number[], limit?: number, threshold?: number, maxCandidates?: number) => Promise<SimilaritySearchResult[]>;
   clearSimilarityCache: () => void;
 }
 
@@ -464,13 +464,15 @@ export function createPostSimilarity(config: PostSimilarityConfig): PostSimilari
    * @param embedding - The query embedding vector (should match dimension of stored embeddings, typically 384)
    * @param limit - Maximum number of results to return (default: 10)
    * @param threshold - Minimum similarity threshold (default: 0.0)
+   * @param maxCandidates - Maximum number of embeddings to compare against (default: 200, 0 = unlimited)
    * @returns Array of posts with similarity scores, sorted by similarity descending
    * @throws If embedding is invalid
    */
   async function searchPostsByEmbedding(
     embedding: number[],
     limit = 10,
-    threshold = 0.0
+    threshold = 0.0,
+    maxCandidates = 200
   ): Promise<SimilaritySearchResult[]> {
     // Validate embedding parameter
     if (!embedding) {
@@ -497,7 +499,7 @@ export function createPostSimilarity(config: PostSimilarityConfig): PostSimilari
 
     if (debug) {
       console.log(
-        `${prefix} 🔍 Searching posts by embedding (dim: ${embedding.length}, limit: ${limit}, threshold: ${threshold})`
+        `${prefix} 🔍 Searching posts by embedding (dim: ${embedding.length}, limit: ${limit}, threshold: ${threshold}, maxCandidates: ${maxCandidates || 'unlimited'})`
       );
     }
 
@@ -511,10 +513,21 @@ export function createPostSimilarity(config: PostSimilarityConfig): PostSimilari
       return [];
     }
 
-    // Calculate similarities for all posts
+    // Get entries and optionally limit candidates for performance
+    let entries = Object.entries(embeddingsMap);
+    if (maxCandidates > 0 && entries.length > maxCandidates) {
+      if (debug) {
+        console.log(
+          `${prefix} ⚠️ Limiting search to ${maxCandidates} of ${entries.length} embeddings for performance`
+        );
+      }
+      entries = entries.slice(0, maxCandidates);
+    }
+
+    // Calculate similarities for posts
     const results: SimilaritySearchResult[] = [];
 
-    for (const [hash, postEmbedding] of Object.entries(embeddingsMap)) {
+    for (const [hash, postEmbedding] of entries) {
       if (!postEmbedding || !Array.isArray(postEmbedding)) continue;
 
       const similarity = cosineSimilarity(embedding, postEmbedding);
