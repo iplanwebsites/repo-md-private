@@ -775,5 +775,980 @@ The **proprietary value** shifts from "we generate embeddings" to "we orchestrat
 
 ---
 
+## Migration Plan
+
+### Overview
+
+This migration plan creates a new `@repo-md/processor-core` package alongside the existing `@repo-md/processor`, enabling incremental migration with feature parity testing at each step.
+
+**Strategy**: Strangler Fig Pattern
+- Build new system alongside old
+- Migrate features incrementally
+- Test for parity at each step
+- Switch over when ready
+- Remove old code
+
+---
+
+### Workspace Package Structure
+
+```
+packages/
+├── repo-processor/              # EXISTING - keep during migration
+├── repo-processor-core/         # NEW - lightweight core
+├── repo-plugin-image-sharp/     # NEW - Sharp image processor
+├── repo-plugin-embed-hf/        # NEW - HuggingFace text embeddings
+├── repo-plugin-embed-clip/      # NEW - CLIP image embeddings
+├── repo-plugin-database-sqlite/ # NEW - SQLite + vector
+├── repo-plugin-mermaid-playwright/ # NEW - Mermaid renderer
+└── repo-build-worker/           # EXISTING - update to use new processor
+```
+
+**Package naming convention**: `repo-{name}` in folder, `@repo-md/{name}` in npm.
+
+---
+
+### Step 1: Create processor-core Package
+
+#### 1.1 Initialize Package
+
+```bash
+mkdir -p packages/repo-processor-core/src/{plugins,types,process,services,lib}
+```
+
+**packages/repo-processor-core/package.json**:
+```json
+{
+  "name": "@repo-md/processor-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "import": "./dist/plugins/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "unified": "^11.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.0.0",
+    "remark-gfm": "^4.0.0",
+    "rehype-stringify": "^10.0.0",
+    "gray-matter": "^4.0.3",
+    "@sindresorhus/slugify": "^2.2.1",
+    "mdast-util-to-string": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "peerDependencies": {},
+  "files": ["dist"],
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+```
+
+#### 1.2 Define Plugin Interfaces
+
+Create `packages/repo-processor-core/src/plugins/types.ts`:
+
+```typescript
+// Base plugin interface
+export interface PluginContext {
+  outputDir: string;
+  issues: IssueCollector;
+  log: (message: string, level?: 'info' | 'warn' | 'error') => void;
+  getPlugin<T extends Plugin>(name: string): T | undefined;
+  config: ProcessConfig;
+}
+
+export interface Plugin {
+  readonly name: string;
+  readonly requires?: readonly string[];
+  initialize(context: PluginContext): Promise<void>;
+  isReady(): boolean;
+}
+
+// Specific plugin interfaces
+export interface ImageProcessorPlugin extends Plugin {
+  readonly name: 'imageProcessor';
+  canProcess(filePath: string): boolean;
+  getMetadata(filePath: string): Promise<ImageMetadata>;
+  process(input: string, output: string, options: ImageProcessOptions): Promise<ImageResult>;
+  copy(input: string, output: string): Promise<void>;
+}
+
+export interface TextEmbeddingPlugin extends Plugin {
+  readonly name: 'textEmbedder';
+  readonly model: string;
+  readonly dimensions: number;
+  embed(text: string): Promise<number[]>;
+  batchEmbed(texts: string[]): Promise<number[][]>;
+}
+
+export interface ImageEmbeddingPlugin extends Plugin {
+  readonly name: 'imageEmbedder';
+  readonly model: string;
+  readonly dimensions: number;
+  embedFile(filePath: string): Promise<number[]>;
+  embedBuffer(buffer: Buffer, mimeType: string): Promise<number[]>;
+}
+
+export interface SimilarityPlugin extends Plugin {
+  readonly name: 'similarity';
+  readonly requires: readonly ['textEmbedder'];
+  computeSimilarity(a: number[], b: number[]): number;
+  generateSimilarityMap(posts: ProcessedPost[]): Promise<SimilarityResult>;
+}
+
+export interface DatabasePlugin extends Plugin {
+  readonly name: 'database';
+  build(data: DatabaseBuildInput): Promise<DatabaseResult>;
+}
+
+export interface MermaidRendererPlugin extends Plugin {
+  readonly name: 'mermaidRenderer';
+  render(code: string, options: MermaidRenderOptions): Promise<MermaidResult>;
+  isAvailable(): Promise<boolean>;
+}
+```
+
+#### 1.3 Implement Plugin Manager
+
+Create `packages/repo-processor-core/src/plugins/manager.ts`:
+
+```typescript
+export class PluginManager {
+  private plugins = new Map<string, Plugin>();
+  private context!: PluginContext;
+
+  async initialize(config: ProcessConfig, context: Omit<PluginContext, 'getPlugin'>) {
+    this.context = {
+      ...context,
+      getPlugin: <T extends Plugin>(name: string) => this.getPlugin<T>(name)
+    };
+
+    const pluginConfigs = config.plugins || {};
+    const allPlugins = Object.values(pluginConfigs).filter(Boolean) as Plugin[];
+
+    // Topological sort based on dependencies
+    const sorted = this.topologicalSort(allPlugins);
+
+    // Initialize in dependency order
+    for (const plugin of sorted) {
+      await this.initializePlugin(plugin);
+    }
+  }
+
+  private async initializePlugin(plugin: Plugin) {
+    // Validate dependencies
+    for (const dep of plugin.requires || []) {
+      if (!this.plugins.has(dep)) {
+        throw new Error(
+          `Plugin "${plugin.name}" requires "${dep}" which is not configured`
+        );
+      }
+    }
+
+    await plugin.initialize(this.context);
+    this.plugins.set(plugin.name, plugin);
+  }
+
+  getPlugin<T extends Plugin>(name: string): T | undefined {
+    return this.plugins.get(name) as T | undefined;
+  }
+
+  private topologicalSort(plugins: Plugin[]): Plugin[] {
+    // Build adjacency list and in-degree count
+    const graph = new Map<string, string[]>();
+    const inDegree = new Map<string, number>();
+    const pluginMap = new Map<string, Plugin>();
+
+    for (const p of plugins) {
+      pluginMap.set(p.name, p);
+      graph.set(p.name, []);
+      inDegree.set(p.name, 0);
+    }
+
+    for (const p of plugins) {
+      for (const dep of p.requires || []) {
+        if (graph.has(dep)) {
+          graph.get(dep)!.push(p.name);
+          inDegree.set(p.name, (inDegree.get(p.name) || 0) + 1);
+        }
+      }
+    }
+
+    // Kahn's algorithm
+    const queue: string[] = [];
+    for (const [name, degree] of inDegree) {
+      if (degree === 0) queue.push(name);
+    }
+
+    const result: Plugin[] = [];
+    while (queue.length > 0) {
+      const name = queue.shift()!;
+      result.push(pluginMap.get(name)!);
+
+      for (const neighbor of graph.get(name) || []) {
+        const newDegree = (inDegree.get(neighbor) || 0) - 1;
+        inDegree.set(neighbor, newDegree);
+        if (newDegree === 0) queue.push(neighbor);
+      }
+    }
+
+    if (result.length !== plugins.length) {
+      throw new Error('Circular plugin dependency detected');
+    }
+
+    return result;
+  }
+}
+```
+
+#### 1.4 Create Default No-Op Plugins
+
+Create `packages/repo-processor-core/src/plugins/defaults.ts`:
+
+```typescript
+import fs from 'node:fs/promises';
+
+export class CopyOnlyImageProcessor implements ImageProcessorPlugin {
+  readonly name = 'imageProcessor' as const;
+  private ready = false;
+
+  async initialize() { this.ready = true; }
+  isReady() { return this.ready; }
+
+  canProcess() { return false; }
+
+  async getMetadata(): Promise<ImageMetadata> {
+    return { width: 0, height: 0, format: 'unknown' };
+  }
+
+  async process(): Promise<ImageResult> {
+    throw new Error('No image processor configured. Use copy() instead.');
+  }
+
+  async copy(input: string, output: string) {
+    await fs.copyFile(input, output);
+  }
+}
+
+export class PassthroughMermaidRenderer implements MermaidRendererPlugin {
+  readonly name = 'mermaidRenderer' as const;
+  private ready = false;
+
+  async initialize() { this.ready = true; }
+  isReady() { return this.ready; }
+
+  async render(code: string): Promise<MermaidResult> {
+    return { output: code, strategy: 'pre-mermaid' };
+  }
+
+  async isAvailable() { return true; }
+}
+```
+
+---
+
+### Step 2: Migrate Core Processing Logic
+
+#### 2.1 Copy and Adapt Core Files
+
+Copy from `repo-processor/src/` to `repo-processor-core/src/`:
+
+| Source | Destination | Changes |
+|--------|-------------|---------|
+| `types/*.ts` | `types/*.ts` | Add plugin config types |
+| `lib/utility.ts` | `lib/utility.ts` | Keep as-is |
+| `services/issueCollector.ts` | `services/issueCollector.ts` | Keep as-is |
+| `remark/*.ts` | `remark/*.ts` | Keep as-is |
+| `rehype/*.ts` | `rehype/*.ts` | Remove mermaid (plugin) |
+| `process/process.ts` | `process/process.ts` | Refactor for plugins |
+| `process/processMedia.ts` | `process/processMedia.ts` | Use imageProcessor plugin |
+
+#### 2.2 Refactor processMedia for Plugin
+
+```typescript
+// packages/repo-processor-core/src/process/processMedia.ts
+
+export async function processMedia(
+  media: MediaFile[],
+  config: ProcessConfig,
+  plugins: PluginManager
+): Promise<ProcessedMedia[]> {
+  const imageProcessor = plugins.getPlugin<ImageProcessorPlugin>('imageProcessor');
+  const imageEmbedder = plugins.getPlugin<ImageEmbeddingPlugin>('imageEmbedder');
+
+  const results: ProcessedMedia[] = [];
+
+  for (const file of media) {
+    const result: ProcessedMedia = {
+      hash: calculateFileHash(file.path),
+      originalPath: file.path,
+      // ...
+    };
+
+    // Use plugin for image processing
+    if (imageProcessor?.canProcess(file.path)) {
+      const sizes = config.imageSizes || DEFAULT_IMAGE_SIZES;
+      result.sizes = {};
+
+      for (const size of sizes) {
+        const outputPath = getOutputPath(file, size, config.dir.output);
+        const processed = await imageProcessor.process(file.path, outputPath, {
+          width: size.width,
+          format: config.imageFormat || 'webp',
+          quality: config.imageQuality || 80
+        });
+        result.sizes[size.suffix] = processed;
+      }
+    } else {
+      // Fallback: just copy
+      const outputPath = getOutputPath(file, null, config.dir.output);
+      await (imageProcessor || new CopyOnlyImageProcessor()).copy(file.path, outputPath);
+      result.copyPath = outputPath;
+    }
+
+    // Generate image embedding if plugin available
+    if (imageEmbedder && isImage(file.path)) {
+      try {
+        result.embedding = await imageEmbedder.embedFile(file.path);
+      } catch (e) {
+        // Log but don't fail
+      }
+    }
+
+    results.push(result);
+  }
+
+  return results;
+}
+```
+
+#### 2.3 Add Post-Processing Hook Points
+
+```typescript
+// packages/repo-processor-core/src/process/process.ts
+
+export async function process(config: ProcessConfig): Promise<ProcessResult> {
+  const plugins = new PluginManager();
+  await plugins.initialize(config, { /* context */ });
+
+  // 1. Parse markdown files (core)
+  const posts = await parseMarkdownFiles(config);
+
+  // 2. Process media (uses imageProcessor plugin)
+  const media = await processMedia(extractMedia(posts), config, plugins);
+
+  // 3. Generate text embeddings (if plugin available)
+  const textEmbedder = plugins.getPlugin<TextEmbeddingPlugin>('textEmbedder');
+  if (textEmbedder) {
+    for (const post of posts) {
+      post.embedding = await textEmbedder.embed(post.plain || '');
+    }
+  }
+
+  // 4. Generate similarity (if plugin available, requires textEmbedder)
+  const similarity = plugins.getPlugin<SimilarityPlugin>('similarity');
+  let similarityResult;
+  if (similarity) {
+    similarityResult = await similarity.generateSimilarityMap(posts);
+  }
+
+  // 5. Build database (if plugin available)
+  const database = plugins.getPlugin<DatabasePlugin>('database');
+  let databaseResult;
+  if (database) {
+    databaseResult = await database.build({ posts, media });
+  }
+
+  // 6. Write output files
+  await writeOutputFiles(config.dir.output, {
+    posts,
+    media,
+    embeddings: textEmbedder ? extractEmbeddings(posts) : undefined,
+    similarity: similarityResult,
+    database: databaseResult
+  });
+
+  return { posts, media, similarity: similarityResult, database: databaseResult };
+}
+```
+
+---
+
+### Step 3: Create Plugin Packages
+
+#### 3.1 @repo-md/plugin-image-sharp
+
+**packages/repo-plugin-image-sharp/package.json**:
+```json
+{
+  "name": "@repo-md/plugin-image-sharp",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "peerDependencies": {
+    "@repo-md/processor-core": "workspace:*"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}
+```
+
+**packages/repo-plugin-image-sharp/src/index.ts**:
+```typescript
+import sharp from 'sharp';
+import type { ImageProcessorPlugin, PluginContext } from '@repo-md/processor-core/plugins';
+
+export class SharpImageProcessor implements ImageProcessorPlugin {
+  readonly name = 'imageProcessor' as const;
+  private ready = false;
+
+  async initialize(context: PluginContext) {
+    this.ready = true;
+  }
+
+  isReady() { return this.ready; }
+
+  canProcess(filePath: string) {
+    return /\.(jpe?g|png|webp|avif|gif|tiff?)$/i.test(filePath);
+  }
+
+  async getMetadata(filePath: string) {
+    const meta = await sharp(filePath).metadata();
+    return {
+      width: meta.width || 0,
+      height: meta.height || 0,
+      format: meta.format || 'unknown'
+    };
+  }
+
+  async process(input: string, output: string, options: ImageProcessOptions) {
+    let pipeline = sharp(input);
+
+    if (options.width || options.height) {
+      pipeline = pipeline.resize({
+        width: options.width || undefined,
+        height: options.height || undefined,
+        withoutEnlargement: true,
+        fit: 'inside'
+      });
+    }
+
+    const formatMap = {
+      webp: () => pipeline.webp({ quality: options.quality || 80 }),
+      avif: () => pipeline.avif({ quality: options.quality || 65 }),
+      jpeg: () => pipeline.jpeg({ quality: options.quality || 85 }),
+      png: () => pipeline.png()
+    };
+
+    if (formatMap[options.format]) {
+      pipeline = formatMap[options.format]();
+    }
+
+    await pipeline.toFile(output);
+
+    const meta = await this.getMetadata(output);
+    const stats = await fs.stat(output);
+
+    return {
+      outputPath: output,
+      width: meta.width,
+      height: meta.height,
+      format: options.format,
+      size: stats.size
+    };
+  }
+
+  async copy(input: string, output: string) {
+    await fs.copyFile(input, output);
+  }
+}
+```
+
+#### 3.2 @repo-md/plugin-embed-hf
+
+**packages/repo-plugin-embed-hf/package.json**:
+```json
+{
+  "name": "@repo-md/plugin-embed-hf",
+  "version": "0.1.0",
+  "type": "module",
+  "peerDependencies": {
+    "@repo-md/processor-core": "workspace:*"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0"
+  }
+}
+```
+
+#### 3.3 @repo-md/plugin-embed-clip
+
+**packages/repo-plugin-embed-clip/package.json**:
+```json
+{
+  "name": "@repo-md/plugin-embed-clip",
+  "version": "0.1.0",
+  "type": "module",
+  "peerDependencies": {
+    "@repo-md/processor-core": "workspace:*"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0"
+  }
+}
+```
+
+#### 3.4 @repo-md/plugin-database-sqlite
+
+**packages/repo-plugin-database-sqlite/package.json**:
+```json
+{
+  "name": "@repo-md/plugin-database-sqlite",
+  "version": "0.1.0",
+  "type": "module",
+  "peerDependencies": {
+    "@repo-md/processor-core": "workspace:*"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "sqlite-vec": "^0.1.0"
+  }
+}
+```
+
+---
+
+### Step 4: Test Strategy & Feature Parity
+
+#### 4.1 Test Fixtures
+
+Create shared test fixtures in `packages/repo-processor-core/test/fixtures/`:
+
+```
+test/fixtures/
+├── vault-minimal/           # Minimal vault (2-3 posts, no media)
+│   ├── post-one.md
+│   ├── post-two.md
+│   └── _config.yaml
+├── vault-with-media/        # Posts + images
+│   ├── posts/
+│   │   └── article.md
+│   └── images/
+│       ├── photo.jpg
+│       └── diagram.png
+├── vault-with-links/        # Wiki-links, backlinks
+│   ├── index.md
+│   ├── page-a.md
+│   └── page-b.md
+├── vault-obsidian/          # Full Obsidian vault
+│   ├── .obsidian/
+│   ├── notes/
+│   ├── attachments/
+│   └── daily/
+└── expected-outputs/        # Golden master outputs for comparison
+    ├── vault-minimal/
+    │   ├── posts.json
+    │   └── posts-slug-map.json
+    ├── vault-with-media/
+    │   ├── posts.json
+    │   ├── medias.json
+    │   └── _medias/
+    └── ...
+```
+
+#### 4.2 Feature Parity Test Suite
+
+**packages/repo-processor-core/test/parity.test.ts**:
+
+```typescript
+import { describe, it, expect, beforeAll } from 'vitest';
+import { RepoProcessor as OldProcessor } from '@repo-md/processor';
+import { RepoProcessor as NewProcessor } from '../src/index.js';
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
+
+describe('Feature Parity: Old vs New Processor', () => {
+  const fixtures = [
+    'vault-minimal',
+    'vault-with-media',
+    'vault-with-links',
+    'vault-obsidian'
+  ];
+
+  for (const fixture of fixtures) {
+    describe(`Fixture: ${fixture}`, () => {
+      let oldResult: ProcessResult;
+      let newResult: ProcessResult;
+
+      beforeAll(async () => {
+        const inputDir = `./test/fixtures/${fixture}`;
+
+        // Run old processor
+        const oldProcessor = new OldProcessor({ dir: { input: inputDir } });
+        oldResult = await oldProcessor.process();
+
+        // Run new processor with equivalent plugins
+        const newProcessor = new NewProcessor({
+          dir: { input: inputDir },
+          plugins: {
+            imageProcessor: new SharpImageProcessor()
+          }
+        });
+        newResult = await newProcessor.process();
+      });
+
+      it('should produce same number of posts', () => {
+        expect(newResult.posts.length).toBe(oldResult.posts.length);
+      });
+
+      it('should produce same post slugs', () => {
+        const oldSlugs = oldResult.posts.map(p => p.slug).sort();
+        const newSlugs = newResult.posts.map(p => p.slug).sort();
+        expect(newSlugs).toEqual(oldSlugs);
+      });
+
+      it('should produce same post hashes', () => {
+        const oldHashes = oldResult.posts.map(p => p.hash).sort();
+        const newHashes = newResult.posts.map(p => p.hash).sort();
+        expect(newHashes).toEqual(oldHashes);
+      });
+
+      it('should produce same frontmatter', () => {
+        for (const oldPost of oldResult.posts) {
+          const newPost = newResult.posts.find(p => p.slug === oldPost.slug);
+          expect(newPost?.frontmatter).toEqual(oldPost.frontmatter);
+        }
+      });
+
+      it('should produce same HTML content', () => {
+        for (const oldPost of oldResult.posts) {
+          const newPost = newResult.posts.find(p => p.slug === oldPost.slug);
+          expect(newPost?.html).toEqual(oldPost.html);
+        }
+      });
+
+      it('should produce same plain text', () => {
+        for (const oldPost of oldResult.posts) {
+          const newPost = newResult.posts.find(p => p.slug === oldPost.slug);
+          expect(newPost?.plain).toEqual(oldPost.plain);
+        }
+      });
+
+      it('should resolve same wiki-links', () => {
+        for (const oldPost of oldResult.posts) {
+          const newPost = newResult.posts.find(p => p.slug === oldPost.slug);
+          expect(newPost?.links).toEqual(oldPost.links);
+        }
+      });
+
+      it('should produce same media count', () => {
+        expect(newResult.media.length).toBe(oldResult.media.length);
+      });
+
+      it('should produce same media hashes', () => {
+        const oldHashes = oldResult.media.map(m => m.hash).sort();
+        const newHashes = newResult.media.map(m => m.hash).sort();
+        expect(newHashes).toEqual(oldHashes);
+      });
+    });
+  }
+});
+```
+
+#### 4.3 Plugin-Specific Tests
+
+**packages/repo-plugin-image-sharp/test/sharp.test.ts**:
+
+```typescript
+describe('SharpImageProcessor', () => {
+  it('should resize images correctly', async () => {
+    const processor = new SharpImageProcessor();
+    await processor.initialize(mockContext);
+
+    const result = await processor.process(
+      './test/fixtures/photo.jpg',
+      './test/output/photo-md.webp',
+      { width: 700, format: 'webp', quality: 80 }
+    );
+
+    expect(result.width).toBeLessThanOrEqual(700);
+    expect(result.format).toBe('webp');
+  });
+
+  it('should preserve aspect ratio', async () => { /* ... */ });
+  it('should not upscale images', async () => { /* ... */ });
+  it('should handle various formats', async () => { /* ... */ });
+});
+```
+
+**packages/repo-plugin-embed-hf/test/embeddings.test.ts**:
+
+```typescript
+describe('HuggingFaceTextEmbedder', () => {
+  it('should generate embeddings with correct dimensions', async () => {
+    const embedder = new HuggingFaceTextEmbedder();
+    await embedder.initialize(mockContext);
+
+    const embedding = await embedder.embed('Hello world');
+
+    expect(embedding).toHaveLength(384);
+    expect(embedding.every(n => typeof n === 'number')).toBe(true);
+  });
+
+  it('should produce consistent embeddings for same text', async () => {
+    const e1 = await embedder.embed('Test text');
+    const e2 = await embedder.embed('Test text');
+    expect(e1).toEqual(e2);
+  });
+
+  it('should batch embed efficiently', async () => { /* ... */ });
+});
+```
+
+#### 4.4 Integration Tests with Worker
+
+**packages/repo-build-worker/test/integration.test.ts**:
+
+```typescript
+describe('Worker Integration with New Processor', () => {
+  it('should produce identical R2 output structure', async () => {
+    // Compare old buildAssets output vs new
+  });
+
+  it('should generate valid embeddings file', async () => {
+    // Verify posts-embedding-hash-map.json format
+  });
+
+  it('should generate valid SQLite database', async () => {
+    // Query database, verify tables and data
+  });
+});
+```
+
+#### 4.5 Feature Parity Checklist
+
+| Feature | Old Location | New Location | Test Coverage |
+|---------|--------------|--------------|---------------|
+| Markdown parsing | processor | processor-core | `parity.test.ts` |
+| Frontmatter extraction | processor | processor-core | `parity.test.ts` |
+| Wiki-link resolution | processor | processor-core | `parity.test.ts` |
+| Slug generation | processor | processor-core | `parity.test.ts` |
+| Hash calculation | processor | processor-core | `parity.test.ts` |
+| HTML generation | processor | processor-core | `parity.test.ts` |
+| Plain text extraction | processor | processor-core | `parity.test.ts` |
+| Image resizing | processor (sharp) | plugin-image-sharp | `sharp.test.ts` |
+| Image format conversion | processor (sharp) | plugin-image-sharp | `sharp.test.ts` |
+| Text embeddings | worker | plugin-embed-hf | `embeddings.test.ts` |
+| Image embeddings | worker | plugin-embed-clip | `clip.test.ts` |
+| Similarity computation | worker | processor-core (plugin) | `similarity.test.ts` |
+| SQLite generation | worker | plugin-database-sqlite | `sqlite.test.ts` |
+| Vector search | worker | plugin-database-sqlite | `sqlite.test.ts` |
+| Mermaid rendering | processor (playwright) | plugin-mermaid-playwright | `mermaid.test.ts` |
+| Issue collection | both | processor-core | `issues.test.ts` |
+
+---
+
+### Step 5: Update Worker to Use New Processor
+
+#### 5.1 Update Worker Dependencies
+
+**packages/repo-build-worker/package.json**:
+```json
+{
+  "dependencies": {
+    "@repo-md/processor-core": "workspace:*",
+    "@repo-md/plugin-image-sharp": "workspace:*",
+    "@repo-md/plugin-embed-hf": "workspace:*",
+    "@repo-md/plugin-embed-clip": "workspace:*",
+    "@repo-md/plugin-database-sqlite": "workspace:*"
+  }
+}
+```
+
+#### 5.2 Update buildAssets.js
+
+```javascript
+// packages/repo-build-worker/src/process/buildAssets.js
+
+import { RepoProcessor } from '@repo-md/processor-core';
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
+import { HuggingFaceTextEmbedder } from '@repo-md/plugin-embed-hf';
+import { ClipImageEmbedder } from '@repo-md/plugin-embed-clip';
+import { SqliteDatabasePlugin } from '@repo-md/plugin-database-sqlite';
+import { CosineSimilarityPlugin } from '@repo-md/processor-core/plugins';
+
+export async function buildAssets(data) {
+  const { repoInfo, logger } = data;
+
+  const processor = new RepoProcessor({
+    dir: {
+      input: repoInfo.path,
+      output: repoInfo.distPath
+    },
+    plugins: {
+      imageProcessor: new SharpImageProcessor(),
+      textEmbedder: new HuggingFaceTextEmbedder(),
+      imageEmbedder: new ClipImageEmbedder(),
+      similarity: new CosineSimilarityPlugin(),
+      database: new SqliteDatabasePlugin()
+    },
+    // Pass existing config options
+    imageSizes: data.config?.imageSizes,
+    imageFormat: data.config?.imageFormat
+  });
+
+  const result = await processor.process();
+
+  return {
+    ...data,
+    assets: {
+      processed: true,
+      distFolder: result.outputDir,
+      postsCount: result.posts.length,
+      mediaCount: result.media.length,
+      hasEmbeddings: !!result.embeddings,
+      hasSimilarity: !!result.similarity,
+      hasDatabase: !!result.database
+    }
+  };
+}
+```
+
+#### 5.3 Remove Redundant Worker Code
+
+Delete from worker (now in plugins):
+- `src/process/computePostEmbeddings.js`
+- `src/process/computeImageEmbeddings.js`
+- `src/process/buildSqliteDatabase.js`
+- `src/lib/instructor-embedder.js`
+- `src/lib/clip-embedder.js`
+- `src/services/issueCollector.js` (use from processor-core)
+
+---
+
+### Step 6: Cleanup and Finalization
+
+#### 6.1 Remove Old Processor (When Ready)
+
+After all tests pass and worker is migrated:
+
+1. Update all imports from `@repo-md/processor` to `@repo-md/processor-core`
+2. Remove `packages/repo-processor/` directory
+3. Rename `@repo-md/processor-core` to `@repo-md/processor` (optional)
+
+#### 6.2 Update Root package.json
+
+```json
+{
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:processor-core": "turbo run build --filter=@repo-md/processor-core",
+    "build:plugins": "turbo run build --filter=@repo-md/plugin-*",
+    "test:parity": "turbo run test --filter=@repo-md/processor-core -- --grep parity"
+  }
+}
+```
+
+#### 6.3 Documentation Updates
+
+- Update CLAUDE.md with new package structure
+- Create plugin authoring guide
+- Document breaking changes from old processor
+
+---
+
+### Step 7: CI/CD Setup
+
+#### 7.1 Test Matrix
+
+```yaml
+# .github/workflows/test.yml
+jobs:
+  test:
+    strategy:
+      matrix:
+        package:
+          - repo-processor-core
+          - repo-plugin-image-sharp
+          - repo-plugin-embed-hf
+          - repo-plugin-embed-clip
+          - repo-plugin-database-sqlite
+    steps:
+      - run: npm run test --workspace=packages/${{ matrix.package }}
+
+  parity-test:
+    needs: test
+    steps:
+      - run: npm run test:parity
+```
+
+#### 7.2 Publish Workflow
+
+```yaml
+# .github/workflows/publish.yml
+jobs:
+  publish:
+    steps:
+      - run: |
+          npm publish --workspace=packages/repo-processor-core
+          npm publish --workspace=packages/repo-plugin-image-sharp
+          # ... other packages
+```
+
+---
+
+### Migration Checklist
+
+- [ ] **Step 1**: Create processor-core package structure
+- [ ] **Step 1.2**: Define all plugin interfaces
+- [ ] **Step 1.3**: Implement PluginManager with dependency resolution
+- [ ] **Step 1.4**: Create default no-op plugins
+- [ ] **Step 2.1**: Copy core processing logic
+- [ ] **Step 2.2**: Refactor processMedia to use plugins
+- [ ] **Step 2.3**: Add post-processing hooks for embeddings/similarity/database
+- [ ] **Step 3.1**: Create plugin-image-sharp package
+- [ ] **Step 3.2**: Create plugin-embed-hf package
+- [ ] **Step 3.3**: Create plugin-embed-clip package
+- [ ] **Step 3.4**: Create plugin-database-sqlite package
+- [ ] **Step 4.1**: Create test fixtures
+- [ ] **Step 4.2**: Write feature parity tests
+- [ ] **Step 4.3**: Write plugin-specific tests
+- [ ] **Step 4.4**: Write integration tests
+- [ ] **Step 4.5**: Verify all features in checklist
+- [ ] **Step 5.1**: Update worker dependencies
+- [ ] **Step 5.2**: Refactor buildAssets.js
+- [ ] **Step 5.3**: Remove redundant worker code
+- [ ] **Step 6.1**: Remove old processor package
+- [ ] **Step 6.2**: Update root package.json
+- [ ] **Step 6.3**: Update documentation
+- [ ] **Step 7.1**: Set up test CI
+- [ ] **Step 7.2**: Set up publish workflow
+
+---
+
 *Updated: 2025-01-27*
 *Author: Claude Code Analysis*
