@@ -1,0 +1,69 @@
+{
+  "name": "repo-md-build-worker",
+  "main": "dist/index.js",
+  "compatibility_date": "2024-12-01",
+
+  // Container configuration
+  "containers": [
+    {
+      "class_name": "BuildContainer",
+      "image": "./container",
+      "max_instances": 100,
+      "instance_type": "standard"  // 4 GiB mem, 1/2 vCPU, 4 GB disk
+    }
+  ],
+
+  // Durable Objects for container routing
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BUILD_CONTAINER",
+        "class_name": "BuildContainer"
+      }
+    ]
+  },
+
+  // Queue configuration
+  "queues": {
+    "consumers": [
+      {
+        "queue": "repo-md-build-queue",
+        "max_batch_size": 1,
+        "max_retries": 3,
+        "dead_letter_queue": "repo-md-build-dlq"
+      }
+    ],
+    "producers": [
+      {
+        "binding": "BUILD_QUEUE",
+        "queue": "repo-md-build-queue"
+      }
+    ]
+  },
+
+  // R2 bucket bindings
+  "r2_buckets": [
+    {
+      "binding": "GIT_CACHE_BUCKET",
+      "bucket_name": "repo-md-git-cache"
+    },
+    {
+      "binding": "OUTPUT_BUCKET",
+      "bucket_name": "repo-md-outputs"
+    }
+  ],
+
+  // Environment variables
+  "vars": {
+    // Non-sensitive vars can be defined here
+  },
+
+  // Observability
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+
+  // Note: Set API_SECRET using:
+  // wrangler secret put API_SECRET
+}
