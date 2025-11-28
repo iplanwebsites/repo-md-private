@@ -519,6 +519,11 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       },
     };
 
+    // Pass cache context to publish step for R2 optimization
+    if (cacheContext) {
+      (buildResult as any).cacheContext = cacheContext;
+    }
+
     // Add embeddings info if plugins were enabled
     if (!skipEmbeddings) {
       (buildResult as any).postEmbeddings = {
