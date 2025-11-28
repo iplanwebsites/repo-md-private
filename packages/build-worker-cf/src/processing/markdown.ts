@@ -61,7 +61,7 @@ function parseFrontmatter(content: string): {
     if (colonIndex === -1) continue;
 
     const key = line.slice(0, colonIndex).trim();
-    let value: unknown = line.slice(colonIndex + 1).trim();
+    let value: string | number | boolean = line.slice(colonIndex + 1).trim();
 
     // Remove quotes
     if (

@@ -7,6 +7,10 @@
     "types": ["node", "@cloudflare/workers-types"],
     "outDir": "./dist",
     "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@repo-md/git-cache": ["../repo-git-cache/src/index.ts"]
+    },
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -21,5 +25,8 @@
     "noUncheckedIndexedAccess": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "container"]
+  "exclude": ["node_modules", "dist", "container"],
+  "references": [
+    { "path": "../repo-git-cache" }
+  ]
 }

@@ -3,7 +3,22 @@
  * @module @repo-md/build-worker-cf
  */
 
-import type { GitAuth } from "@repo-md/git-cache";
+/**
+ * Git authentication options
+ * (Duplicated from @repo-md/git-cache to avoid build-time dependency)
+ */
+export interface GitAuth {
+  /** Authentication type */
+  type: "token" | "ssh" | "basic";
+  /** Personal access token (for "token" type) */
+  token?: string;
+  /** SSH private key (for "ssh" type) */
+  sshKey?: string;
+  /** Username (for "basic" type) */
+  username?: string;
+  /** Password (for "basic" type) */
+  password?: string;
+}
 
 /**
  * Worker environment bindings

@@ -279,7 +279,7 @@ export async function runBuild(
         consumerId: job.consumerId,
         repoPath: repoDir,
       })
-      .catch((err) => console.warn("Failed to save git cache:", err));
+      .catch((err: unknown) => console.warn("Failed to save git cache:", err));
 
     // 11. Cleanup
     await fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
