@@ -9,6 +9,8 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import type { ProcessConfig } from '../types/config.js';
 import type { ProcessedPost, ProcessedMedia, ProcessResult, MediaSizeVariant, PostCover, PostCoverError } from '../types/output.js';
+import type { CacheStats, CachedMediaMetadata } from '../types/cache.js';
+import { createEmptyCacheStats } from '../types/cache.js';
 import type { LogLevel, PluginContext } from '../plugins/types.js';
 import { PluginManager } from '../plugins/manager.js';
 import { IssueCollector } from '../services/issueCollector.js';
@@ -56,6 +58,15 @@ interface ProcessingState {
   readonly issues: IssueCollector;
   /** Maps original media paths to processed media info */
   readonly mediaPathMap: Map<string, ProcessedMedia>;
+  /** Cache statistics for tracking cache hits/misses */
+  readonly cacheStats: {
+    mediaCacheHits: number;
+    mediaCacheMisses: number;
+    textEmbeddingCacheHits: number;
+    textEmbeddingCacheMisses: number;
+    imageEmbeddingCacheHits: number;
+    imageEmbeddingCacheMisses: number;
+  };
 }
 
 // ============================================================================
@@ -189,6 +200,14 @@ export class Processor {
       slugManager: new SlugManager('number'),
       issues: this.issues,
       mediaPathMap: new Map(),
+      cacheStats: {
+        mediaCacheHits: 0,
+        mediaCacheMisses: 0,
+        textEmbeddingCacheHits: 0,
+        textEmbeddingCacheMisses: 0,
+        imageEmbeddingCacheHits: 0,
+        imageEmbeddingCacheMisses: 0,
+      },
     };
 
     // Step 1: Process media files (if not skipped)
@@ -217,12 +236,29 @@ export class Processor {
     const issueReport = this.issues.generateReport();
     this.log(this.issues.getSummaryString(), 'info');
 
+    // Build cache stats if cache was used
+    const hasCacheActivity =
+      state.cacheStats.mediaCacheHits > 0 ||
+      state.cacheStats.mediaCacheMisses > 0 ||
+      state.cacheStats.textEmbeddingCacheHits > 0 ||
+      state.cacheStats.imageEmbeddingCacheHits > 0;
+
+    if (hasCacheActivity) {
+      this.log(
+        `Cache stats: media ${state.cacheStats.mediaCacheHits}/${state.cacheStats.mediaCacheHits + state.cacheStats.mediaCacheMisses} hits, ` +
+        `text embeddings ${state.cacheStats.textEmbeddingCacheHits}/${state.cacheStats.textEmbeddingCacheHits + state.cacheStats.textEmbeddingCacheMisses} hits, ` +
+        `image embeddings ${state.cacheStats.imageEmbeddingCacheHits}/${state.cacheStats.imageEmbeddingCacheHits + state.cacheStats.imageEmbeddingCacheMisses} hits`,
+        'info'
+      );
+    }
+
     return {
       posts: state.posts,
       media: state.media,
       outputDir,
       outputFiles,
       issues: issueReport,
+      cacheStats: this.config.cache ? state.cacheStats : undefined,
     };
   }
 
@@ -282,6 +318,45 @@ export class Processor {
         const fileBuffer = await fs.readFile(mediaPath);
         const contentHash = hashBuffer(fileBuffer);
         const shortContentHash = contentHash.substring(0, 16); // Use first 16 chars for filename
+
+        // Check cache for this media file
+        const mediaCache = this.config.cache?.media;
+        const cachedMedia = mediaCache?.get(contentHash);
+
+        if (cachedMedia) {
+          // Cache hit! Use cached metadata instead of processing
+          state.cacheStats.mediaCacheHits++;
+          this.log(`Cache hit for ${fileName} (${contentHash.substring(0, 8)}...)`, 'debug');
+
+          const processedMedia: ProcessedMedia = {
+            originalPath: relativePath,
+            outputPath: cachedMedia.outputPath,
+            fileName,
+            type: 'image',
+            metadata: {
+              width: cachedMedia.width,
+              height: cachedMedia.height,
+              format: cachedMedia.format,
+              size: cachedMedia.size,
+              originalSize: cachedMedia.originalSize,
+              hash: contentHash,
+            },
+            sizes: cachedMedia.sizes.length > 0 ? cachedMedia.sizes.map(s => ({
+              suffix: s.suffix,
+              outputPath: s.outputPath,
+              width: s.width,
+              height: s.height,
+              size: s.size,
+            })) : undefined,
+          };
+
+          state.media.push(processedMedia);
+          state.mediaPathMap.set(relativePath, processedMedia);
+          continue; // Skip to next file - no need to process
+        }
+
+        // Cache miss - need to process this file
+        state.cacheStats.mediaCacheMisses++;
 
         // Determine output filename based on useHash config
         let outputFileName: string;

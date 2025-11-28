@@ -3,6 +3,7 @@
  */
 
 import type { PluginConfig } from '../plugins/types.js';
+import type { CacheContext, CacheStats } from './cache.js';
 
 // ============================================================================
 // Image Size Configuration
@@ -180,6 +181,13 @@ export interface ProcessConfig {
 
   /** Debug configuration */
   readonly debug?: DebugConfig;
+
+  /**
+   * Cache context for incremental builds.
+   * When provided, the processor will skip processing files
+   * whose content hash matches a cached entry and use cached metadata instead.
+   */
+  readonly cache?: CacheContext;
 }
 
 // ============================================================================
@@ -187,9 +195,16 @@ export interface ProcessConfig {
 // ============================================================================
 
 /**
+ * ProcessConfig with all fields required except cache (which remains optional)
+ */
+export type ProcessConfigWithDefaults = Required<Omit<ProcessConfig, 'cache'>> & {
+  cache?: CacheContext;
+};
+
+/**
  * Merge configuration with defaults
  */
-export const withDefaults = (config: ProcessConfig): Required<ProcessConfig> => ({
+export const withDefaults = (config: ProcessConfig): ProcessConfigWithDefaults => ({
   dir: config.dir,
   plugins: config.plugins ?? {},
   media: {
@@ -231,6 +246,7 @@ export const withDefaults = (config: ProcessConfig): Required<ProcessConfig> => 
     timing: false,
     ...config.debug,
   },
+  cache: config.cache,
 });
 
 /**

@@ -105,12 +105,27 @@ async function createJob(task, data) {
   // With DEBUG enabled, always try to call worker API even if not configured
   if (workerApiUrl || DEBUG) {
     try {
+      // Fetch cache URLs for deploy-repo tasks (incremental builds)
+      // Skip cache if forceReprocess flag is set (e.g., when settings change)
+      let cacheUrls = null;
+      const shouldSkipCache = data.forceReprocess === true ||
+                              data.projectSettings?.build?.forceReprocess === true;
+
+      if (task === "deploy-repo" && data.projectId && !shouldSkipCache) {
+        cacheUrls = await getLatestDeploymentCache(data.projectId);
+        if (DEBUG && cacheUrls) {
+          console.log(`📋 Found cache from previous deployment: ${cacheUrls.previousJobId}`);
+        }
+      } else if (shouldSkipCache && DEBUG) {
+        console.log(`🔄 Skipping cache due to forceReprocess flag`);
+      }
+
       // Create worker request payload based on API documentation
       const workerPayload = {
         jobId: jobRecord._id.toString(),
         task: mapTaskToWorkerTask(task, data),
         callbackUrl,
-        data: processDataForWorker(task, data),
+        data: processDataForWorker(task, data, cacheUrls),
       };
 
       if (DEBUG) {
@@ -263,12 +278,48 @@ function mapTaskToWorkerTask(task, data) {
 }
 
 /**
+ * Get the latest completed deployment for a project to use for caching
+ * @param {string} projectId - The project ID
+ * @returns {Promise<Object|null>} - The latest deployment job output or null
+ */
+async function getLatestDeploymentCache(projectId) {
+  if (!projectId) return null;
+
+  try {
+    const latestJob = await db.jobs.findOne(
+      {
+        projectId: projectId,
+        type: "repo_deploy",
+        status: "completed",
+        "output.publishInfo.publicContentUrl": { $exists: true }
+      },
+      { sort: { completedAt: -1 } }
+    );
+
+    if (latestJob?.output?.publishInfo?.publicContentUrl) {
+      const baseUrl = latestJob.output.publishInfo.publicContentUrl;
+      return {
+        medias: `${baseUrl}/medias.json`,
+        postEmbeddings: `${baseUrl}/posts-embedding-hash-map.json`,
+        mediaEmbeddings: `${baseUrl}/media-embedding-hash-map.json`,
+        previousJobId: latestJob._id.toString(),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn(`⚠️ Failed to fetch cache URLs for project ${projectId}:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Process data for the worker API based on task type
  * @param {string} task - Task type
  * @param {Object} data - Original data
+ * @param {Object} cacheUrls - Optional cache URLs from previous deployment
  * @returns {Object} Processed data for worker
  */
-function processDataForWorker(task, data) {
+function processDataForWorker(task, data, cacheUrls = null) {
   // Base required fields
   const workerData = {
     userId: data.userId,
@@ -327,6 +378,17 @@ function processDataForWorker(task, data) {
         `⚠️ No repoUrl found in data for deploy-repo task. This may cause issues with the worker.`
       );
       console.log(`  Data:`, data);
+    }
+
+    // Add cache URLs for incremental builds (from previous deployment)
+    if (cacheUrls) {
+      workerData.cacheUrls = cacheUrls;
+      if (DEBUG) {
+        console.log(`📦 Including cache URLs from previous deployment:`, {
+          previousJobId: cacheUrls.previousJobId,
+          mediasUrl: cacheUrls.medias,
+        });
+      }
     }
   }
 
