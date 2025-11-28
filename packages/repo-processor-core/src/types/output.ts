@@ -3,6 +3,7 @@
  */
 
 import type { IssueReport } from './issues.js';
+import type { CacheStats } from './cache.js';
 
 // ============================================================================
 // Table of Contents
@@ -249,6 +250,9 @@ export interface ProcessResult {
 
   /** Graph data (if trackRelationships enabled) */
   readonly graph?: GraphData;
+
+  /** Cache statistics (if cache was provided) */
+  readonly cacheStats?: CacheStats;
 }
 
 // ============================================================================

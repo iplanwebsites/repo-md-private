@@ -5,3 +5,4 @@
 export * from './config.js';
 export * from './output.js';
 export * from './issues.js';
+export * from './cache.js';

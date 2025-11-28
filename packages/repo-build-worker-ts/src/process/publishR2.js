@@ -685,15 +685,23 @@ async function publishR2(data) {
       logger.log("✅ Using existing asset manager from pre-fetch", {
         stats: assetManager.getOptimizationStats()
       });
-    } else if (optimizationConfig.fetchExistingAssets) {
-      // If not pre-fetched, fetch now
+    } else if (optimizationConfig.fetchExistingAssets || data.cacheContext) {
+      // If not pre-fetched, fetch now (or seed from cache context)
       try {
-        logger.log("🔍 Fetching existing R2 assets for optimization...");
+        const hasCacheContext = !!data.cacheContext;
+        if (hasCacheContext) {
+          logger.log("📦 Using cache context for R2 optimization...");
+        } else {
+          logger.log("🔍 Fetching existing R2 assets for optimization...");
+        }
+
         assetManager = await createR2AssetManager(projectId, logger, {
           maxKeys: optimizationConfig.listMaxKeys,
-          prefetch: true
+          prefetch: !hasCacheContext, // Skip R2 list if we have cache context
+          cacheContext: data.cacheContext, // Seed known hashes from cache
+          skipR2Fetch: hasCacheContext, // Skip R2 fetch if cache context provided
         });
-        
+
         const stats = assetManager.getOptimizationStats();
         logger.log("✅ Asset manager initialized", stats);
       } catch (error) {

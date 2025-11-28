@@ -20,12 +20,15 @@ import {
   type ProcessedPost,
   type ProcessedMedia,
   type PluginConfig,
+  type CacheContext,
+  buildMediaCacheFromManifest,
+  buildEmbeddingCacheFromManifest,
 } from '@repo-md/processor-core';
 import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
 import { TransformersTextEmbedder } from '@repo-md/plugin-embed-transformers';
 import { ClipImageEmbedder } from '@repo-md/plugin-embed-clip';
 import { SqliteDatabasePlugin } from '@repo-md/plugin-database-sqlite';
-import type { JobData, BuildResult, Logger, ImageSizeSettings, ImageFormatSettings } from '../types/job.js';
+import type { JobData, BuildResult, Logger, ImageSizeSettings, ImageFormatSettings, CacheUrls } from '../types/job.js';
 
 // ============================================================================
 // Types
@@ -108,6 +111,96 @@ const generateDirectorySummary = async (directory: string): Promise<readonly Fil
 
   await processDirectory(directory);
   return files;
+};
+
+/**
+ * Fetch cache manifests from URLs and build a CacheContext
+ * This enables incremental builds by reusing data from previous deployments
+ */
+const fetchCacheContext = async (
+  cacheUrls: CacheUrls | undefined,
+  logger?: Logger
+): Promise<CacheContext | undefined> => {
+  if (!cacheUrls) {
+    return undefined;
+  }
+
+  safeLog(logger, 'log', 'Fetching cache manifests for incremental build...', {
+    previousJobId: cacheUrls.previousJobId,
+  });
+
+  // Fetch all cache components separately
+  let mediaCache: ReturnType<typeof buildMediaCacheFromManifest> | undefined;
+  let textEmbeddingsCache: ReturnType<typeof buildEmbeddingCacheFromManifest> | undefined;
+  let imageEmbeddingsCache: ReturnType<typeof buildEmbeddingCacheFromManifest> | undefined;
+
+  // Fetch media manifest
+  if (cacheUrls.medias) {
+    try {
+      const response = await fetch(cacheUrls.medias);
+      if (response.ok) {
+        const medias = await response.json() as any[];
+        mediaCache = buildMediaCacheFromManifest(medias);
+        safeLog(logger, 'log', `Loaded ${mediaCache.size} media entries from cache`);
+      } else {
+        safeLog(logger, 'warn', `Failed to fetch media cache: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      safeLog(logger, 'warn', `Failed to fetch media cache: ${errorMsg}`);
+    }
+  }
+
+  // Fetch text embeddings manifest
+  if (cacheUrls.postEmbeddings) {
+    try {
+      const response = await fetch(cacheUrls.postEmbeddings);
+      if (response.ok) {
+        const embeddingMap = await response.json() as Record<string, number[]>;
+        textEmbeddingsCache = buildEmbeddingCacheFromManifest(embeddingMap);
+        safeLog(logger, 'log', `Loaded ${textEmbeddingsCache.size} text embedding entries from cache`);
+      } else {
+        safeLog(logger, 'warn', `Failed to fetch text embeddings cache: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      safeLog(logger, 'warn', `Failed to fetch text embeddings cache: ${errorMsg}`);
+    }
+  }
+
+  // Fetch image embeddings manifest
+  if (cacheUrls.mediaEmbeddings) {
+    try {
+      const response = await fetch(cacheUrls.mediaEmbeddings);
+      if (response.ok) {
+        const embeddingMap = await response.json() as Record<string, number[]>;
+        imageEmbeddingsCache = buildEmbeddingCacheFromManifest(embeddingMap);
+        safeLog(logger, 'log', `Loaded ${imageEmbeddingsCache.size} image embedding entries from cache`);
+      } else {
+        safeLog(logger, 'warn', `Failed to fetch image embeddings cache: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      safeLog(logger, 'warn', `Failed to fetch image embeddings cache: ${errorMsg}`);
+    }
+  }
+
+  // Return cache only if we got at least one successful fetch
+  const hasCacheData =
+    (mediaCache && mediaCache.size > 0) ||
+    (textEmbeddingsCache && textEmbeddingsCache.size > 0) ||
+    (imageEmbeddingsCache && imageEmbeddingsCache.size > 0);
+
+  if (hasCacheData) {
+    return {
+      media: mediaCache,
+      textEmbeddings: textEmbeddingsCache,
+      imageEmbeddings: imageEmbeddingsCache,
+    };
+  }
+
+  safeLog(logger, 'log', 'No cache data loaded, will process all files');
+  return undefined;
 };
 
 // ============================================================================
@@ -265,6 +358,9 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
     const removeDeadLinks = formattingSettings?.removeDeadLinks ?? false;
     const syntaxHighlighting = formattingSettings?.syntaxHighlighting ?? true;
 
+    // Fetch cache for incremental builds
+    const cacheContext = await fetchCacheContext(data.cacheUrls, logger);
+
     safeLog(logger, 'log', 'Configuring processor with plugins...', {
       inputPath,
       distFolder,
@@ -280,6 +376,10 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
       parseFormulas,
       removeDeadLinks,
       syntaxHighlighting,
+      cacheEnabled: !!cacheContext,
+      mediaCacheSize: cacheContext?.media?.size ?? 0,
+      textEmbeddingsCacheSize: cacheContext?.textEmbeddings?.size ?? 0,
+      imageEmbeddingsCacheSize: cacheContext?.imageEmbeddings?.size ?? 0,
     });
 
     // Build plugin configuration
@@ -331,6 +431,8 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
         removeDeadLinks,
       },
       plugins,
+      // Cache for incremental builds (optional)
+      cache: cacheContext,
     };
 
     // Create and run processor
@@ -340,12 +442,22 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
     const result = await processor.process();
     await processor.dispose();
 
-    const { posts, media } = result;
+    const { posts, media, cacheStats } = result;
 
     safeLog(logger, 'log', 'Assets built successfully!', {
       jobId,
       filesProcessed: posts.length,
       mediasProcessed: media.length,
+      ...(cacheStats && {
+        cacheStats: {
+          mediaCacheHits: cacheStats.mediaCacheHits,
+          mediaCacheMisses: cacheStats.mediaCacheMisses,
+          textEmbeddingCacheHits: cacheStats.textEmbeddingCacheHits,
+          textEmbeddingCacheMisses: cacheStats.textEmbeddingCacheMisses,
+          imageEmbeddingCacheHits: cacheStats.imageEmbeddingCacheHits,
+          imageEmbeddingCacheMisses: cacheStats.imageEmbeddingCacheMisses,
+        },
+      }),
     });
 
     // Content validation
@@ -406,6 +518,11 @@ export const buildAssets = async (data: JobData): Promise<BuildResult> => {
         distFileCount: distFiles.length,
       },
     };
+
+    // Pass cache context to publish step for R2 optimization
+    if (cacheContext) {
+      (buildResult as any).cacheContext = cacheContext;
+    }
 
     // Add embeddings info if plugins were enabled
     if (!skipEmbeddings) {

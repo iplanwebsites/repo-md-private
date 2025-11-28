@@ -75,6 +75,11 @@ export interface BuildSettings {
   readonly productionBranch?: string;
   readonly skipEmbeddings?: boolean;
   readonly similarPostsCount?: number;
+  /**
+   * Force reprocessing of all files, ignoring cache.
+   * Use when settings have changed (e.g., image sizes, quality, format).
+   */
+  readonly forceReprocess?: boolean;
 }
 
 /**
@@ -98,6 +103,21 @@ export interface ProjectSettings {
 // Job Data
 // ============================================================================
 
+/**
+ * Cache URLs for incremental builds
+ * Provided by the API from the previous successful deployment
+ */
+export interface CacheUrls {
+  /** URL to medias.json from previous deployment */
+  readonly medias?: string;
+  /** URL to posts-embedding-hash-map.json from previous deployment */
+  readonly postEmbeddings?: string;
+  /** URL to media-embedding-hash-map.json from previous deployment */
+  readonly mediaEmbeddings?: string;
+  /** Job ID of the previous deployment (for debugging) */
+  readonly previousJobId?: string;
+}
+
 export interface JobData {
   readonly jobId: string;
   readonly repoInfo: RepoInfo;
@@ -115,6 +135,9 @@ export interface JobData {
 
   // Project settings from webapp
   readonly projectSettings?: ProjectSettings;
+
+  // Cache URLs for incremental builds
+  readonly cacheUrls?: CacheUrls;
 }
 
 export interface Logger {

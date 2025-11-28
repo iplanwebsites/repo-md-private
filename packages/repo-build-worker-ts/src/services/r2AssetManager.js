@@ -259,6 +259,32 @@ export class R2AssetManager {
     this.existingMediaHashes.clear();
     this.existingPostHashes.clear();
   }
+
+  /**
+   * Seed the manager with known hashes from a cache context.
+   * This avoids the need to list R2 assets when we already know
+   * which hashes exist from the previous deployment.
+   *
+   * @param {Object} cacheContext - Cache context with media and embeddings
+   * @param {Map<string, Object>} [cacheContext.media] - Media cache keyed by hash
+   */
+  seedFromCache(cacheContext) {
+    if (!cacheContext) return;
+
+    let mediaHashCount = 0;
+
+    // Seed media hashes from cache
+    if (cacheContext.media && cacheContext.media instanceof Map) {
+      for (const hash of cacheContext.media.keys()) {
+        this.existingMediaHashes.add(hash);
+        mediaHashCount++;
+      }
+    }
+
+    if (mediaHashCount > 0) {
+      this.logger.log(`📦 Seeded R2AssetManager with ${mediaHashCount} media hashes from cache`);
+    }
+  }
 }
 
 /**
@@ -266,14 +292,21 @@ export class R2AssetManager {
  * @param {string} projectId - The project ID
  * @param {Object} logger - Logger instance
  * @param {Object} options - Options for fetching assets
+ * @param {Object} [options.cacheContext] - Cache context to seed known hashes
  * @returns {Promise<R2AssetManager>} - Initialized asset manager
  */
 export async function createR2AssetManager(projectId, logger = console, options = {}) {
   const manager = new R2AssetManager(projectId, logger);
-  
-  if (options.prefetch !== false) {
+
+  // First seed from cache if available (faster than R2 list)
+  if (options.cacheContext) {
+    manager.seedFromCache(options.cacheContext);
+  }
+
+  // Then optionally fetch additional assets from R2
+  if (options.prefetch !== false && !options.skipR2Fetch) {
     await manager.fetchExistingAssets(options);
   }
-  
+
   return manager;
 }
