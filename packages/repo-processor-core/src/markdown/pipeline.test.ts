@@ -277,3 +277,63 @@ describe('Pipeline options', () => {
     expect(result.html).not.toContain('<del>');
   });
 });
+
+// ============================================================================
+// Media Plugins Tests
+// ============================================================================
+
+describe('Obsidian media embeds', () => {
+  it('should transform ![[image.jpg]] to img element without media service', async () => {
+    const content = 'Check this out: ![[photo.jpg]]';
+    const result = await processMarkdown(content, {
+      obsidianMedia: true,
+    });
+    // Without media service, creates basic img with original path
+    expect(result.html).toContain('<img');
+    expect(result.html).toContain('photo.jpg');
+  });
+
+  it('should keep non-image embeds as text', async () => {
+    const content = 'See ![[document.pdf]] for details';
+    const result = await processMarkdown(content, {
+      obsidianMedia: true,
+    });
+    // Non-image files should remain as text
+    expect(result.html).toContain('![[document.pdf]]');
+  });
+
+  it('should support alt text with pipe syntax', async () => {
+    const content = 'Logo: ![[logo.png|Company Logo]]';
+    const result = await processMarkdown(content, {
+      obsidianMedia: true,
+    });
+    expect(result.html).toContain('alt="Company Logo"');
+  });
+
+  it('should handle multiple embeds in one line', async () => {
+    const content = 'Before ![[a.jpg]] middle ![[b.png]] after';
+    const result = await processMarkdown(content, {
+      obsidianMedia: true,
+    });
+    expect(result.html).toContain('a.jpg');
+    expect(result.html).toContain('b.png');
+  });
+});
+
+describe('Markdown image resolution', () => {
+  it('should pass through external URLs unchanged', async () => {
+    const content = '![alt](https://example.com/image.jpg)';
+    const result = await processMarkdown(content, {
+      resolveImagePaths: true,
+    });
+    expect(result.html).toContain('https://example.com/image.jpg');
+  });
+
+  it('should pass through data URIs unchanged', async () => {
+    const content = '![alt](data:image/png;base64,abc123)';
+    const result = await processMarkdown(content, {
+      resolveImagePaths: true,
+    });
+    expect(result.html).toContain('data:image/png;base64,abc123');
+  });
+});

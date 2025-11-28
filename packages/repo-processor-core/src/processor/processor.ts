@@ -18,6 +18,8 @@ import {
   extractHeadings,
   buildToc,
   mdastToText,
+  createMediaService,
+  type MediaService,
 } from '../markdown/pipeline.js';
 import { countWords } from '../markdown/wordCount.js';
 import { hashContent, hashBuffer } from '../utils/hash.js';
@@ -56,6 +58,8 @@ interface ProcessingState {
   readonly issues: IssueCollector;
   /** Maps original media paths to processed media info */
   readonly mediaPathMap: Map<string, ProcessedMedia>;
+  /** Media service for path resolution in markdown */
+  mediaService?: MediaService;
 }
 
 // ============================================================================
@@ -196,6 +200,17 @@ export class Processor {
       await this.processMedia(state);
     } else {
       this.log('Skipping media processing', 'info');
+    }
+
+    // Create media service for path resolution in markdown
+    if (state.media.length > 0) {
+      state.mediaService = createMediaService(state.media, {
+        basePath: this.config.media?.pathPrefix ?? '/_media',
+        domain: this.config.media?.domain,
+        preferredSize: 'lg',
+        enableCssRatio: true,
+      });
+      this.log(`Created media service with ${state.media.length} files`, 'debug');
     }
 
     // Step 2: Process markdown files
@@ -483,12 +498,17 @@ export class Processor {
       // Obsidian features
       wikiLinks: pipelineConfig.wikiLinks ?? true,
       callouts: pipelineConfig.callouts ?? true,
+      obsidianMedia: pipelineConfig.obsidianMedia ?? true,
       // Code & Math
       syntaxHighlighting: pipelineConfig.syntaxHighlighting ?? true,
       parseFormulas: pipelineConfig.parseFormulas ?? false,
       // Links
       externalLinks: pipelineConfig.externalLinks ?? true,
       autolinkHeadings: pipelineConfig.autolinkHeadings ?? true,
+      // Media
+      resolveImagePaths: pipelineConfig.resolveImagePaths ?? true,
+      mediaService: state.mediaService,
+      currentFilePath: relativePath,
       // Embeds
       youtubeEmbeds: pipelineConfig.youtubeEmbeds ?? true,
     });

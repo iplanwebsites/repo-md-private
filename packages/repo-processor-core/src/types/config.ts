@@ -140,6 +140,9 @@ export interface PipelineConfig {
   /** Enable Obsidian callouts > [!NOTE] (default: true) */
   readonly callouts?: boolean;
 
+  /** Enable Obsidian media embeds ![[image.jpg]] (default: true) */
+  readonly obsidianMedia?: boolean;
+
   // Code & Math
   /** Enable syntax highlighting for code blocks (default: true) */
   readonly syntaxHighlighting?: boolean;
@@ -156,6 +159,10 @@ export interface PipelineConfig {
 
   /** Remove broken/dead links instead of keeping them (default: false) */
   readonly removeDeadLinks?: boolean;
+
+  // Media
+  /** Enable markdown image path resolution (default: true) */
+  readonly resolveImagePaths?: boolean;
 
   // Embeds
   /** Enable YouTube video embeds (default: true) */
@@ -242,11 +249,13 @@ export const withDefaults = (config: ProcessConfig): Required<ProcessConfig> => 
     allowRawHtml: true,
     wikiLinks: true,
     callouts: true,
+    obsidianMedia: true,
     syntaxHighlighting: true,
     parseFormulas: false,
     externalLinks: true,
     autolinkHeadings: true,
     removeDeadLinks: false,
+    resolveImagePaths: true,
     youtubeEmbeds: true,
     ...config.pipeline,
   },

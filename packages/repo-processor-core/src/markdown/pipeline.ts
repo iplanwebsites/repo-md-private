@@ -32,6 +32,15 @@ import rehypeMathjaxChtml from 'rehype-mathjax/chtml';
 // Languages for syntax highlighting
 import { all as allLowlightLanguages } from 'lowlight';
 
+// Custom media plugins
+import { remarkObsidianMedia } from './remarkObsidianMedia.js';
+import { remarkMdImages } from './remarkMdImages.js';
+import type { MediaService } from './mediaService.js';
+
+// Re-export media service for convenience
+export { MediaService, createMediaService } from './mediaService.js';
+export type { MediaServiceOptions, MediaLookupMap, MediaResolveResult } from './mediaService.js';
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -70,6 +79,8 @@ export interface PipelineOptions {
   readonly wikiLinkResolver?: WikiLinkResolver;
   /** Enable Obsidian callouts (> [!NOTE]) */
   readonly callouts?: boolean;
+  /** Enable Obsidian media embeds ![[image.jpg]] */
+  readonly obsidianMedia?: boolean;
 
   // Code & Math
   /** Enable syntax highlighting for code blocks */
@@ -82,6 +93,14 @@ export interface PipelineOptions {
   readonly externalLinks?: boolean;
   /** Wrap headings with anchor links */
   readonly autolinkHeadings?: boolean;
+
+  // Media
+  /** Enable markdown image path resolution */
+  readonly resolveImagePaths?: boolean;
+  /** Media service for path resolution (used by obsidianMedia and resolveImagePaths) */
+  readonly mediaService?: MediaService;
+  /** Current file path for relative resolution */
+  readonly currentFilePath?: string;
 
   // Embeds
   /** Enable YouTube video embeds */
@@ -184,10 +203,12 @@ export const DEFAULT_PIPELINE_OPTIONS: PipelineOptions = {
   allowRawHtml: true,
   wikiLinks: true,
   callouts: true,
+  obsidianMedia: true, // Enable ![[image.jpg]] syntax
   syntaxHighlighting: true,
   parseFormulas: false, // Disabled by default (requires MathJax CSS)
   externalLinks: true,
   autolinkHeadings: true,
+  resolveImagePaths: true, // Enable ![](path) resolution
   youtubeEmbeds: true,
   remarkPlugins: [],
   rehypePlugins: [],
@@ -227,6 +248,22 @@ export const createBasePipeline = (options: PipelineOptions = {}): any => {
   // Add Obsidian-style callouts (> [!NOTE], > [!WARNING], etc.)
   if (opts.callouts) {
     processor = processor.use(remarkCallouts);
+  }
+
+  // Add Obsidian media embeds ![[image.jpg]]
+  if (opts.obsidianMedia) {
+    processor = processor.use(remarkObsidianMedia, {
+      mediaService: opts.mediaService,
+      currentFilePath: opts.currentFilePath,
+    });
+  }
+
+  // Add markdown image path resolution ![alt](path)
+  if (opts.resolveImagePaths) {
+    processor = processor.use(remarkMdImages, {
+      mediaService: opts.mediaService,
+      currentFilePath: opts.currentFilePath,
+    });
   }
 
   // Add LaTeX math support ($..$ and $$..$$ blocks)
