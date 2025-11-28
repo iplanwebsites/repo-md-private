@@ -59,6 +59,62 @@ await processor.dispose();
 | `database` | `DatabasePlugin` | Generate SQLite database |
 | `mermaidRenderer` | `MermaidRendererPlugin` | Render Mermaid diagrams |
 
+### Image Processor Plugins
+
+Two implementations are available for the `ImageProcessorPlugin` interface:
+
+#### @repo-md/plugin-image-sharp (Recommended for Node.js)
+
+High-performance image processing using libvips via Sharp. Best choice for Node.js environments with native binary support.
+
+```typescript
+import { SharpImageProcessor } from '@repo-md/plugin-image-sharp';
+
+const processor = new Processor({
+  plugins: {
+    imageProcessor: new SharpImageProcessor({ defaultQuality: 80 }),
+  }
+});
+```
+
+#### @repo-md/plugin-image-wasm (For Edge/Workers)
+
+WASM-based image processing for environments without native binary support. Compatible with Cloudflare Workers, Deno Deploy, and lightweight containers.
+
+```typescript
+import { WasmImageProcessor } from '@repo-md/plugin-image-wasm';
+
+const processor = new Processor({
+  plugins: {
+    imageProcessor: new WasmImageProcessor({
+      defaultQuality: 80,
+      speed: 6,  // 0-10, slower to faster
+    }),
+  }
+});
+```
+
+#### Comparison
+
+| Feature | Sharp | WASM |
+|---------|-------|------|
+| Performance | Fastest (libvips native) | Good (WASM overhead) |
+| Native deps | Required | None |
+| Cloudflare Workers | ❌ | ✅ |
+| Deno Deploy | ❌ | ✅ |
+| Docker/Containers | ✅ | ✅ (lighter) |
+| JPEG input | ✅ | ✅ |
+| PNG input | ✅ | ✅ |
+| WebP input/output | ✅ | ✅ |
+| AVIF output | ✅ | ✅ |
+| GIF processing | ✅ | Copy only |
+| TIFF processing | ✅ | Copy only |
+| SVG processing | Copy only | Copy only |
+
+**When to use Sharp**: Node.js servers, Docker containers with native support, CI/CD pipelines, maximum performance needs.
+
+**When to use WASM**: Cloudflare Workers, Deno Deploy, edge functions, environments without native binary support, lightweight deployments.
+
 ### Directory Structure
 
 ```
